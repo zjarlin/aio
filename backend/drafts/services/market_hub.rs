@@ -419,9 +419,9 @@ fn build_wasm_samples(wasm_plugins: Vec<PluginDescriptorDto>) -> Vec<MarketCatal
             id: format!("wasm:{}", plugin.manifest_id),
             scene: MarketSceneDto::Wasm,
             source: if plugin.builtin {
-                "aio-runtime builtin".to_string()
+                "addzero-wasm-plugin-host builtin".to_string()
             } else {
-                "aio-runtime".to_string()
+                "addzero-wasm-plugin-host".to_string()
             },
             slug: plugin.manifest_id.clone(),
             title: plugin.name.clone(),
