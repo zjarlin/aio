@@ -4,7 +4,6 @@ import type { MenuRecordRaw } from '@vben/types';
 import { computed, useSlots, watch } from 'vue';
 
 import { useRefresh } from '@vben/hooks';
-import { $t } from '@vben/locales';
 import {
   preferences,
   updatePreferences,
@@ -112,17 +111,17 @@ const {
 } = useMixedMenu();
 
 /**
- * 包装菜单，翻译菜单名称
+ * 包装菜单，后端已返回本地化名称，直接透传
  * @param menus 原始菜单数据
  * @param deep 是否深度包装。对于双列布局，只需要包装第一层，因为更深层的数据会在扩展菜单中重新包装
  */
 function wrapperMenus(menus: MenuRecordRaw[], deep: boolean = true) {
   return deep
     ? mapTree(menus, (item) => {
-        return { ...cloneDeep(item), name: $t(item.name) };
+        return { ...cloneDeep(item) };
       })
     : menus.map((item) => {
-        return { ...cloneDeep(item), name: $t(item.name) };
+        return { ...cloneDeep(item) };
       });
 }
 

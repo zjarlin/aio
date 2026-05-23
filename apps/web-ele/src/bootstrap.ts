@@ -9,7 +9,7 @@ import '@vben/styles/ele';
 import { useTitle } from '@vueuse/core';
 import { ElLoading } from 'element-plus';
 
-import { $t, setupI18n } from '#/locales';
+import { setupI18n } from '#/locales';
 
 import { initComponentAdapter } from './adapter/component';
 import App from './app.vue';
@@ -40,7 +40,7 @@ async function bootstrap(namespace: string) {
     if (preferences.app.dynamicTitle) {
       const routeTitle = router.currentRoute.value.meta?.title;
       const pageTitle =
-        (routeTitle ? `${$t(routeTitle)} - ` : '') + preferences.app.name;
+        (routeTitle ? `${routeTitle} - ` : '') + preferences.app.name;
       useTitle(pageTitle);
     }
   });

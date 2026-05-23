@@ -1,11 +1,11 @@
 {
   "name": "@vben/web-ele",
   "version": "5.5.2",
-  "homepage": "https://vben.pro",
-  "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
+  "homepage": "https://github.com/zjarlin/vben-admin-tauri-app",
+  "bugs": "https://github.com/zjarlin/vben-admin-tauri-app/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vbenjs/vue-vben-admin.git",
+    "url": "git+https://github.com/zjarlin/vben-admin-tauri-app.git",
     "directory": "apps/web-ele"
   },
   "license": "MIT",
@@ -26,6 +26,7 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.7.0",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
     "@vben/constants": "workspace:*",
@@ -43,6 +44,7 @@
     "@vueuse/core": "catalog:",
     "dayjs": "catalog:",
     "element-plus": "catalog:",
+    "monaco-editor": "^0.55.1",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"

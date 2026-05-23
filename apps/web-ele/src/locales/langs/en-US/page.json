@@ -10,5 +10,24 @@
     "title": "Dashboard",
     "analytics": "Analytics",
     "workspace": "Workspace"
+  },
+  "system": {
+    "title": "System",
+    "users": "Users",
+    "roles": "Roles",
+    "permissions": "Permissions",
+    "dictionaries": "Dictionaries"
+  },
+  "assets": {
+    "title": "Assets",
+    "notes": "Notes",
+    "skills": "Skills",
+    "agentPreferences": "AGENTS.md",
+    "openaiAssistant": "OpenAI Assistant",
+    "dockerCompose": "Docker Compose",
+    "cli": "CLI",
+    "envVars": "Environment Variables",
+    "bashFunctions": "Bash Functions",
+    "dotfiles": "Dotfiles"
   }
 }

@@ -6,7 +6,7 @@ import { computed, ref, watch } from 'vue';
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
 import { VBEN_DOC_URL, VBEN_GITHUB_URL } from '@vben/constants';
 import { useWatermark } from '@vben/hooks';
-import { BookOpenText, CircleHelp, MdiGithub } from '@vben/icons';
+import { BookOpenText, CircleHelp, FolderOpen, MdiGithub } from '@vben/icons';
 import {
   BasicLayout,
   LockScreen,
@@ -17,6 +17,9 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { openWindow } from '@vben/utils';
 
+import { ElMessage } from 'element-plus';
+
+import { openAppDataDirApi } from '#/api';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
@@ -55,6 +58,7 @@ const notifications = ref<NotificationItem[]>([
 const userStore = useUserStore();
 const authStore = useAuthStore();
 const accessStore = useAccessStore();
+const openingDataDir = ref(false);
 const { destroyWatermark, updateWatermark } = useWatermark();
 const showDot = computed(() =>
   notifications.value.some((item) => !item.isRead),
@@ -91,7 +95,7 @@ const menus = computed(() => [
 ]);
 
 const avatar = computed(() => {
-  return userStore.userInfo?.avatar ?? preferences.app.defaultAvatar;
+  return userStore.userInfo?.avatar || preferences.app.defaultAvatar;
 });
 
 async function handleLogout() {
@@ -105,6 +109,21 @@ function handleNoticeClear() {
 function handleMakeAll() {
   notifications.value.forEach((item) => (item.isRead = true));
 }
+
+async function handleOpenDataDir() {
+  if (openingDataDir.value) {
+    return;
+  }
+
+  openingDataDir.value = true;
+  try {
+    const dataDir = await openAppDataDirApi();
+    ElMessage.success(`已打开数据目录：${dataDir}`);
+  } finally {
+    openingDataDir.value = false;
+  }
+}
+
 watch(
   () => preferences.app.watermark,
   async (enable) => {
@@ -141,6 +160,18 @@ watch(
         @clear="handleNoticeClear"
         @make-all="handleMakeAll"
       />
+    </template>
+    <template #header-right-145>
+      <button
+        :disabled="openingDataDir"
+        aria-label="打开数据目录"
+        class="flex-center hover:bg-accent-hover text-foreground mr-1 size-9 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+        title="打开数据目录"
+        type="button"
+        @click="handleOpenDataDir"
+      >
+        <FolderOpen class="size-4" />
+      </button>
     </template>
     <template #extra>
       <AuthenticationLoginExpiredModal

@@ -1,5 +1,5 @@
 {
-  "name": "vben-admin-monorepo",
+  "name": "aio-desktop-monorepo",
   "version": "5.5.2",
   "private": true,
   "keywords": [
@@ -14,9 +14,9 @@
     "vue vben admin pro",
     "vue3"
   ],
-  "homepage": "https://github.com/vbenjs/vue-vben-admin",
-  "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",
-  "repository": "vbenjs/vue-vben-admin.git",
+  "homepage": "https://github.com/zjarlin/vben-admin-tauri-app",
+  "bugs": "https://github.com/zjarlin/vben-admin-tauri-app/issues",
+  "repository": "zjarlin/vben-admin-tauri-app.git",
   "license": "MIT",
   "author": {
     "name": "vben",

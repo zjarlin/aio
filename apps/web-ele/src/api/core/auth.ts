@@ -1,4 +1,4 @@
-import { baseRequestClient, requestClient } from '#/api/request';
+import { callAuthedCommand, callCommand } from '#/api/local/client';
 
 export namespace AuthApi {
   /** 登录接口参数 */
@@ -22,30 +22,28 @@ export namespace AuthApi {
  * 登录
  */
 export async function loginApi(data: AuthApi.LoginParams) {
-  return requestClient.post<AuthApi.LoginResult>('/auth/login', data);
+  return await callCommand<AuthApi.LoginResult>('auth_login', {
+    request: data,
+  });
 }
 
 /**
  * 刷新accessToken
  */
 export async function refreshTokenApi() {
-  return baseRequestClient.post<AuthApi.RefreshTokenResult>('/auth/refresh', {
-    withCredentials: true,
-  });
+  throw new Error('AIO 本地桌面模式不支持刷新 token');
 }
 
 /**
  * 退出登录
  */
 export async function logoutApi() {
-  return baseRequestClient.post('/auth/logout', {
-    withCredentials: true,
-  });
+  return await callAuthedCommand<null>('auth_logout');
 }
 
 /**
  * 获取用户权限码
  */
 export async function getAccessCodesApi() {
-  return requestClient.get<string[]>('/auth/codes');
+  return await callAuthedCommand<string[]>('auth_access_codes');
 }

@@ -1,18 +1,18 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "vben-admin-tauri-app",
+  "productName": "AIO",
   "version": "0.1.0",
-  "identifier": "com.tauri.vben-admin-tauri-app",
+  "identifier": "site.addzero.aio",
   "build": {
     "frontendDist": "../apps/web-ele/dist",
     "devUrl": "http://localhost:5777",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeDevCommand": "pnpm dev:ele",
+    "beforeBuildCommand": "pnpm build:ele"
   },
   "app": {
     "windows": [
       {
-        "title": "vben-admin-tauri-app",
+        "title": "AIO",
         "width": 1200,
         "height": 800,
         "resizable": true,

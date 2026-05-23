@@ -23,7 +23,6 @@ const headerHeight = ref(0);
 const footerHeight = ref(0);
 const shouldAutoHeight = ref(false);
 
-const headerRef = useTemplateRef<HTMLDivElement>('headerRef');
 const footerRef = useTemplateRef<HTMLDivElement>('footerRef');
 
 const contentStyle = computed<StyleValue>(() => {
@@ -41,7 +40,7 @@ async function calcContentHeight() {
     return;
   }
   await nextTick();
-  headerHeight.value = headerRef.value?.offsetHeight || 0;
+  headerHeight.value = 0;
   footerHeight.value = footerRef.value?.offsetHeight || 0;
   setTimeout(() => {
     shouldAutoHeight.value = true;
@@ -55,41 +54,6 @@ onMounted(() => {
 
 <template>
   <div class="relative">
-    <div
-      v-if="
-        description ||
-        $slots.description ||
-        title ||
-        $slots.title ||
-        $slots.extra
-      "
-      ref="headerRef"
-      :class="
-        cn(
-          'bg-card border-border relative flex items-end border-b px-6 py-4',
-          headerClass,
-        )
-      "
-    >
-      <div class="flex-auto">
-        <slot name="title">
-          <div v-if="title" class="mb-2 flex text-lg font-semibold">
-            {{ title }}
-          </div>
-        </slot>
-
-        <slot name="description">
-          <p v-if="description" class="text-muted-foreground">
-            {{ description }}
-          </p>
-        </slot>
-      </div>
-
-      <div v-if="$slots.extra">
-        <slot name="extra"></slot>
-      </div>
-    </div>
-
     <div :class="cn('h-full p-4', contentClass)" :style="contentStyle">
       <slot></slot>
     </div>

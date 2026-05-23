@@ -8,6 +8,11 @@ export const LOGIN_PATH = '/auth/login';
  */
 export const DEFAULT_HOME_PATH = '/analytics';
 
+/**
+ * @zh_CN 普通用户默认首页地址
+ */
+export const ORDINARY_USER_HOME_PATH = '/assets/notes';
+
 export interface LanguageOption {
   label: string;
   value: 'en-US' | 'zh-CN';

@@ -24,6 +24,7 @@ export {
   ExternalLink,
   Eye,
   EyeOff,
+  FolderOpen,
   FoldHorizontal,
   Fullscreen,
   Github,

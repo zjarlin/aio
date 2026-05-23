@@ -8,6 +8,19 @@ import { defineOverridesPreferences } from '@vben/preferences';
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
+    accessMode: 'backend',
     name: import.meta.env.VITE_APP_TITLE,
+  },
+  theme: {
+    mode: 'light',
+  },
+  copyright: {
+    companyName: 'AIO',
+    companySiteLink: '',
+    date: '2026',
+    enable: true,
+    icp: '',
+    icpLink: '',
+    settingShow: true,
   },
 });

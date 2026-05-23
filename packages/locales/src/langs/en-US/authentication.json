@@ -1,10 +1,10 @@
 {
   "welcomeBack": "Welcome Back",
-  "pageTitle": "Plug-and-play Admin system",
-  "pageDesc": "Efficient, versatile frontend template",
+  "pageTitle": "AIO Local Desktop Admin",
+  "pageDesc": "Users, permissions, dictionaries, and personal notes are stored in local SQLite",
   "loginSuccess": "Login Successful",
   "loginSuccessDesc": "Welcome Back",
-  "loginSubtitle": "Enter your account details to manage your projects",
+  "loginSubtitle": "Sign in with your local AIO account",
   "selectAccount": "Quick Select Account",
   "username": "Username",
   "password": "Password",

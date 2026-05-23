@@ -10,5 +10,24 @@
     "title": "概览",
     "analytics": "分析页",
     "workspace": "工作台"
+  },
+  "system": {
+    "title": "系统管理",
+    "users": "用户管理",
+    "roles": "角色管理",
+    "permissions": "权限管理",
+    "dictionaries": "字典管理"
+  },
+  "assets": {
+    "title": "资产",
+    "notes": "笔记",
+    "skills": "技能管理",
+    "agentPreferences": "AGENTS.md 管理",
+    "openaiAssistant": "OpenAI 助手",
+    "dockerCompose": "Docker Compose 管理",
+    "cli": "CLI 管理",
+    "envVars": "环境变量管理",
+    "bashFunctions": "Bash 函数管理",
+    "dotfiles": "dotfiles 管理"
   }
 }

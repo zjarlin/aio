@@ -1,0 +1,243 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e8]:
+        - link "Homepage" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+        - generic [ref=e13]:
+          - navigation "Global" [ref=e16]:
+            - list [ref=e17]:
+              - listitem [ref=e18]:
+                - button "Platform" [ref=e20] [cursor=pointer]:
+                  - text: Platform
+                  - img [ref=e21]
+              - listitem [ref=e23]:
+                - button "Solutions" [ref=e25] [cursor=pointer]:
+                  - text: Solutions
+                  - img [ref=e26]
+              - listitem [ref=e28]:
+                - button "Resources" [ref=e30] [cursor=pointer]:
+                  - text: Resources
+                  - img [ref=e31]
+              - listitem [ref=e33]:
+                - button "Open Source" [ref=e35] [cursor=pointer]:
+                  - text: Open Source
+                  - img [ref=e36]
+              - listitem [ref=e38]:
+                - button "Enterprise" [ref=e40] [cursor=pointer]:
+                  - text: Enterprise
+                  - img [ref=e41]
+              - listitem [ref=e43]:
+                - link "Pricing" [ref=e44] [cursor=pointer]:
+                  - /url: https://github.com/pricing
+                  - generic [ref=e45]: Pricing
+          - generic [ref=e46]:
+            - button "Search or jump to…" [ref=e49] [cursor=pointer]:
+              - img [ref=e51]
+              - generic [ref=e53]: Search or jump to...
+              - img [ref=e55]
+            - link "Sign in" [ref=e59] [cursor=pointer]:
+              - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Fzjarlin%2Fvben-admin-tauri-app%2Fissues
+            - link "Sign up" [ref=e60] [cursor=pointer]:
+              - /url: /signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E%2Fissues%2Findex&source=header-repo&source_repo=zjarlin%2Fvben-admin-tauri-app
+            - button "Appearance settings" [ref=e63] [cursor=pointer]:
+              - img
+  - main [ref=e67]:
+    - generic [ref=e68]:
+      - generic [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - img [ref=e72]
+            - link "zjarlin" [ref=e75] [cursor=pointer]:
+              - /url: /zjarlin
+            - generic [ref=e76]: /
+            - strong [ref=e77]:
+              - link "vben-admin-tauri-app" [ref=e78] [cursor=pointer]:
+                - /url: /zjarlin/vben-admin-tauri-app
+            - generic [ref=e79]: Public
+          - generic [ref=e80]:
+            - text: forked from
+            - link "Lhy723/vben-admin-tauri-app" [ref=e81] [cursor=pointer]:
+              - /url: /Lhy723/vben-admin-tauri-app
+        - generic [ref=e82]:
+          - list:
+            - listitem [ref=e83]:
+              - link "You must be signed in to change notification settings" [ref=e84] [cursor=pointer]:
+                - /url: /login?return_to=%2Fzjarlin%2Fvben-admin-tauri-app
+                - img [ref=e85]
+                - text: Notifications
+            - listitem [ref=e87]:
+              - link "Fork 0" [ref=e88] [cursor=pointer]:
+                - /url: /login?return_to=%2Fzjarlin%2Fvben-admin-tauri-app
+                - img [ref=e89]
+                - text: Fork
+                - generic "0" [ref=e91]
+            - listitem [ref=e92]:
+              - link "You must be signed in to star a repository" [ref=e94] [cursor=pointer]:
+                - /url: /login?return_to=%2Fzjarlin%2Fvben-admin-tauri-app
+                - img [ref=e95]
+                - text: Star
+                - generic "0 users starred this repository" [ref=e97]: "0"
+      - navigation "Repository" [ref=e98]:
+        - list [ref=e99]:
+          - listitem [ref=e100]:
+            - link "Code" [ref=e101] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app
+              - img [ref=e102]
+              - generic [ref=e104]: Code
+          - listitem [ref=e105]:
+            - link "Pull requests" [ref=e106] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/pulls
+              - img [ref=e107]
+              - generic [ref=e109]: Pull requests
+          - listitem [ref=e110]:
+            - link "Actions" [ref=e111] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/actions
+              - img [ref=e112]
+              - generic [ref=e114]: Actions
+          - listitem [ref=e115]:
+            - link "Projects" [ref=e116] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/projects
+              - img [ref=e117]
+              - generic [ref=e119]: Projects
+          - listitem [ref=e120]:
+            - link "Security and quality" [ref=e121] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/security
+              - img [ref=e122]
+              - generic [ref=e124]: Security and quality
+          - listitem [ref=e125]:
+            - link "Insights" [ref=e126] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/pulse
+              - img [ref=e127]
+              - generic [ref=e129]: Insights
+    - generic [ref=e142]:
+      - heading "Issues" [level=1] [ref=e143]
+      - generic [ref=e144]:
+        - generic [ref=e146]:
+          - form "Search Issues" [ref=e148]:
+            - generic [ref=e149]: Search Issues
+            - generic [ref=e151]:
+              - generic [ref=e153]:
+                - generic [ref=e154]:
+                  - generic [ref=e155]:
+                    - text: "is:"
+                    - generic [ref=e156]: issue
+                  - generic [ref=e158]:
+                    - text: "state:"
+                    - generic [ref=e159]: open
+                - combobox "Search Issues" [ref=e162]: is:issue state:open
+              - button "Search" [ref=e163] [cursor=pointer]:
+                - img [ref=e164]
+          - generic [ref=e166]:
+            - link "Labels" [ref=e167] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/labels
+              - generic [ref=e168]:
+                - generic:
+                  - img
+                - generic [ref=e169]: Labels
+            - link "Milestones" [ref=e170] [cursor=pointer]:
+              - /url: /zjarlin/vben-admin-tauri-app/milestones
+              - generic [ref=e171]:
+                - generic:
+                  - img
+                - generic [ref=e172]: Milestones
+            - link "New issue" [ref=e173] [cursor=pointer]:
+              - /url: /login?return_to=https://github.com/zjarlin/vben-admin-tauri-app/issues
+              - generic [ref=e175]: New issue
+        - generic [ref=e179]:
+          - heading "Search results" [level=2] [ref=e180]
+          - generic [ref=e181]:
+            - list [ref=e255]:
+              - listitem [ref=e256]:
+                - link "Open (0)" [ref=e257] [cursor=pointer]:
+                  - /url: /zjarlin/vben-admin-tauri-app/issues
+                  - generic [ref=e258]: Open
+                  - generic [ref=e259]: "0"
+                  - generic [ref=e260]: (0)
+              - listitem [ref=e261]:
+                - link "Closed (0)" [ref=e262] [cursor=pointer]:
+                  - /url: /zjarlin/vben-admin-tauri-app/issues?q=is%3Aissue%20state%3Aclosed
+                  - generic [ref=e263]: Closed
+                  - generic [ref=e264]: "0"
+                  - generic [ref=e265]: (0)
+            - toolbar "Actions" [ref=e189]:
+              - generic [ref=e190]:
+                - button "Filter by author" [ref=e192] [cursor=pointer]:
+                  - generic [ref=e193]:
+                    - generic [ref=e194]: Author
+                    - generic:
+                      - img
+                - button "Filter by label" [ref=e196] [cursor=pointer]:
+                  - generic [ref=e197]:
+                    - generic [ref=e198]: Labels
+                    - generic:
+                      - img
+                - button "Filter by project" [ref=e200] [cursor=pointer]:
+                  - generic [ref=e201]:
+                    - generic [ref=e202]: Projects
+                    - generic:
+                      - img
+                - button "Filter by milestone" [ref=e204] [cursor=pointer]:
+                  - generic [ref=e205]:
+                    - generic [ref=e206]: Milestones
+                    - generic:
+                      - img
+                - button "Filter by assignees" [ref=e208] [cursor=pointer]:
+                  - generic [ref=e209]:
+                    - generic [ref=e210]: Assignees
+                    - generic:
+                      - img
+                - button "Sort by Newest , descending" [ref=e212] [cursor=pointer]:
+                  - generic [ref=e213]:
+                    - generic:
+                      - img
+                    - generic [ref=e214]:
+                      - generic [ref=e215]: Sort by
+                      - text: Newest
+                      - generic [ref=e216]: ", descending"
+                  - generic:
+                    - img
+          - list "Search results" [ref=e217]:
+            - region [ref=e218]:
+              - heading "No results" [level=3] [ref=e219]
+              - paragraph [ref=e220]: Try adjusting your search filters.
+  - contentinfo [ref=e221]:
+    - heading "Footer" [level=2] [ref=e222]
+    - generic [ref=e223]:
+      - generic [ref=e224]:
+        - link "GitHub Homepage" [ref=e225] [cursor=pointer]:
+          - /url: https://github.com
+          - img [ref=e226]
+        - generic [ref=e228]: © 2026 GitHub, Inc.
+      - navigation "Footer" [ref=e229]:
+        - heading "Footer navigation" [level=3] [ref=e230]
+        - list "Footer navigation" [ref=e231]:
+          - listitem [ref=e232]:
+            - link "Terms" [ref=e233] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+          - listitem [ref=e234]:
+            - link "Privacy" [ref=e235] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/privacy-policies/github-privacy-statement
+          - listitem [ref=e236]:
+            - link "Security" [ref=e237] [cursor=pointer]:
+              - /url: https://github.com/security
+          - listitem [ref=e238]:
+            - link "Status" [ref=e239] [cursor=pointer]:
+              - /url: https://www.githubstatus.com/
+          - listitem [ref=e240]:
+            - link "Community" [ref=e241] [cursor=pointer]:
+              - /url: https://github.community/
+          - listitem [ref=e242]:
+            - link "Docs" [ref=e243] [cursor=pointer]:
+              - /url: https://docs.github.com/
+          - listitem [ref=e244]:
+            - link "Contact" [ref=e245] [cursor=pointer]:
+              - /url: https://support.github.com?tags=dotcom-footer
+          - listitem [ref=e246]:
+            - button "Manage cookies" [ref=e248] [cursor=pointer]
+          - listitem [ref=e249]:
+            - button "Do not share my personal information" [ref=e251] [cursor=pointer]
