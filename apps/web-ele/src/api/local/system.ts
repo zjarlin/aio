@@ -1,3 +1,35 @@
+import type {
+  BrowserOpenUrlInput,
+  CapabilityAuditRecord,
+  CapabilityInvokeInput,
+  EventBusPublishInput,
+  EventBusSnapshotRequest,
+  ExtensionHostPluginRecord,
+  ExtensionHostSourceInput,
+  FsReadInput,
+  FsReadResult,
+  FsWriteInput,
+  FsWriteResult,
+  PermissionConsentGrantInput,
+  PermissionConsentRecord,
+  PermissionConsentRevokeInput,
+  PermissionDecisionRecord,
+  PlatformEventRecord,
+  PluginCreateFromPromptInput,
+  PluginDraftCreationResult,
+  PluginPublishGateReport,
+  PluginRegistryInstalledRecord,
+  PluginRegistryLocalState,
+  PluginRegistryRollbackInput,
+  PluginRegistryRollbackResult,
+  PluginRegistrySnapshot,
+  PluginRepairFromDiagnosticsInput,
+  PluginVerificationReport,
+  PluginVerifyDraftInput,
+  ProcessExecInput,
+  ProcessExecResult,
+} from '@vben/types';
+
 import { callAuthedCommand, type PageRequest, type PageResult } from './client';
 
 export interface UserRecord {
@@ -562,6 +594,237 @@ export async function assetVariableDeleteApi(id: string) {
 export async function assetVariableRefreshPageGlobalsApi() {
   return await callAuthedCommand<AssetVariableRefreshResult>(
     'asset_variable_refresh_page_globals',
+  );
+}
+
+export async function pluginRegistrySnapshotApi() {
+  return await callAuthedCommand<PluginRegistrySnapshot>(
+    'plugin_registry_snapshot',
+  );
+}
+
+export async function pluginRegistryReloadApi() {
+  return await callAuthedCommand<PluginRegistrySnapshot>(
+    'plugin_registry_reload',
+  );
+}
+
+export async function pluginRegistryLocalStateApi() {
+  return await callAuthedCommand<PluginRegistryLocalState>(
+    'plugin_registry_local_state',
+  );
+}
+
+export async function pluginRegistryInstallApi(sourcePath: string) {
+  return await callAuthedCommand<PluginRegistryInstalledRecord>(
+    'plugin_registry_install',
+    { sourcePath },
+  );
+}
+
+export async function pluginRegistryEnableApi(id: string) {
+  return await callAuthedCommand<PluginRegistryInstalledRecord>(
+    'plugin_registry_enable',
+    { id },
+  );
+}
+
+export async function pluginRegistryDisableApi(id: string) {
+  return await callAuthedCommand<PluginRegistryInstalledRecord>(
+    'plugin_registry_disable',
+    { id },
+  );
+}
+
+export async function pluginRegistryUninstallApi(id: string) {
+  return await callAuthedCommand<null>('plugin_registry_uninstall', { id });
+}
+
+export async function pluginRegistryRollbackApi(
+  input: PluginRegistryRollbackInput,
+) {
+  return await callAuthedCommand<PluginRegistryRollbackResult>(
+    'plugin_registry_rollback',
+    { input },
+  );
+}
+
+export async function eventBusPublishApi(input: EventBusPublishInput) {
+  return await callAuthedCommand<PlatformEventRecord>('event_bus_publish', {
+    input,
+  });
+}
+
+export async function eventBusSnapshotApi(
+  request: EventBusSnapshotRequest = {},
+) {
+  return await callAuthedCommand<PlatformEventRecord[]>('event_bus_snapshot', {
+    request,
+  });
+}
+
+export async function pluginCreateFromPromptApi(
+  input: PluginCreateFromPromptInput,
+) {
+  return await callAuthedCommand<PluginDraftCreationResult>(
+    'plugin_create_from_prompt',
+    { input },
+  );
+}
+
+export async function pluginPublishLocalApi(sourcePath: string) {
+  return await callAuthedCommand<PluginRegistryInstalledRecord>(
+    'plugin_publish_local',
+    { sourcePath },
+  );
+}
+
+export async function pluginPublishGateApi(sourcePath: string, write = true) {
+  return await callAuthedCommand<PluginPublishGateReport>(
+    'plugin_publish_gate',
+    { sourcePath, write },
+  );
+}
+
+export async function pluginRepairFromDiagnosticsApi(
+  input: PluginRepairFromDiagnosticsInput,
+) {
+  return await callAuthedCommand<PluginDraftCreationResult>(
+    'plugin_repair_from_diagnostics',
+    { input },
+  );
+}
+
+export async function pluginVerifyDraftApi(input: PluginVerifyDraftInput) {
+  return await callAuthedCommand<PluginVerificationReport>(
+    'plugin_verify_draft',
+    { input },
+  );
+}
+
+export async function capabilityAuditLogApi() {
+  return await callAuthedCommand<CapabilityAuditRecord[]>(
+    'capability_audit_log',
+  );
+}
+
+export async function permissionAuditLogApi() {
+  return await callAuthedCommand<PermissionDecisionRecord[]>(
+    'permission_audit_log',
+  );
+}
+
+export async function permissionConsentListApi() {
+  return await callAuthedCommand<PermissionConsentRecord[]>(
+    'permission_consent_list',
+  );
+}
+
+export async function permissionConsentGrantApi(
+  input: PermissionConsentGrantInput,
+) {
+  return await callAuthedCommand<PermissionConsentRecord>(
+    'permission_consent_grant',
+    { input },
+  );
+}
+
+export async function permissionConsentRevokeApi(
+  input: PermissionConsentRevokeInput,
+) {
+  return await callAuthedCommand<PermissionConsentRecord>(
+    'permission_consent_revoke',
+    { input },
+  );
+}
+
+export async function capabilityClipboardWriteApi(input: { text: string }) {
+  return await callAuthedCommand<number>('capability_clipboard_write', {
+    input,
+  });
+}
+
+export async function capabilityClipboardReadApi() {
+  return await callAuthedCommand<string>('capability_clipboard_read');
+}
+
+export async function capabilityNotificationSendApi(input: {
+  body?: string;
+  title: string;
+}) {
+  return await callAuthedCommand<null>('capability_notification_send', {
+    input,
+  });
+}
+
+export async function capabilityFsReadApi(input: FsReadInput) {
+  return await callAuthedCommand<FsReadResult>('capability_fs_read', {
+    input,
+  });
+}
+
+export async function capabilityFsWriteApi(input: FsWriteInput) {
+  return await callAuthedCommand<FsWriteResult>('capability_fs_write', {
+    input,
+  });
+}
+
+export async function capabilityProcessExecApi(input: ProcessExecInput) {
+  return await callAuthedCommand<ProcessExecResult>('capability_process_exec', {
+    input,
+  });
+}
+
+export async function capabilityBrowserOpenUrlApi(input: BrowserOpenUrlInput) {
+  return await callAuthedCommand<string>('capability_browser_open_url', {
+    input,
+  });
+}
+
+export async function capabilityInvokeApi<T = unknown>(
+  input: CapabilityInvokeInput,
+) {
+  return await callAuthedCommand<T>('capability_invoke', { input });
+}
+
+export async function pluginHostLoadApi(input: ExtensionHostSourceInput) {
+  return await callAuthedCommand<ExtensionHostPluginRecord>(
+    'plugin_host_load',
+    { input },
+  );
+}
+
+export async function pluginHostActivateApi(pluginId: string) {
+  return await callAuthedCommand<ExtensionHostPluginRecord>(
+    'plugin_host_activate',
+    { pluginId },
+  );
+}
+
+export async function pluginHostDeactivateApi(pluginId: string) {
+  return await callAuthedCommand<ExtensionHostPluginRecord>(
+    'plugin_host_deactivate',
+    { pluginId },
+  );
+}
+
+export async function pluginHostReloadApi(input: ExtensionHostSourceInput) {
+  return await callAuthedCommand<ExtensionHostPluginRecord>(
+    'plugin_host_reload',
+    { input },
+  );
+}
+
+export async function pluginHostDisposeApi(pluginId: string) {
+  return await callAuthedCommand<ExtensionHostPluginRecord>(
+    'plugin_host_dispose',
+    { pluginId },
+  );
+}
+
+export async function pluginHostSnapshotApi() {
+  return await callAuthedCommand<ExtensionHostPluginRecord[]>(
+    'plugin_host_snapshot',
   );
 }
 

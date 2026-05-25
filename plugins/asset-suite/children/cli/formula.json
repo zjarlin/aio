@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.cli",
+  "kind": "child-plugin",
+  "displayName": "CLI Assets",
+  "intent": "Manage reusable command-line snippets and CLI setup notes as asset items.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/cli"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-assets-cli",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:cli",
+        "title": "CLI 管理",
+        "path": "/assets/cli",
+        "component": "/assets/cli/index",
+        "icon": "lucide:terminal",
+        "sortOrder": 40,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.cli.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/cli",
+        "assetItemKind": "cli"
+      }
+    ]
+  },
+  "expectations": [
+    "CLI records use shared asset item commands with kind=cli."
+  ]
+}

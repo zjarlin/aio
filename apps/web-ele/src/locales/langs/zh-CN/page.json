@@ -16,7 +16,8 @@
     "users": "用户管理",
     "roles": "角色管理",
     "permissions": "权限管理",
-    "dictionaries": "字典管理"
+    "dictionaries": "字典管理",
+    "plugins": "插件注册表"
   },
   "assets": {
     "title": "资产",

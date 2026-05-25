@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 use axum::{
     extract::{Json, State},
@@ -10,6 +10,7 @@ use axum::{
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
 use tokio::net::TcpListener;
+use tokio::runtime::Builder;
 use tower_http::cors::{Any, CorsLayer};
 
 use acp_openai_assistant::{
@@ -28,12 +29,25 @@ use crate::{
     },
     asset_variables::{self, AssetVariableInput, AssetVariablePageRequest},
     auth::{self, LoginRequest},
+    capability_broker::{
+        BrowserOpenUrlInput, CapabilityBroker, CapabilityInvokeInput, ClipboardWriteInput,
+        FsReadInput, FsWriteInput, NotificationSendInput, ProcessExecInput,
+    },
     dictionary::{
         self, DictItemInput, DictItemPageRequest, DictItemUpdateInput, DictTypeInput,
         DictTypeUpdateInput,
     },
     error::{AppError, AppResult},
+    event_bus::{EventBusPublishInput, EventBusSnapshotRequest},
+    extension_host::ExtensionHostSourceInput,
     notes::{self, NoteFlagInput, NoteInput, NotePageRequest, NoteUpdateInput},
+    permission_consent::{self, PermissionConsentGrantInput, PermissionConsentRevokeInput},
+    permission_core::PermissionCore,
+    plugin_factory::{
+        self, PluginCreateFromPromptInput, PluginRepairFromDiagnosticsInput, PluginVerifyDraftInput,
+    },
+    plugin_registry,
+    plugin_store::{PluginRegistryRollbackInput, PluginRegistryStore},
     rbac::{
         self, AssignPermissionsInput, PageRequest, PermissionInput, RoleInput, RoleUpdateInput,
         UserInput, UserPasswordInput, UserUpdateInput,
@@ -53,11 +67,28 @@ struct BridgeRequest {
 }
 
 pub fn spawn(state: AppState) {
-    tauri::async_runtime::spawn(async move {
-        if let Err(error) = run(state).await {
-            eprintln!("AIO browser command bridge failed: {error}");
-        }
-    });
+    std::thread::spawn(
+        move || match Builder::new_multi_thread().enable_all().build() {
+            Ok(runtime) => {
+                runtime.block_on(async move {
+                    if let Err(error) = run(state).await {
+                        eprintln!("AIO browser command bridge failed: {error}");
+                    }
+                });
+            }
+            Err(error) => {
+                eprintln!("AIO browser command bridge runtime init failed: {error}");
+            }
+        },
+    );
+}
+
+pub fn serve_headless(data_dir: PathBuf) -> AppResult<()> {
+    let runtime = Builder::new_multi_thread().enable_all().build()?;
+    runtime.block_on(async move {
+        let state = AppState::from_data_dir(data_dir).await?;
+        run(state).await
+    })
 }
 
 async fn run(state: AppState) -> AppResult<()> {
@@ -66,7 +97,9 @@ async fn run(state: AppState) -> AppResult<()> {
         Ok(listener) => listener,
         Err(error) => {
             eprintln!("AIO browser command bridge bind failed on {addr}: {error}");
-            return Ok(());
+            return Err(AppError::BadRequest(format!(
+                "AIO browser command bridge bind failed on {addr}: {error}"
+            )));
         }
     };
 
@@ -132,9 +165,357 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             payload_field::<AgentPreferenceToggleInput>(&payload, "input")?
         )),
         "app_open_data_dir" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "browser.openDirectory",
+                state.data_dir.to_string_lossy().into_owned(),
+                state.data_dir.to_string_lossy().into_owned(),
+            )
+            .await?;
+            serde_json::to_value(app_paths::open_data_dir(
+                &state.data_dir,
+                &state.capability_broker,
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "capability_audit_log" => {
             auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
-            serde_json::to_value(app_paths::open_data_dir(&state.data_dir)?)
+            serde_json::to_value(state.capability_broker.audit_log())
                 .map_err(|source| AppError::Json { source })
+        }
+        "permission_audit_log" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            let consent_granted = permission_consent::is_granted(
+                pool,
+                &user.user_id,
+                "platform.permission-core",
+                "permission.audit",
+                "*",
+            )
+            .await?;
+            let mut request = PermissionCore::system_request(
+                user.user_id,
+                "platform.permission-core",
+                "permission.audit",
+                "permission-decision-history",
+                ["permission.evaluate", "permission.audit"],
+            );
+            request.consent_granted = consent_granted;
+            let policies = plugin_registry::registry_from_workspace(
+                plugin_registry::default_project_root(),
+                &state.data_dir,
+            )?
+            .policies;
+            state
+                .permission_core
+                .evaluate_runtime_with_policies(request, &policies)?;
+            serde_json::to_value(state.permission_core.audit_log())
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_clipboard_write" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<ClipboardWriteInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "clipboard.write",
+                format!("{} bytes", input.text.len()),
+                "system-clipboard".to_string(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.write_clipboard(&input.text)?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_clipboard_read" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "clipboard.read",
+                "system-clipboard".to_string(),
+                "system-clipboard".to_string(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.read_clipboard()?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_notification_send" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<NotificationSendInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "notification.send",
+                input.title.clone(),
+                input.title.clone(),
+            )
+            .await?;
+            serde_json::to_value(
+                state
+                    .capability_broker
+                    .send_notification(&input.title, &input.body)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "capability_fs_read" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<FsReadInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "fs.read",
+                input.path.clone(),
+                input.path.clone(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.read_text_file(&input)?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_fs_write" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<FsWriteInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "fs.write",
+                input.path.clone(),
+                input.path.clone(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.write_text_file(&input)?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_process_exec" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<ProcessExecInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "process.exec",
+                input.command.clone(),
+                input.command.clone(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.run_process(&input)?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_browser_open_url" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<BrowserOpenUrlInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                "browser.openUrl",
+                input.url.clone(),
+                input.url.clone(),
+            )
+            .await?;
+            serde_json::to_value(state.capability_broker.open_url(&input)?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "capability_invoke" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let input = payload_field::<CapabilityInvokeInput>(&payload, "input")?;
+            authorize_broker_capability(
+                state,
+                &token,
+                &input.capability,
+                input.audit_target(),
+                input.permission_scope(),
+            )
+            .await?;
+            state.capability_broker.invoke_json(input)
+        }
+        "permission_consent_list" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(permission_consent::list_for_user(pool, &user.user_id).await?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "permission_consent_grant" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(
+                permission_consent::grant_for_user(
+                    pool,
+                    &user.user_id,
+                    payload_field::<PermissionConsentGrantInput>(&payload, "input")?,
+                )
+                .await?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "permission_consent_revoke" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(
+                permission_consent::revoke_for_user(
+                    pool,
+                    &user.user_id,
+                    payload_field::<PermissionConsentRevokeInput>(&payload, "input")?,
+                )
+                .await?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "event_bus_publish" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state
+                    .event_bus
+                    .publish(payload_field::<EventBusPublishInput>(&payload, "input")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "event_bus_snapshot" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let request = payload_field::<EventBusSnapshotRequest>(&payload, "request")?;
+            serde_json::to_value(
+                state
+                    .event_bus
+                    .snapshot(request.event_type.as_deref(), request.limit),
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_load" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state.extension_host.load(
+                    payload_field::<ExtensionHostSourceInput>(&payload, "input")?.source_path,
+                )?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_activate" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state
+                    .extension_host
+                    .activate(&payload_field::<String>(&payload, "pluginId")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_deactivate" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state
+                    .extension_host
+                    .deactivate(&payload_field::<String>(&payload, "pluginId")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_reload" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(state.extension_host.reload(
+                payload_field::<ExtensionHostSourceInput>(&payload, "input")?.source_path,
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_dispose" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state
+                    .extension_host
+                    .dispose(&payload_field::<String>(&payload, "pluginId")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_host_snapshot" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(state.extension_host.snapshot())
+                .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_local_state" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(PluginRegistryStore::new(&state.data_dir).state()?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_install" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir)
+                    .install(payload_field::<String>(&payload, "sourcePath")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_enable" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir)
+                    .set_enabled(&payload_field::<String>(&payload, "id")?, true)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_disable" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir)
+                    .set_enabled(&payload_field::<String>(&payload, "id")?, false)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_uninstall" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir)
+                    .uninstall(&payload_field::<String>(&payload, "id")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_registry_rollback" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(PluginRegistryStore::new(&state.data_dir).rollback(
+                payload_field::<PluginRegistryRollbackInput>(&payload, "input")?,
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_create_from_prompt" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(plugin_factory::create_from_prompt_and_write(
+                payload_field::<PluginCreateFromPromptInput>(&payload, "input")?,
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_publish_gate" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(plugin_factory::publish_gate(
+                payload_field::<String>(&payload, "sourcePath")?,
+                &state.data_dir,
+                payload
+                    .get("write")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_publish_local" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(plugin_factory::publish_local(
+                payload_field::<String>(&payload, "sourcePath")?,
+                &state.data_dir,
+            )?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_repair_from_diagnostics" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(plugin_factory::repair_from_diagnostics(payload_field::<
+                PluginRepairFromDiagnosticsInput,
+            >(
+                &payload, "input",
+            )?)?)
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_verify_draft" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(plugin_factory::verify_plugin_draft(payload_field::<
+                PluginVerifyDraftInput,
+            >(
+                &payload, "input"
+            )?)?)
+            .map_err(|source| AppError::Json { source })
         }
         "openai_assistant_preview_context" => {
             auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
@@ -173,6 +554,43 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             pool,
             payload_field::<String>(&payload, "token")?
         )),
+        "plugin_registry_snapshot" => boxed!(plugin_registry::snapshot(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            &state.data_dir,
+        )),
+        "plugin_registry_reload" => {
+            let snapshot = plugin_registry::snapshot(
+                pool,
+                payload_field::<String>(&payload, "token")?,
+                &state.data_dir,
+            )
+            .await?;
+            PluginRegistryStore::new(&state.data_dir).append_audit(
+                crate::plugin_store::RegistryAuditRecord {
+                    action: "reload".to_string(),
+                    content_hash: None,
+                    detail: Some(format!(
+                        "plugins={},systemCapsules={},commands={},views={}",
+                        snapshot.plugins.len(),
+                        snapshot.system_capsules.len(),
+                        snapshot.commands.len(),
+                        snapshot.views.len()
+                    )),
+                    id: "registry".to_string(),
+                    path: Some(
+                        state
+                            .data_dir
+                            .join("plugin-registry")
+                            .to_string_lossy()
+                            .into_owned(),
+                    ),
+                    status: "ok".to_string(),
+                    timestamp: crate::db::now_millis(),
+                },
+            )?;
+            serde_json::to_value(snapshot).map_err(|source| AppError::Json { source })
+        }
         "user_page" => boxed!(rbac::user_page(
             pool,
             payload_field::<String>(&payload, "token")?,
@@ -408,6 +826,42 @@ fn payload_field<T: DeserializeOwned>(payload: &Value, key: &str) -> AppResult<T
         .cloned()
         .ok_or_else(|| AppError::BadRequest(format!("缺少参数：{key}")))?;
     serde_json::from_value(value).map_err(|source| AppError::Json { source })
+}
+
+async fn authorize_broker_capability(
+    state: &AppState,
+    token: &str,
+    capability: &str,
+    target: String,
+    scope: String,
+) -> AppResult<()> {
+    let user = auth::require_session(&state.pool, token).await?;
+    let consent_granted = permission_consent::is_granted(
+        &state.pool,
+        &user.user_id,
+        "platform.capability-broker",
+        capability,
+        &scope,
+    )
+    .await?;
+    let mut request = PermissionCore::system_request(
+        user.user_id,
+        "platform.capability-broker",
+        capability,
+        target,
+        CapabilityBroker::supported_capabilities(),
+    );
+    request.scope = scope;
+    request.consent_granted = consent_granted;
+    let policies = plugin_registry::registry_from_workspace(
+        plugin_registry::default_project_root(),
+        &state.data_dir,
+    )?
+    .policies;
+    state
+        .permission_core
+        .evaluate_runtime_with_policies(request, &policies)?;
+    Ok(())
 }
 
 fn status_from(error: &AppError) -> StatusCode {

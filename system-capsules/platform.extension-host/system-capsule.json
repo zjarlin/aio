@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.extension-host",
+  "kind": "system",
+  "displayName": "Extension Host",
+  "intent": "Supervise plugin host lifecycle state for load, activate, deactivate, reload and dispose operations.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "fs.read",
+      "scope": "${workspace}/plugins/**",
+      "reason": "Read plugin formula and host entry files before loading a plugin."
+    },
+    {
+      "id": "process.exec",
+      "scope": "extension-host",
+      "allow": ["node"],
+      "reason": "Run Node lifecycle hooks for trusted local plugin entries."
+    },
+    {
+      "id": "network.fetch",
+      "scope": "plugin-declared-remote-entry",
+      "reason": "Call declared Remote/Container lifecycle endpoints for trusted remote plugin hosts."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "plugin_host_load",
+        "title": "Load Plugin Host",
+        "category": "extension-host",
+        "capabilities": ["fs.read"]
+      },
+      {
+        "id": "plugin_host_activate",
+        "title": "Activate Plugin Host",
+        "category": "extension-host",
+        "capabilities": ["process.exec", "network.fetch"]
+      },
+      {
+        "id": "plugin_host_deactivate",
+        "title": "Deactivate Plugin Host",
+        "category": "extension-host",
+        "capabilities": ["process.exec", "network.fetch"]
+      },
+      {
+        "id": "plugin_host_reload",
+        "title": "Reload Plugin Host",
+        "category": "extension-host",
+        "capabilities": ["fs.read"]
+      },
+      {
+        "id": "plugin_host_dispose",
+        "title": "Dispose Plugin Host",
+        "category": "extension-host",
+        "capabilities": ["process.exec", "network.fetch"]
+      },
+      {
+        "id": "plugin_host_snapshot",
+        "title": "Extension Host Snapshot",
+        "category": "extension-host"
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "role": "runtime",
+    "primaryOutput": "host-state",
+    "repairStrategy": "diagnostics-first"
+  }
+}

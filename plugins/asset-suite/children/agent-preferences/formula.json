@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.agent-preferences",
+  "kind": "child-plugin",
+  "displayName": "AGENTS.md Preferences",
+  "intent": "Manage reusable AGENTS.md rules by personal, domain, public and design-pattern sections.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/agent-preferences", "onCommand:agent_preference_page"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "db.sqlite.read",
+      "scope": "agent_preferences",
+      "reason": "List AGENTS.md preference records."
+    },
+    {
+      "id": "db.sqlite.write",
+      "scope": "agent_preferences",
+      "reason": "Create, update, disable and delete AGENTS.md preference records."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "agent_preference_page",
+        "title": "List AGENTS.md Preferences",
+        "category": "agent-preferences"
+      },
+      {
+        "id": "agent_preference_create",
+        "title": "Create AGENTS.md Preference",
+        "category": "agent-preferences"
+      },
+      {
+        "id": "agent_preference_update",
+        "title": "Update AGENTS.md Preference",
+        "category": "agent-preferences"
+      },
+      {
+        "id": "agent_preference_delete",
+        "title": "Delete AGENTS.md Preference",
+        "category": "agent-preferences"
+      },
+      {
+        "id": "agent_preference_toggle",
+        "title": "Toggle AGENTS.md Preference",
+        "category": "agent-preferences"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-assets-agent-preferences",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:agent_preferences",
+        "title": "AGENTS.md 管理",
+        "path": "/assets/agent-preferences",
+        "component": "/assets/agent-preferences/index",
+        "icon": "lucide:bot",
+        "sortOrder": 25,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.agent-preferences.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/agent-preferences"
+      }
+    ]
+  },
+  "expectations": [
+    "Preference sections must stay one of personal, domain, public or design_patterns.",
+    "Preference code must remain unique."
+  ]
+}

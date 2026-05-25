@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/plugin-diagnostics.v1.schema.json",
+  "title": "AIO Plugin Diagnostics v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "pluginId",
+    "runId",
+    "status",
+    "formulaErrors",
+    "permissionErrors",
+    "platformErrors",
+    "testFailures",
+    "repairHint"
+  ],
+  "properties": {
+    "pluginId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["failed", "passed", "warning"]
+    },
+    "formulaErrors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "permissionErrors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/permissionError"
+      }
+    },
+    "platformErrors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/platformError"
+      }
+    },
+    "testFailures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "uiPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "screenshots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "repairHint": {
+      "type": "string"
+    },
+    "sourcePath": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "permissionError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "reason"],
+      "properties": {
+        "capability": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "platformError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "reason"],
+      "properties": {
+        "platform": {
+          "enum": ["macos", "windows", "linux", "web", "remote"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

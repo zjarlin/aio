@@ -50,6 +50,15 @@ const routes: RouteRecordRaw[] = [
           title: $t('page.system.dictionaries'),
         },
       },
+      {
+        name: 'SystemPlugins',
+        path: '/system/plugins',
+        component: () => import('#/views/system/plugins/index.vue'),
+        meta: {
+          icon: 'lucide:puzzle',
+          title: $t('page.system.plugins'),
+        },
+      },
     ],
   },
 ];

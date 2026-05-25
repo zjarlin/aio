@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.skills",
+  "kind": "child-plugin",
+  "displayName": "Skills",
+  "intent": "Manage reusable AI skill prompts and metadata.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/skills", "onCommand:skill_page"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "db.sqlite.read",
+      "scope": "skills",
+      "reason": "List and search skill records."
+    },
+    {
+      "id": "db.sqlite.write",
+      "scope": "skills",
+      "reason": "Create, update, disable and delete skill records."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "skill_page",
+        "title": "List Skills",
+        "category": "skills"
+      },
+      {
+        "id": "skill_create",
+        "title": "Create Skill",
+        "category": "skills"
+      },
+      {
+        "id": "skill_update",
+        "title": "Update Skill",
+        "category": "skills"
+      },
+      {
+        "id": "skill_delete",
+        "title": "Delete Skill",
+        "category": "skills"
+      },
+      {
+        "id": "skill_toggle",
+        "title": "Toggle Skill",
+        "category": "skills"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-system-skill",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:skill",
+        "title": "技能管理",
+        "path": "/assets/skills",
+        "component": "/assets/skills/index",
+        "icon": "lucide:sparkles",
+        "sortOrder": 20,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.skills.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/skills"
+      }
+    ]
+  },
+  "expectations": [
+    "Skill code must remain unique.",
+    "Prompt and tags must survive round trips through the pluginized command registry."
+  ]
+}

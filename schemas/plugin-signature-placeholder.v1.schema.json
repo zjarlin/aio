@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/plugin-signature-placeholder.v1.schema.json",
+  "title": "AIO Plugin Signature Placeholder v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "pluginId",
+    "contentHash",
+    "algorithm",
+    "keyId",
+    "signature",
+    "status",
+    "reason",
+    "createdAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "plugin-signature-placeholder/v1"
+    },
+    "pluginId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "contentHash": {
+      "type": "string",
+      "minLength": 32
+    },
+    "algorithm": {
+      "type": "string",
+      "minLength": 1
+    },
+    "keyId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "const": "placeholder"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "integer"
+    }
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.system-management",
+  "kind": "system",
+  "displayName": "System Management",
+  "intent": "Expose auth, RBAC, permission, role, user, dictionary, plugin registry and capability audit as immutable system capabilities.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "auth_login",
+        "title": "Login",
+        "category": "auth"
+      },
+      {
+        "id": "auth_logout",
+        "title": "Logout",
+        "category": "auth"
+      },
+      {
+        "id": "auth_current_user",
+        "title": "Current User",
+        "category": "auth"
+      },
+      {
+        "id": "auth_access_codes",
+        "title": "Access Codes",
+        "category": "auth"
+      },
+      {
+        "id": "menu_list",
+        "title": "Menu List",
+        "category": "registry"
+      },
+      {
+        "id": "user_page",
+        "title": "List Users",
+        "category": "rbac"
+      },
+      {
+        "id": "user_create",
+        "title": "Create User",
+        "category": "rbac"
+      },
+      {
+        "id": "user_update",
+        "title": "Update User",
+        "category": "rbac"
+      },
+      {
+        "id": "user_disable",
+        "title": "Disable User",
+        "category": "rbac"
+      },
+      {
+        "id": "user_reset_password",
+        "title": "Reset User Password",
+        "category": "rbac"
+      },
+      {
+        "id": "user_delete",
+        "title": "Delete User",
+        "category": "rbac"
+      },
+      {
+        "id": "role_page",
+        "title": "List Roles",
+        "category": "rbac"
+      },
+      {
+        "id": "role_create",
+        "title": "Create Role",
+        "category": "rbac"
+      },
+      {
+        "id": "role_update",
+        "title": "Update Role",
+        "category": "rbac"
+      },
+      {
+        "id": "role_delete",
+        "title": "Delete Role",
+        "category": "rbac"
+      },
+      {
+        "id": "role_assign_permissions",
+        "title": "Assign Role Permissions",
+        "category": "rbac"
+      },
+      {
+        "id": "role_permission_ids",
+        "title": "Role Permission IDs",
+        "category": "rbac"
+      },
+      {
+        "id": "permission_tree",
+        "title": "Permission Tree",
+        "category": "rbac"
+      },
+      {
+        "id": "permission_save",
+        "title": "Save Permission",
+        "category": "rbac"
+      },
+      {
+        "id": "dict_type_page",
+        "title": "List Dictionary Types",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_type_create",
+        "title": "Create Dictionary Type",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_type_update",
+        "title": "Update Dictionary Type",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_type_delete",
+        "title": "Delete Dictionary Type",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_item_page",
+        "title": "List Dictionary Items",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_item_create",
+        "title": "Create Dictionary Item",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_item_update",
+        "title": "Update Dictionary Item",
+        "category": "dictionary"
+      },
+      {
+        "id": "dict_item_delete",
+        "title": "Delete Dictionary Item",
+        "category": "dictionary"
+      },
+      {
+        "id": "capability_audit_log",
+        "title": "Capability Audit Log",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_snapshot",
+        "title": "Plugin Registry Snapshot",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_reload",
+        "title": "Reload Plugin Registry",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_local_state",
+        "title": "Local Plugin Registry State",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_install",
+        "title": "Install Plugin",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_enable",
+        "title": "Enable Plugin",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_disable",
+        "title": "Disable Plugin",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_uninstall",
+        "title": "Uninstall Plugin",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_registry_rollback",
+        "title": "Rollback Plugin",
+        "category": "registry"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-system",
+        "code": "system",
+        "title": "系统管理",
+        "path": "/system",
+        "component": "BasicLayout",
+        "icon": "lucide:settings",
+        "sortOrder": 100
+      },
+      {
+        "permissionId": "perm-system-user",
+        "parentPermissionId": "perm-system",
+        "code": "system:user",
+        "title": "用户管理",
+        "path": "/system/users",
+        "component": "/system/users/index",
+        "icon": "lucide:users",
+        "sortOrder": 10
+      },
+      {
+        "permissionId": "perm-system-role",
+        "parentPermissionId": "perm-system",
+        "code": "system:role",
+        "title": "角色管理",
+        "path": "/system/roles",
+        "component": "/system/roles/index",
+        "icon": "lucide:shield-check",
+        "sortOrder": 20
+      },
+      {
+        "permissionId": "perm-system-permission",
+        "parentPermissionId": "perm-system",
+        "code": "system:permission",
+        "title": "权限管理",
+        "path": "/system/permissions",
+        "component": "/system/permissions/index",
+        "icon": "lucide:key-round",
+        "sortOrder": 30
+      },
+      {
+        "permissionId": "perm-system-dict",
+        "parentPermissionId": "perm-system",
+        "code": "system:dict",
+        "title": "字典管理",
+        "path": "/system/dictionaries",
+        "component": "/system/dictionaries/index",
+        "icon": "lucide:book-type",
+        "sortOrder": 40
+      },
+      {
+        "permissionId": "perm-system-plugin-registry",
+        "parentPermissionId": "perm-system",
+        "code": "system:plugins",
+        "title": "插件注册表",
+        "path": "/system/plugins",
+        "component": "/system/plugins/index",
+        "icon": "lucide:puzzle",
+        "sortOrder": 45
+      }
+    ]
+  }
+}

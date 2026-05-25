@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.capability-broker",
+  "kind": "system",
+  "displayName": "Capability Broker",
+  "intent": "Expose audited file, process, browser, clipboard and notification capability providers through a single trusted broker.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "browser.openDirectory",
+      "scope": "filesystem-directory",
+      "reason": "Open a user-approved local directory in the system file manager."
+    },
+    {
+      "id": "fs.read",
+      "scope": "absolute-path",
+      "reason": "Read user-approved text files through the broker."
+    },
+    {
+      "id": "fs.write",
+      "scope": "absolute-path",
+      "reason": "Write user-approved text files through the broker."
+    },
+    {
+      "id": "process.exec",
+      "scope": "allowlisted-command",
+      "reason": "Run allowlisted local commands through the broker with output auditing."
+    },
+    {
+      "id": "browser.openUrl",
+      "scope": "http-url",
+      "reason": "Open HTTP(S) URLs in the user's browser through the broker."
+    },
+    {
+      "id": "clipboard.read",
+      "scope": "system-clipboard",
+      "reason": "Read the current clipboard contents through the broker."
+    },
+    {
+      "id": "clipboard.write",
+      "scope": "system-clipboard",
+      "reason": "Write clipboard contents through the broker."
+    },
+    {
+      "id": "notification.send",
+      "scope": "desktop-notification",
+      "reason": "Send local desktop notifications through the broker."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "capability_invoke",
+        "title": "Invoke Capability",
+        "category": "capability-broker",
+        "capabilities": [
+          "browser.openDirectory",
+          "fs.read",
+          "fs.write",
+          "process.exec",
+          "browser.openUrl",
+          "clipboard.read",
+          "clipboard.write",
+          "notification.send"
+        ]
+      },
+      {
+        "id": "capability_fs_read",
+        "title": "Read Text File",
+        "category": "capability-broker",
+        "capabilities": ["fs.read"]
+      },
+      {
+        "id": "capability_fs_write",
+        "title": "Write Text File",
+        "category": "capability-broker",
+        "capabilities": ["fs.write"]
+      },
+      {
+        "id": "capability_process_exec",
+        "title": "Execute Allowlisted Process",
+        "category": "capability-broker",
+        "capabilities": ["process.exec"]
+      },
+      {
+        "id": "capability_browser_open_url",
+        "title": "Open Browser URL",
+        "category": "capability-broker",
+        "capabilities": ["browser.openUrl"]
+      },
+      {
+        "id": "capability_clipboard_read",
+        "title": "Read Clipboard",
+        "category": "capability-broker",
+        "capabilities": ["clipboard.read"]
+      },
+      {
+        "id": "capability_clipboard_write",
+        "title": "Write Clipboard",
+        "category": "capability-broker",
+        "capabilities": ["clipboard.write"]
+      },
+      {
+        "id": "capability_notification_send",
+        "title": "Send Notification",
+        "category": "capability-broker",
+        "capabilities": ["notification.send"]
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "role": "runtime",
+    "primaryOutput": "capability-state",
+    "repairStrategy": "diagnostics-first"
+  }
+}

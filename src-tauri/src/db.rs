@@ -8,7 +8,10 @@ use sqlx::{sqlite::SqliteConnectOptions, SqlitePool};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    error::{AppError, AppResult},
+    plugin_registry,
+};
 
 pub async fn connect(path: PathBuf) -> AppResult<SqlitePool> {
     let options = SqliteConnectOptions::new()
@@ -25,6 +28,7 @@ pub async fn migrate_and_seed(pool: &SqlitePool) -> AppResult<()> {
     seed_defaults(pool).await?;
     ensure_builtin_roles(pool).await?;
     ensure_default_permissions(pool).await?;
+    crate::permission_consent::seed_system_consents(pool).await?;
     crate::asset_items::backfill_file_variables(pool).await?;
     crate::asset_items::refresh_page_global_variables(pool).await?;
     Ok(())
@@ -96,21 +100,21 @@ async fn seed_defaults(pool: &SqlitePool) -> AppResult<()> {
     .execute(pool)
     .await?;
 
-    let permissions = default_permissions();
+    let permissions = default_permissions()?;
     for permission in &permissions {
         sqlx::query(
             "INSERT INTO permissions
              (id, parent_id, code, name, permission_type, path, component, icon, sort_order, status, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'enabled', ?, ?)",
         )
-        .bind(permission.id)
-        .bind(permission.parent_id)
-        .bind(permission.code)
-        .bind(permission.name)
-        .bind(permission.permission_type)
-        .bind(permission.path)
-        .bind(permission.component)
-        .bind(permission.icon)
+        .bind(&permission.id)
+        .bind(&permission.parent_id)
+        .bind(&permission.code)
+        .bind(&permission.name)
+        .bind(&permission.permission_type)
+        .bind(&permission.path)
+        .bind(&permission.component)
+        .bind(&permission.icon)
         .bind(permission.sort_order)
         .bind(now)
         .bind(now)
@@ -119,7 +123,7 @@ async fn seed_defaults(pool: &SqlitePool) -> AppResult<()> {
 
         sqlx::query("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)")
             .bind(&role_id)
-            .bind(permission.id)
+            .bind(&permission.id)
             .execute(pool)
             .await?;
     }
@@ -166,9 +170,10 @@ async fn ensure_default_permissions(pool: &SqlitePool) -> AppResult<()> {
             .await?;
     let mut actual_ids = HashMap::new();
 
-    for permission in default_permissions() {
+    for permission in default_permissions()? {
         let parent_id = permission
             .parent_id
+            .as_ref()
             .and_then(|seed_id| actual_ids.get(seed_id).cloned());
 
         sqlx::query(
@@ -186,14 +191,14 @@ async fn ensure_default_permissions(pool: &SqlitePool) -> AppResult<()> {
                status = excluded.status,
                updated_at = excluded.updated_at",
         )
-        .bind(permission.id)
+        .bind(&permission.id)
         .bind(parent_id)
-        .bind(permission.code)
-        .bind(permission.name)
-        .bind(permission.permission_type)
-        .bind(permission.path)
-        .bind(permission.component)
-        .bind(permission.icon)
+        .bind(&permission.code)
+        .bind(&permission.name)
+        .bind(&permission.permission_type)
+        .bind(&permission.path)
+        .bind(&permission.component)
+        .bind(&permission.icon)
         .bind(permission.sort_order)
         .bind(now)
         .bind(now)
@@ -202,12 +207,12 @@ async fn ensure_default_permissions(pool: &SqlitePool) -> AppResult<()> {
 
         let permission_id =
             sqlx::query_scalar::<_, String>("SELECT id FROM permissions WHERE code = ? LIMIT 1")
-                .bind(permission.code)
+                .bind(&permission.code)
                 .fetch_optional(pool)
                 .await?;
 
         if let Some(permission_id) = permission_id {
-            actual_ids.insert(permission.id, permission_id.clone());
+            actual_ids.insert(permission.id.clone(), permission_id.clone());
 
             for role_id in &super_role_ids {
                 sqlx::query(
@@ -219,7 +224,7 @@ async fn ensure_default_permissions(pool: &SqlitePool) -> AppResult<()> {
                 .await?;
             }
 
-            if ordinary_user_permission_codes().contains(&permission.code) {
+            if permission.ordinary_user {
                 for role_id in &ordinary_role_ids {
                     sqlx::query(
                         "INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)",
@@ -264,270 +269,8 @@ async fn ensure_builtin_roles(pool: &SqlitePool) -> AppResult<()> {
     Ok(())
 }
 
-struct SeedPermission {
-    id: &'static str,
-    parent_id: Option<&'static str>,
-    code: &'static str,
-    name: &'static str,
-    permission_type: &'static str,
-    path: &'static str,
-    component: &'static str,
-    icon: &'static str,
-    sort_order: i64,
-}
-
-fn default_permissions() -> Vec<SeedPermission> {
-    vec![
-        SeedPermission {
-            id: "perm-dashboard",
-            parent_id: None,
-            code: "dashboard",
-            name: "概览",
-            permission_type: "menu",
-            path: "/",
-            component: "BasicLayout",
-            icon: "lucide:layout-dashboard",
-            sort_order: -1,
-        },
-        SeedPermission {
-            id: "perm-dashboard-analytics",
-            parent_id: Some("perm-dashboard"),
-            code: "dashboard:analytics",
-            name: "分析页",
-            permission_type: "menu",
-            path: "/analytics",
-            component: "/dashboard/analytics/index",
-            icon: "lucide:area-chart",
-            sort_order: 10,
-        },
-        SeedPermission {
-            id: "perm-dashboard-workspace",
-            parent_id: Some("perm-dashboard"),
-            code: "dashboard:workspace",
-            name: "工作台",
-            permission_type: "menu",
-            path: "/workspace",
-            component: "/dashboard/workspace/index",
-            icon: "carbon:workspace",
-            sort_order: 20,
-        },
-        SeedPermission {
-            id: "perm-system",
-            parent_id: None,
-            code: "system",
-            name: "系统管理",
-            permission_type: "menu",
-            path: "/system",
-            component: "BasicLayout",
-            icon: "lucide:settings",
-            sort_order: 100,
-        },
-        SeedPermission {
-            id: "perm-system-user",
-            parent_id: Some("perm-system"),
-            code: "system:user",
-            name: "用户管理",
-            permission_type: "menu",
-            path: "/system/users",
-            component: "/system/users/index",
-            icon: "lucide:users",
-            sort_order: 10,
-        },
-        SeedPermission {
-            id: "perm-system-role",
-            parent_id: Some("perm-system"),
-            code: "system:role",
-            name: "角色管理",
-            permission_type: "menu",
-            path: "/system/roles",
-            component: "/system/roles/index",
-            icon: "lucide:shield-check",
-            sort_order: 20,
-        },
-        SeedPermission {
-            id: "perm-system-permission",
-            parent_id: Some("perm-system"),
-            code: "system:permission",
-            name: "权限管理",
-            permission_type: "menu",
-            path: "/system/permissions",
-            component: "/system/permissions/index",
-            icon: "lucide:key-round",
-            sort_order: 30,
-        },
-        SeedPermission {
-            id: "perm-system-dict",
-            parent_id: Some("perm-system"),
-            code: "system:dict",
-            name: "字典管理",
-            permission_type: "menu",
-            path: "/system/dictionaries",
-            component: "/system/dictionaries/index",
-            icon: "lucide:book-type",
-            sort_order: 40,
-        },
-        SeedPermission {
-            id: "perm-notes",
-            parent_id: None,
-            code: "assets",
-            name: "资产",
-            permission_type: "menu",
-            path: "/assets",
-            component: "BasicLayout",
-            icon: "lucide:archive",
-            sort_order: 200,
-        },
-        SeedPermission {
-            id: "perm-notes-list",
-            parent_id: Some("perm-notes"),
-            code: "assets:notes",
-            name: "笔记",
-            permission_type: "menu",
-            path: "/assets/notes",
-            component: "/assets/notes/index",
-            icon: "lucide:sticky-note",
-            sort_order: 10,
-        },
-        SeedPermission {
-            id: "perm-system-skill",
-            parent_id: Some("perm-notes"),
-            code: "assets:skill",
-            name: "技能管理",
-            permission_type: "menu",
-            path: "/assets/skills",
-            component: "/assets/skills/index",
-            icon: "lucide:sparkles",
-            sort_order: 20,
-        },
-        SeedPermission {
-            id: "perm-assets-agent-preferences",
-            parent_id: Some("perm-notes"),
-            code: "assets:agent_preferences",
-            name: "AGENTS.md 管理",
-            permission_type: "menu",
-            path: "/assets/agent-preferences",
-            component: "/assets/agent-preferences/index",
-            icon: "lucide:bot",
-            sort_order: 25,
-        },
-        SeedPermission {
-            id: "perm-assets-openai-assistant",
-            parent_id: Some("perm-notes"),
-            code: "assets:openai_assistant",
-            name: "OpenAI 助手",
-            permission_type: "menu",
-            path: "/assets/openai-assistant",
-            component: "/assets/openai-assistant/index",
-            icon: "lucide:bot",
-            sort_order: 26,
-        },
-        SeedPermission {
-            id: "perm-assets-docker-compose",
-            parent_id: Some("perm-notes"),
-            code: "assets:docker_compose",
-            name: "Docker Compose",
-            permission_type: "menu",
-            path: "/assets/docker-compose",
-            component: "/assets/docker-compose/index",
-            icon: "lucide:container",
-            sort_order: 30,
-        },
-        SeedPermission {
-            id: "perm-assets-cli",
-            parent_id: Some("perm-notes"),
-            code: "assets:cli",
-            name: "CLI 管理",
-            permission_type: "menu",
-            path: "/assets/cli",
-            component: "/assets/cli/index",
-            icon: "lucide:terminal",
-            sort_order: 40,
-        },
-        SeedPermission {
-            id: "perm-assets-env-vars",
-            parent_id: Some("perm-notes"),
-            code: "assets:env_vars",
-            name: "环境变量管理",
-            permission_type: "menu",
-            path: "/assets/env-vars",
-            component: "/assets/env-vars/index",
-            icon: "lucide:variable",
-            sort_order: 50,
-        },
-        SeedPermission {
-            id: "perm-assets-bash-functions",
-            parent_id: Some("perm-notes"),
-            code: "assets:bash_functions",
-            name: "Bash 函数管理",
-            permission_type: "menu",
-            path: "/assets/bash-functions",
-            component: "/assets/bash-functions/index",
-            icon: "lucide:square-function",
-            sort_order: 60,
-        },
-        SeedPermission {
-            id: "perm-assets-dotfiles",
-            parent_id: Some("perm-notes"),
-            code: "assets:dotfiles",
-            name: "dotfiles 管理",
-            permission_type: "menu",
-            path: "/assets/dotfiles",
-            component: "/assets/dotfiles/index",
-            icon: "lucide:file-cog",
-            sort_order: 70,
-        },
-        SeedPermission {
-            id: "perm-action-create",
-            parent_id: None,
-            code: "action:create",
-            name: "新增",
-            permission_type: "button",
-            path: "",
-            component: "",
-            icon: "",
-            sort_order: 1000,
-        },
-        SeedPermission {
-            id: "perm-action-update",
-            parent_id: None,
-            code: "action:update",
-            name: "编辑",
-            permission_type: "button",
-            path: "",
-            component: "",
-            icon: "",
-            sort_order: 1010,
-        },
-        SeedPermission {
-            id: "perm-action-delete",
-            parent_id: None,
-            code: "action:delete",
-            name: "删除",
-            permission_type: "button",
-            path: "",
-            component: "",
-            icon: "",
-            sort_order: 1020,
-        },
-    ]
-}
-
-fn ordinary_user_permission_codes() -> &'static [&'static str] {
-    &[
-        "dashboard",
-        "dashboard:analytics",
-        "dashboard:workspace",
-        "assets",
-        "assets:notes",
-        "assets:skill",
-        "assets:agent_preferences",
-        "assets:openai_assistant",
-        "assets:docker_compose",
-        "assets:cli",
-        "assets:env_vars",
-        "assets:bash_functions",
-        "assets:dotfiles",
-    ]
+fn default_permissions() -> AppResult<Vec<plugin_registry::SeedPermission>> {
+    plugin_registry::builtin_seed_permissions()
 }
 
 #[cfg(test)]

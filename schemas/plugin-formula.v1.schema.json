@@ -1,0 +1,589 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/plugin-formula.v1.schema.json",
+  "title": "AIO Plugin Formula v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "kind", "displayName"],
+  "properties": {
+    "schemaVersion": {
+      "const": "plugin-formula/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "kind": {
+      "enum": ["plugin", "child-plugin"]
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intent": {
+      "type": "string"
+    },
+    "entry": {
+      "$ref": "#/$defs/entry"
+    },
+    "parent": {
+      "$ref": "#/$defs/parent"
+    },
+    "activation": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "platforms": {
+      "$ref": "#/$defs/platformMatrix"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capability"
+      }
+    },
+    "contributes": {
+      "$ref": "#/$defs/contributes"
+    },
+    "events": {
+      "$ref": "#/$defs/events"
+    },
+    "expectations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "ai": {
+      "$ref": "#/$defs/ai"
+    },
+    "childPolicy": {
+      "$ref": "#/$defs/childPolicy"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "platformId": {
+      "enum": ["macos", "windows", "linux", "web", "remote"]
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "type": "string"
+        },
+        "browser": {
+          "type": "string"
+        },
+        "worker": {
+          "type": "string"
+        },
+        "remote": {
+          "type": "string"
+        }
+      }
+    },
+    "parent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pluginId", "mount"],
+      "properties": {
+        "pluginId": {
+          "$ref": "#/$defs/id"
+        },
+        "mount": {
+          "$ref": "#/$defs/id"
+        },
+        "compatibleParentRange": {
+          "type": "string"
+        }
+      }
+    },
+    "platformMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supported": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "degraded": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "unsupported": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reason": {
+          "type": "string"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      }
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tool"
+          }
+        },
+        "menus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/permissionLike"
+          }
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/permissionLike"
+          }
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          }
+        },
+        "settings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/setting"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resource"
+          }
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policy"
+          }
+        },
+        "extensionPoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extensionPoint"
+          }
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "permissionLike": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "title"],
+      "properties": {
+        "permissionId": {
+          "$ref": "#/$defs/id"
+        },
+        "parentPermissionId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "permissionType": {
+          "enum": ["menu", "button"]
+        },
+        "path": {
+          "type": "string"
+        },
+        "component": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "sortOrder": {
+          "type": "integer"
+        },
+        "ordinaryUser": {
+          "type": "boolean"
+        }
+      }
+    },
+    "view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "schema"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "schema": {
+          "$ref": "#/$defs/viewSchemaKind"
+        },
+        "path": {
+          "type": "string"
+        },
+        "contract": {
+          "type": "string"
+        },
+        "assetItemKind": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "viewSchemaKind": {
+      "enum": [
+        "detail",
+        "form",
+        "markdown",
+        "summary-list",
+        "table",
+        "timeline",
+        "tree",
+        "wizard"
+      ]
+    },
+    "setting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effect": {
+          "enum": ["deny", "warn"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "integer"
+        },
+        "matches": {
+          "$ref": "#/$defs/policyMatch"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "policyMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "sourceKinds": {
+          "type": "array",
+          "items": {
+            "enum": ["system", "plugin", "child-plugin"]
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "targetContains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        }
+      }
+    },
+    "extensionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contract": {
+          "type": "string"
+        },
+        "multiplicity": {
+          "type": "string"
+        },
+        "activation": {
+          "type": "string"
+        },
+        "allowedContributionKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "publishes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "subscribes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "editableByAI": {
+          "type": "boolean"
+        },
+        "primaryEditFile": {
+          "type": "string"
+        },
+        "preferredFiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "doNotSplitBelow": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "primaryOutput": {
+          "type": "string"
+        },
+        "repairStrategy": {
+          "type": "string"
+        }
+      }
+    },
+    "childPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowThirdPartyChildren": {
+          "type": "boolean"
+        },
+        "capabilityMode": {
+          "enum": ["intersection", "inherit", "explicit-escalation"]
+        },
+        "eventNamespace": {
+          "type": "string"
+        },
+        "requiresPlatformApprovalForNewCapabilities": {
+          "type": "boolean"
+        },
+        "allowedChildCapabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    }
+  }
+}

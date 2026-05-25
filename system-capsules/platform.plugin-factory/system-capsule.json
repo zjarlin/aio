@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.plugin-factory",
+  "kind": "system",
+  "displayName": "Plugin Factory",
+  "intent": "Generate plugin drafts, permission plans, capsule scaffolds, local registry publications and diagnostic repairs from natural-language prompts.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "fs.read",
+      "scope": "${workspace}/plugins/**",
+      "reason": "Read generated plugin draft files from the workspace."
+    },
+    {
+      "id": "fs.write",
+      "scope": "app-data",
+      "reason": "Write generated plugin draft files and local registry metadata."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "plugin_create_from_prompt",
+        "title": "Create Plugin From Prompt",
+        "category": "plugin-factory",
+        "capabilities": ["fs.write"]
+      },
+      {
+        "id": "plugin_publish_local",
+        "title": "Publish Plugin Locally",
+        "category": "plugin-factory",
+        "capabilities": ["fs.read", "fs.write"]
+      },
+      {
+        "id": "plugin_publish_gate",
+        "title": "Run Plugin Publish Gate",
+        "category": "plugin-factory",
+        "capabilities": ["fs.read", "fs.write"]
+      },
+      {
+        "id": "plugin_repair_from_diagnostics",
+        "title": "Repair Plugin From Diagnostics",
+        "category": "plugin-factory",
+        "capabilities": ["fs.read", "fs.write"]
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "primaryEditFile": "formula.json",
+    "role": "bootstrap",
+    "primaryOutput": "formula.json",
+    "repairStrategy": "formula-first"
+  }
+}

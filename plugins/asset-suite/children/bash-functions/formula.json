@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.bash-functions",
+  "kind": "child-plugin",
+  "displayName": "Bash Function Assets",
+  "intent": "Manage reusable shell functions as asset items.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/bash-functions"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-assets-bash-functions",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:bash_functions",
+        "title": "Bash 函数管理",
+        "path": "/assets/bash-functions",
+        "component": "/assets/bash-functions/index",
+        "icon": "lucide:square-function",
+        "sortOrder": 60,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.bash-functions.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/bash-functions",
+        "assetItemKind": "bash_functions"
+      }
+    ]
+  },
+  "expectations": [
+    "Bash function records use shared asset item commands with kind=bash_functions."
+  ]
+}

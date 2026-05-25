@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.dotfiles",
+  "kind": "child-plugin",
+  "displayName": "Dotfiles Assets",
+  "intent": "Manage reusable dotfiles metadata and snippets as asset items.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/dotfiles"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-assets-dotfiles",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:dotfiles",
+        "title": "dotfiles 管理",
+        "path": "/assets/dotfiles",
+        "component": "/assets/dotfiles/index",
+        "icon": "lucide:file-cog",
+        "sortOrder": 70,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.dotfiles.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/dotfiles",
+        "assetItemKind": "dotfiles"
+      }
+    ]
+  },
+  "expectations": [
+    "Dotfiles records use shared asset item commands with kind=dotfiles."
+  ]
+}

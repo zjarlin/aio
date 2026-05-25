@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.event-bus",
+  "kind": "system",
+  "displayName": "Event Bus",
+  "intent": "Provide platform-level event envelopes, runtime event history, publish/subscribe streams and request/reply coordination.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "event.publish",
+      "scope": "platform-events",
+      "reason": "Publish traceable platform events with payload, source and target metadata."
+    },
+    {
+      "id": "event.subscribe",
+      "scope": "platform-events",
+      "reason": "Read runtime event history and subscribe to platform event streams."
+    },
+    {
+      "id": "event.request",
+      "scope": "platform-events",
+      "reason": "Coordinate request/reply platform events with timeout and cancellation."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "event_bus_publish",
+        "title": "Publish Platform Event",
+        "category": "event-bus",
+        "capabilities": ["event.publish"]
+      },
+      {
+        "id": "event_bus_snapshot",
+        "title": "Event Bus Snapshot",
+        "category": "event-bus",
+        "capabilities": ["event.subscribe"]
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "role": "runtime",
+    "primaryOutput": "event-history",
+    "repairStrategy": "diagnostics-first"
+  }
+}

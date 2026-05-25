@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "platform.macos-clipboard",
+  "kind": "plugin",
+  "displayName": "macOS Clipboard Sample",
+  "version": "1.0.0",
+  "intent": "Demonstrate a macOS-only plugin that uses the brokered clipboard.write capability.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onCommand:macos_clipboard_copy"],
+  "platforms": {
+    "supported": ["macos"],
+    "degraded": ["web", "remote"],
+    "unsupported": ["linux", "windows"],
+    "reason": "This sample exists to verify macOS-specific capability routing and platform diagnostics."
+  },
+  "capabilities": [
+    {
+      "id": "clipboard.write",
+      "scope": "system-clipboard",
+      "reason": "Write sample content to the macOS clipboard through the capability broker."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "macos_clipboard_copy",
+        "title": "Copy Sample Text",
+        "category": "platform-samples",
+        "capabilities": ["clipboard.write"],
+        "when": "platform == 'macos' && capability('clipboard.write')"
+      }
+    ],
+    "views": [
+      {
+        "id": "platform.macos-clipboard.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/platform-samples/macos-clipboard",
+        "when": "platform == 'macos'"
+      }
+    ]
+  },
+  "expectations": [
+    "The sample should compile on macOS and surface a clear platform matrix in the registry.",
+    "Clipboard writes must go through the capability broker."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts"],
+    "role": "sample-plugin",
+    "primaryOutput": "platform-diagnostics",
+    "repairStrategy": "formula-first"
+  }
+}

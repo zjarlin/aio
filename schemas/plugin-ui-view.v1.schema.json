@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aio.addzero.site/schemas/plugin-ui-view.v1.schema.json",
+  "title": "AIO Plugin UI View Contract",
+  "description": "Declarative view models that plugins can contribute without depending on a concrete shell renderer.",
+  "oneOf": [
+    { "$ref": "#/$defs/summaryList" },
+    { "$ref": "#/$defs/detail" },
+    { "$ref": "#/$defs/table" },
+    { "$ref": "#/$defs/tree" },
+    { "$ref": "#/$defs/graph" },
+    { "$ref": "#/$defs/form" },
+    { "$ref": "#/$defs/timeline" },
+    { "$ref": "#/$defs/markdown" },
+    { "$ref": "#/$defs/wizard" }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" }
+      }
+    },
+    "keyValueItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "hint": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" }
+      }
+    },
+    "summaryList": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "items"],
+          "properties": {
+            "kind": { "const": "summary-list" },
+            "title": { "type": "string" },
+            "items": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/keyValueItem" }
+            }
+          }
+        }
+      ]
+    },
+    "detail": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "items"],
+          "properties": {
+            "kind": { "const": "detail" },
+            "title": { "type": "string" },
+            "items": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/keyValueItem" }
+            }
+          }
+        }
+      ]
+    },
+    "tableColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "label"],
+      "properties": {
+        "align": { "enum": ["center", "left", "right"] },
+        "key": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "width": {
+          "anyOf": [
+            { "type": "number" },
+            { "type": "string" }
+          ]
+        }
+      }
+    },
+    "table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "columns", "rows"],
+      "properties": {
+        "kind": { "const": "table" },
+        "title": { "type": "string" },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/tableColumn" }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "treeNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/treeNode" }
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "nodes"],
+      "properties": {
+        "kind": { "const": "tree" },
+        "title": { "type": "string" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/treeNode" }
+        }
+      }
+    },
+    "graphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "group": { "type": "string" },
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "value": { "type": "string" }
+      }
+    },
+    "graphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "to": { "type": "string", "minLength": 1 }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "nodes", "edges"],
+      "properties": {
+        "kind": { "const": "graph" },
+        "title": { "type": "string" },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/graphNode" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/graphEdge" }
+        }
+      }
+    },
+    "formField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "hint": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "value": { "type": "string" }
+      }
+    },
+    "form": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "fields"],
+      "properties": {
+        "kind": { "const": "form" },
+        "title": { "type": "string" },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/formField" }
+        },
+        "submitLabel": { "type": "string" }
+      }
+    },
+    "timelineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "time": { "type": "string" },
+        "tone": { "enum": ["danger", "info", "success", "warning"] },
+        "value": { "type": "string" }
+      }
+    },
+    "timeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "items"],
+      "properties": {
+        "kind": { "const": "timeline" },
+        "title": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/timelineItem" }
+        }
+      }
+    },
+    "markdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "content"],
+      "properties": {
+        "kind": { "const": "markdown" },
+        "title": { "type": "string" },
+        "content": { "type": "string" }
+      }
+    },
+    "wizardStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "description": { "type": "string" },
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "wizard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "steps"],
+      "properties": {
+        "activeStep": { "type": "string" },
+        "kind": { "const": "wizard" },
+        "title": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/wizardStep" }
+        }
+      }
+    }
+  }
+}

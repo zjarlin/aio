@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "platform.windows-notification",
+  "kind": "plugin",
+  "displayName": "Windows Notification Sample",
+  "version": "1.0.0",
+  "intent": "Demonstrate a Windows-only plugin that uses the brokered notification.send capability.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onCommand:windows_notification_ping"],
+  "platforms": {
+    "supported": ["windows"],
+    "degraded": ["web", "remote"],
+    "unsupported": ["linux", "macos"],
+    "reason": "This sample exists to verify Windows-specific capability routing and platform diagnostics."
+  },
+  "capabilities": [
+    {
+      "id": "notification.send",
+      "scope": "desktop-notification",
+      "reason": "Send a sample notification through the capability broker."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "windows_notification_ping",
+        "title": "Send Sample Notification",
+        "category": "platform-samples",
+        "capabilities": ["notification.send"],
+        "when": "platform == 'windows' && capability('notification.send')"
+      }
+    ],
+    "views": [
+      {
+        "id": "platform.windows-notification.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/platform-samples/windows-notification",
+        "when": "platform == 'windows'"
+      }
+    ]
+  },
+  "expectations": [
+    "The sample should compile on Windows and surface a clear platform matrix in the registry.",
+    "Notifications must go through the capability broker."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts"],
+    "role": "sample-plugin",
+    "primaryOutput": "platform-diagnostics",
+    "repairStrategy": "formula-first"
+  }
+}

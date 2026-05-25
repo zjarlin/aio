@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.docker-compose",
+  "kind": "child-plugin",
+  "displayName": "Docker Compose Assets",
+  "intent": "Manage Docker Compose YAML files, extracted service metadata and deploy previews.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/docker-compose"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "remote"],
+    "degraded": ["web"],
+    "reason": "Web shell can use existing command bridge only when a local desktop bridge is available."
+  },
+  "capabilities": [
+    {
+      "id": "fs.read",
+      "scope": "user-selected-directory",
+      "reason": "Scan compose YAML files chosen by the user."
+    },
+    {
+      "id": "fs.write",
+      "scope": "user-selected-directory",
+      "reason": "Deploy managed compose YAML back to a user-approved target path."
+    }
+  ],
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-assets-docker-compose",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:docker_compose",
+        "title": "Docker Compose",
+        "path": "/assets/docker-compose",
+        "component": "/assets/docker-compose/index",
+        "icon": "lucide:container",
+        "sortOrder": 30,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.docker-compose.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/docker-compose",
+        "assetItemKind": "docker_compose"
+      }
+    ]
+  },
+  "expectations": [
+    "Import must keep all YAML content and extract compose metadata when possible.",
+    "Deploy must show a preview before saving to filesystem."
+  ]
+}

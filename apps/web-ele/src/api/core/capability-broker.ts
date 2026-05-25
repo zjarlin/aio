@@ -1,0 +1,15 @@
+export {
+  capabilityAuditLogApi,
+  capabilityBrowserOpenUrlApi,
+  capabilityClipboardReadApi,
+  capabilityClipboardWriteApi,
+  capabilityFsReadApi,
+  capabilityFsWriteApi,
+  capabilityInvokeApi,
+  capabilityNotificationSendApi,
+  capabilityProcessExecApi,
+  permissionAuditLogApi,
+  permissionConsentGrantApi,
+  permissionConsentListApi,
+  permissionConsentRevokeApi,
+} from '../local/system';

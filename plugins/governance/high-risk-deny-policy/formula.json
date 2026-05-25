@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "governance.high-risk-deny-policy",
+  "kind": "child-plugin",
+  "displayName": "High Risk Deny Policy",
+  "version": "0.1.0",
+  "intent": "Provide a Permission Core policy sample that denies high-risk capability targets even after manifest and consent checks pass.",
+  "parent": {
+    "pluginId": "platform.permission-core",
+    "mount": "permission.policy",
+    "compatibleParentRange": ""
+  },
+  "activation": ["withPlatformPolicy"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "policies": [
+      {
+        "id": "governance.high-risk-deny-policy.block-dangerous-process",
+        "title": "Block dangerous process targets",
+        "effect": "deny",
+        "priority": 10,
+        "reason": "Shell and destructive filesystem commands require a future approval UI instead of silent broker execution.",
+        "matches": {
+          "sourceIds": ["platform.capability-broker"],
+          "sourceKinds": ["system"],
+          "capabilities": ["process.exec"],
+          "targetContains": ["rm", "sudo", "sh", "bash"]
+        }
+      },
+      {
+        "id": "governance.high-risk-deny-policy.block-system-write",
+        "title": "Block system directory writes",
+        "effect": "deny",
+        "priority": 20,
+        "reason": "Writes into system directories are blocked until scoped approval UI is implemented.",
+        "matches": {
+          "sourceIds": ["platform.capability-broker"],
+          "sourceKinds": ["system"],
+          "capabilities": ["fs.write"],
+          "scopes": ["/System", "/usr", "/bin", "/sbin", "/etc"]
+        }
+      }
+    ],
+    "views": [
+      {
+        "id": "governance.high-risk-deny-policy.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/system/plugins/high-risk-policy"
+      }
+    ]
+  },
+  "events": {
+    "subscribes": ["permission.requested", "permission.denied"]
+  },
+  "expectations": [
+    "The plugin must remain mounted under platform.permission-core permission.policy.",
+    "The policy may only narrow existing Permission Core decisions and must never grant a capability.",
+    "Future approval UI work can replace the hard deny rules with interactive escalation."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "README.md"],
+    "role": "permission-policy-plugin",
+    "primaryOutput": "permission-policy",
+    "repairStrategy": "manifest-policy-first"
+  }
+}

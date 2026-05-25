@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "governance.audit-file-sink",
+  "kind": "child-plugin",
+  "displayName": "Audit File Sink",
+  "version": "0.1.0",
+  "intent": "Provide a permission audit sink sample that writes summarized permission decisions to an approved local audit file.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "parent": {
+    "pluginId": "platform.permission-core",
+    "mount": "permission.auditSink",
+    "compatibleParentRange": ""
+  },
+  "activation": [
+    "onEvent:permission.denied",
+    "onEvent:permission.granted"
+  ],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "remote"],
+    "degraded": ["web"],
+    "reason": "Web shells can preview audit entries but cannot append to the local audit file without a desktop or remote host."
+  },
+  "capabilities": [
+    {
+      "id": "fs.write",
+      "scope": "app-data/plugin-audit/permission-decisions.jsonl",
+      "reason": "Append summarized permission decisions to the platform-managed audit log file."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "permission_audit_file_sink_append",
+        "title": "Append Permission Audit Entry",
+        "category": "permission",
+        "capabilities": ["fs.write"],
+        "when": "capability('fs.write')"
+      }
+    ],
+    "views": [
+      {
+        "id": "governance.audit-file-sink.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/system/plugins/permission-audit-sink",
+        "when": "capability('fs.write')"
+      }
+    ],
+    "resources": [
+      {
+        "id": "governance.audit-file-sink.file",
+        "title": "Permission Decision Audit File",
+        "kind": "permission-audit-sink",
+        "schema": "contracts/permission.audit-sink.v1.json"
+      }
+    ]
+  },
+  "events": {
+    "publishes": ["permission-core.audit-file-sink.appended"],
+    "subscribes": ["permission.granted", "permission.denied"]
+  },
+  "expectations": [
+    "The plugin must remain mounted under platform.permission-core permission.auditSink.",
+    "The plugin must only append summarized permission decisions and must never broaden Permission Core decisions.",
+    "Web shells must expose a degraded preview instead of writing local audit files directly."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts", "tests/smoke.test.ts"],
+    "role": "audit-sink-plugin",
+    "primaryOutput": "permission-audit-sink",
+    "repairStrategy": "formula-first"
+  }
+}

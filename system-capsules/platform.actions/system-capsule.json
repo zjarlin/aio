@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.actions",
+  "kind": "system",
+  "displayName": "Common Action Permissions",
+  "intent": "Expose built-in action permissions used by existing RBAC button checks.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "permissions": [
+      {
+        "permissionId": "perm-action-create",
+        "code": "action:create",
+        "title": "新增",
+        "permissionType": "button",
+        "sortOrder": 1000
+      },
+      {
+        "permissionId": "perm-action-update",
+        "code": "action:update",
+        "title": "编辑",
+        "permissionType": "button",
+        "sortOrder": 1010
+      },
+      {
+        "permissionId": "perm-action-delete",
+        "code": "action:delete",
+        "title": "删除",
+        "permissionType": "button",
+        "sortOrder": 1020
+      }
+    ]
+  }
+}

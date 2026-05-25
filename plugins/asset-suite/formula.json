@@ -1,0 +1,166 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset-suite",
+  "kind": "plugin",
+  "displayName": "Asset Suite",
+  "version": "1.0.0",
+  "intent": "Provide the parent extension points and shared asset item commands for local notes, skills, agent preferences, assistant context tools and reusable asset libraries.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onStartup"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"],
+    "reason": "Most asset views are SQLite-backed and run through the platform command bridge."
+  },
+  "capabilities": [
+    {
+      "id": "db.sqlite.read",
+      "scope": "app-data",
+      "reason": "Read asset records from the local application database."
+    },
+    {
+      "id": "db.sqlite.write",
+      "scope": "app-data",
+      "reason": "Create and update asset records in the local application database."
+    },
+    {
+      "id": "fs.read",
+      "scope": "user-selected-directory",
+      "reason": "Import asset files from directories explicitly chosen by the user."
+    },
+    {
+      "id": "fs.write",
+      "scope": "user-selected-directory",
+      "reason": "Deploy managed asset content to locations explicitly chosen by the user."
+    },
+    {
+      "id": "browser.openDirectory",
+      "scope": "app-data",
+      "reason": "Open the local AIO data directory from the asset management workbench."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "app_open_data_dir",
+        "title": "Open AIO Data Directory",
+        "category": "asset",
+        "capabilities": ["browser.openDirectory"]
+      },
+      {
+        "id": "asset_item_page",
+        "title": "List Asset Items",
+        "category": "asset"
+      },
+      {
+        "id": "asset_item_import_directory",
+        "title": "Import Asset Directory",
+        "category": "asset",
+        "capabilities": ["fs.read"]
+      },
+      {
+        "id": "asset_item_create",
+        "title": "Create Asset Item",
+        "category": "asset"
+      },
+      {
+        "id": "asset_item_update",
+        "title": "Update Asset Item",
+        "category": "asset"
+      },
+      {
+        "id": "asset_item_delete",
+        "title": "Delete Asset Item",
+        "category": "asset"
+      },
+      {
+        "id": "asset_item_toggle",
+        "title": "Toggle Asset Item",
+        "category": "asset"
+      },
+      {
+        "id": "asset_item_deploy_preview",
+        "title": "Preview Asset Deployment",
+        "category": "asset",
+        "capabilities": ["fs.read"]
+      },
+      {
+        "id": "asset_item_deploy_save",
+        "title": "Save Asset Deployment",
+        "category": "asset",
+        "capabilities": ["fs.write"]
+      },
+      {
+        "id": "asset_variable_page",
+        "title": "List Asset Variables",
+        "category": "asset"
+      },
+      {
+        "id": "asset_variable_upsert",
+        "title": "Upsert Asset Variable",
+        "category": "asset"
+      },
+      {
+        "id": "asset_variable_delete",
+        "title": "Delete Asset Variable",
+        "category": "asset"
+      },
+      {
+        "id": "asset_variable_refresh_page_globals",
+        "title": "Refresh Asset Page Globals",
+        "category": "asset"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-notes",
+        "code": "assets",
+        "title": "资产",
+        "path": "/assets",
+        "component": "BasicLayout",
+        "icon": "lucide:archive",
+        "sortOrder": 200,
+        "ordinaryUser": true
+      }
+    ],
+    "extensionPoints": [
+      {
+        "id": "asset-suite.assetView",
+        "title": "Asset View",
+        "contract": "contracts/asset-view.v1.json",
+        "multiplicity": "many",
+        "activation": "withParent",
+        "allowedContributionKinds": ["command", "view", "menu"]
+      }
+    ]
+  },
+  "events": {
+    "publishes": ["asset.item.changed", "asset.variable.changed"],
+    "subscribes": []
+  },
+  "expectations": [
+    "All asset mutations must pass through authenticated platform commands.",
+    "Filesystem import and deploy operations must use platform capabilities rather than direct plugin filesystem access."
+  ],
+  "childPolicy": {
+    "allowThirdPartyChildren": true,
+    "capabilityMode": "intersection",
+    "eventNamespace": "asset-suite/*",
+    "requiresPlatformApprovalForNewCapabilities": true,
+    "allowedChildCapabilities": [
+      "db.sqlite.read",
+      "db.sqlite.write",
+      "fs.read",
+      "fs.write",
+      "network.fetch",
+      "page.context.read"
+    ]
+  },
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts", "tests/smoke.test.ts"],
+    "doNotSplitBelow": "Keep each asset child plugin capsule compact unless a file exceeds 600 lines or mixes unrelated responsibilities."
+  }
+}

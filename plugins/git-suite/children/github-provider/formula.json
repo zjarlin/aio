@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "git-suite.github-provider",
+  "kind": "child-plugin",
+  "displayName": "GitHub Provider",
+  "version": "0.1.0",
+  "intent": "Provide GitHub pull request, issue and browser-open integration for Git Suite remotes.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "parent": {
+    "pluginId": "git-suite",
+    "mount": "git-suite.remoteProvider",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": [
+    "onCommand:github_open_pull_request",
+    "onRoute:/integrations/git/github"
+  ],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "network.fetch",
+      "scope": "https://api.github.com",
+      "reason": "Read GitHub repository, pull request and issue metadata approved by the user."
+    },
+    {
+      "id": "browser.openUrl",
+      "scope": "https://github.com",
+      "reason": "Open GitHub pull request and issue URLs in the user's browser."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "github_open_pull_request",
+        "title": "Open GitHub Pull Request",
+        "category": "git",
+        "capabilities": ["browser.openUrl"]
+      },
+      {
+        "id": "github_sync_pull_requests",
+        "title": "Sync GitHub Pull Requests",
+        "category": "git",
+        "capabilities": ["network.fetch"]
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-integrations-git-github",
+        "parentPermissionId": "perm-integrations-git",
+        "code": "integrations:git:github",
+        "title": "GitHub",
+        "path": "/integrations/git/github",
+        "component": "/integrations/git/github/index",
+        "icon": "lucide:github",
+        "sortOrder": 311,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "git-suite.github-provider.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/integrations/git/github"
+      }
+    ],
+    "resources": [
+      {
+        "id": "git-suite.github-provider.remote",
+        "title": "GitHub Remote Provider",
+        "kind": "git-remote-provider",
+        "schema": "contracts/git.remote-provider.v1.json"
+      }
+    ]
+  },
+  "events": {
+    "publishes": ["git-suite.github-provider.pull-requests.changed"],
+    "subscribes": ["git-suite.repository.changed"]
+  },
+  "expectations": [
+    "GitHub API calls must not expose tokens to the frontend.",
+    "Commands must remain traceable to git-suite.github-provider in the registry snapshot."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts", "tests/smoke.test.ts"],
+    "role": "child-plugin",
+    "primaryOutput": "remote-provider",
+    "repairStrategy": "formula-first"
+  }
+}

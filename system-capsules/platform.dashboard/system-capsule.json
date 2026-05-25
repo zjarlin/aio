@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.dashboard",
+  "kind": "system",
+  "displayName": "Dashboard Shell",
+  "intent": "Expose the built-in overview and workspace dashboard routes as immutable platform metadata.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-dashboard",
+        "code": "dashboard",
+        "title": "概览",
+        "path": "/",
+        "component": "BasicLayout",
+        "icon": "lucide:layout-dashboard",
+        "sortOrder": -1,
+        "ordinaryUser": true
+      },
+      {
+        "permissionId": "perm-dashboard-analytics",
+        "parentPermissionId": "perm-dashboard",
+        "code": "dashboard:analytics",
+        "title": "分析页",
+        "path": "/analytics",
+        "component": "/dashboard/analytics/index",
+        "icon": "lucide:area-chart",
+        "sortOrder": 10,
+        "ordinaryUser": true
+      },
+      {
+        "permissionId": "perm-dashboard-workspace",
+        "parentPermissionId": "perm-dashboard",
+        "code": "dashboard:workspace",
+        "title": "工作台",
+        "path": "/workspace",
+        "component": "/dashboard/workspace/index",
+        "icon": "carbon:workspace",
+        "sortOrder": 20,
+        "ordinaryUser": true
+      }
+    ]
+  }
+}

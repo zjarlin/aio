@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/plugin-draft.v1.schema.json",
+  "title": "AIO Plugin Draft v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "prompt", "formula", "generatedFiles", "diagnostics"],
+  "properties": {
+    "schemaVersion": {
+      "const": "plugin-draft/v1"
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "formula": {
+      "type": "object"
+    },
+    "permissionPlan": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/permissionPlanItem"
+      }
+    },
+    "generatedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "permissionPlanItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "scope", "reason", "allow", "optional"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

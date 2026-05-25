@@ -22,6 +22,7 @@ export default defineConfig(async () => {
             ws: true,
           },
         },
+        strictPort: true,
         watch: {
           // 告诉 Vite 忽略监听 `src-tauri` 目录
           ignored: ['**/src-tauri/**'],

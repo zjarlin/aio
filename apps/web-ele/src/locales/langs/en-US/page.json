@@ -16,7 +16,8 @@
     "users": "Users",
     "roles": "Roles",
     "permissions": "Permissions",
-    "dictionaries": "Dictionaries"
+    "dictionaries": "Dictionaries",
+    "plugins": "Plugins"
   },
   "assets": {
     "title": "Assets",

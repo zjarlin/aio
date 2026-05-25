@@ -5,7 +5,7 @@
   "identifier": "site.addzero.aio",
   "build": {
     "frontendDist": "../apps/web-ele/dist",
-    "devUrl": "http://localhost:5777",
+    "devUrl": "http://localhost:5280",
     "beforeDevCommand": "pnpm dev:ele",
     "beforeBuildCommand": "pnpm build:ele"
   },

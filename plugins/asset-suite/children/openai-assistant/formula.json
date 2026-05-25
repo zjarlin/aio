@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.openai-assistant",
+  "kind": "child-plugin",
+  "displayName": "OpenAI Assistant",
+  "intent": "Provide a page-context assistant that previews URL, HTML or plain text context and sends chat requests.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/openai-assistant", "onCommand:openai_assistant_chat"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "page.context.read",
+      "scope": "user-specified-url-or-html",
+      "reason": "Preview URL, HTML or text context supplied by the user."
+    },
+    {
+      "id": "network.fetch",
+      "scope": "https://api.openai.com",
+      "reason": "Send the user-approved page context and question to the configured OpenAI provider."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "openai_assistant_preview_context",
+        "title": "Preview Assistant Context",
+        "category": "openai-assistant",
+        "capabilities": ["network.fetch"]
+      },
+      {
+        "id": "openai_assistant_chat",
+        "title": "Ask OpenAI Assistant",
+        "category": "openai-assistant",
+        "capabilities": ["network.fetch"]
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-assets-openai-assistant",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:openai_assistant",
+        "title": "OpenAI 助手",
+        "path": "/assets/openai-assistant",
+        "component": "/assets/openai-assistant/index",
+        "icon": "lucide:bot",
+        "sortOrder": 26,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.openai-assistant.workbench",
+        "slot": "main",
+        "schema": "wizard",
+        "path": "/assets/openai-assistant"
+      }
+    ]
+  },
+  "expectations": [
+    "Assistant calls must require an authenticated user.",
+    "The plugin must not expose raw provider credentials to the frontend."
+  ]
+}

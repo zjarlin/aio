@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.permission-core",
+  "kind": "system",
+  "displayName": "Permission Core",
+  "intent": "Evaluate runtime capability requests, enforce deny-by-default decisions and expose permission audit history.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "permission.consent",
+      "scope": "runtime-permission-consent",
+      "reason": "Persist and evaluate user consent records for runtime capability access."
+    },
+    {
+      "id": "permission.evaluate",
+      "scope": "runtime-permission-request",
+      "reason": "Evaluate runtime requests against declared capabilities, platform support and consent."
+    },
+    {
+      "id": "permission.audit",
+      "scope": "runtime-permission-history",
+      "reason": "Read the runtime permission decision history."
+    }
+  ],
+  "childPolicy": {
+    "allowThirdPartyChildren": true,
+    "capabilityMode": "intersection",
+    "eventNamespace": "permission-core/*",
+    "requiresPlatformApprovalForNewCapabilities": true,
+    "allowedChildCapabilities": ["fs.write"]
+  },
+  "provides": {
+    "commands": ["permission_audit_log"]
+  },
+  "contributes": {
+    "extensionPoints": [
+      {
+        "id": "permission.policy",
+        "title": "Permission Policy",
+        "contract": "contracts/permission.policy.v1.json",
+        "multiplicity": "many",
+        "activation": "withPlatformPolicy",
+        "allowedContributionKinds": ["policy"]
+      },
+      {
+        "id": "permission.approvalUI",
+        "title": "Permission Approval UI",
+        "contract": "contracts/permission.approval-ui.v1.json",
+        "multiplicity": "many",
+        "activation": "onDemand",
+        "allowedContributionKinds": ["view", "dialog", "panel"]
+      },
+      {
+        "id": "permission.auditSink",
+        "title": "Permission Audit Sink",
+        "contract": "contracts/permission.audit-sink.v1.json",
+        "multiplicity": "many",
+        "activation": "withAudit",
+        "allowedContributionKinds": ["resource", "sink", "command"]
+      }
+    ],
+    "commands": [
+      {
+        "id": "permission_audit_log",
+        "title": "Permission Audit Log",
+        "category": "permission-core",
+        "capabilities": ["permission.audit"]
+      },
+      {
+        "id": "permission_consent_list",
+        "title": "List Permission Consents",
+        "category": "permission-core",
+        "capabilities": ["permission.consent"]
+      },
+      {
+        "id": "permission_consent_grant",
+        "title": "Grant Permission Consent",
+        "category": "permission-core",
+        "capabilities": ["permission.consent"]
+      },
+      {
+        "id": "permission_consent_revoke",
+        "title": "Revoke Permission Consent",
+        "category": "permission-core",
+        "capabilities": ["permission.consent"]
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "role": "runtime",
+    "primaryOutput": "permission-decision-history",
+    "repairStrategy": "diagnostics-first"
+  }
+}

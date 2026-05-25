@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.env-vars",
+  "kind": "child-plugin",
+  "displayName": "Environment Variable Assets",
+  "intent": "Manage reusable environment variable notes and templates as asset items.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/env-vars"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "contributes": {
+    "menus": [
+      {
+        "permissionId": "perm-assets-env-vars",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:env_vars",
+        "title": "环境变量管理",
+        "path": "/assets/env-vars",
+        "component": "/assets/env-vars/index",
+        "icon": "lucide:variable",
+        "sortOrder": 50,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.env-vars.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/env-vars",
+        "assetItemKind": "env_vars"
+      }
+    ]
+  },
+  "expectations": [
+    "Environment variable records use shared asset item commands with kind=env_vars."
+  ]
+}

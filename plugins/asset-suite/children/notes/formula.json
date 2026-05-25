@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "asset.notes",
+  "kind": "child-plugin",
+  "displayName": "Notes",
+  "intent": "Manage user-owned notes with tags, archive state and favorites.",
+  "parent": {
+    "pluginId": "asset-suite",
+    "mount": "asset-suite.assetView",
+    "compatibleParentRange": "^1.0.0"
+  },
+  "activation": ["onRoute:/assets/notes", "onCommand:note_page"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "db.sqlite.read",
+      "scope": "notes",
+      "reason": "List and search notes owned by the current user."
+    },
+    {
+      "id": "db.sqlite.write",
+      "scope": "notes",
+      "reason": "Create, update, archive, favorite and delete current-user notes."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "note_page",
+        "title": "List Notes",
+        "category": "notes"
+      },
+      {
+        "id": "note_create",
+        "title": "Create Note",
+        "category": "notes"
+      },
+      {
+        "id": "note_update",
+        "title": "Update Note",
+        "category": "notes"
+      },
+      {
+        "id": "note_delete",
+        "title": "Delete Note",
+        "category": "notes"
+      },
+      {
+        "id": "note_archive",
+        "title": "Archive Note",
+        "category": "notes"
+      },
+      {
+        "id": "note_favorite",
+        "title": "Favorite Note",
+        "category": "notes"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-notes-list",
+        "parentPermissionId": "perm-notes",
+        "code": "assets:notes",
+        "title": "笔记",
+        "path": "/assets/notes",
+        "component": "/assets/notes/index",
+        "icon": "lucide:sticky-note",
+        "sortOrder": 10,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "asset.notes.table",
+        "slot": "main",
+        "schema": "table",
+        "path": "/assets/notes"
+      }
+    ]
+  },
+  "expectations": [
+    "Notes must be filtered by owner.",
+    "The route must keep using the current Vue page until the schema renderer replaces it."
+  ]
+}

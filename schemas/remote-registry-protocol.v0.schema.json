@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/remote-registry-protocol.v0.schema.json",
+  "title": "AIO Remote Plugin Registry Protocol Draft v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "transport",
+    "endpoints",
+    "packageRequiredFiles",
+    "publishGateChecks"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "aio-plugin-remote-registry-protocol/v0"
+    },
+    "status": {
+      "const": "draft"
+    },
+    "transport": {
+      "type": "string",
+      "minLength": 1
+    },
+    "endpoints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/endpoint"
+      },
+      "minItems": 1
+    },
+    "packageRequiredFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "publishGateChecks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path", "purpose"],
+      "properties": {
+        "method": {
+          "enum": ["GET", "POST"]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

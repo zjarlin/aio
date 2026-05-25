@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "git-suite",
+  "kind": "plugin",
+  "displayName": "Git Suite",
+  "version": "1.0.0",
+  "intent": "Provide Git workspace commands and extension points for remote providers and commit policy packs.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onCommand:git_status", "onRoute:/integrations/git"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "remote"],
+    "degraded": ["web"],
+    "reason": "Git workspace inspection requires a local or remote host with repository filesystem access."
+  },
+  "capabilities": [
+    {
+      "id": "fs.read",
+      "scope": "workspace-git-repository",
+      "reason": "Read repository metadata and working-tree paths selected by the user."
+    },
+    {
+      "id": "process.exec",
+      "scope": "git",
+      "allow": ["git"],
+      "reason": "Run trusted Git commands through the platform capability broker."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "git_status",
+        "title": "Git Status",
+        "category": "git",
+        "capabilities": ["fs.read", "process.exec"]
+      },
+      {
+        "id": "git_open_remote_provider",
+        "title": "Open Git Remote Provider",
+        "category": "git"
+      }
+    ],
+    "menus": [
+      {
+        "permissionId": "perm-integrations-git",
+        "code": "integrations:git",
+        "title": "Git",
+        "path": "/integrations/git",
+        "component": "/integrations/git/index",
+        "icon": "lucide:git-branch",
+        "sortOrder": 310,
+        "ordinaryUser": true
+      }
+    ],
+    "views": [
+      {
+        "id": "git-suite.panel",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/integrations/git"
+      }
+    ],
+    "extensionPoints": [
+      {
+        "id": "git-suite.remoteProvider",
+        "title": "Git Remote Provider",
+        "contract": "contracts/git.remote-provider.v1.json",
+        "multiplicity": "many",
+        "activation": "withParent",
+        "allowedContributionKinds": ["command", "view", "resource"]
+      },
+      {
+        "id": "git-suite.commitPolicy",
+        "title": "Git Commit Policy",
+        "contract": "contracts/git.commit-policy.v1.json",
+        "multiplicity": "many",
+        "activation": "onCommand:git_status",
+        "allowedContributionKinds": ["command", "policy"]
+      }
+    ]
+  },
+  "events": {
+    "publishes": ["git-suite.repository.changed"],
+    "subscribes": []
+  },
+  "expectations": [
+    "All Git operations must use platform capabilities rather than direct process execution.",
+    "Remote provider children must remain independently auditable through parentChain."
+  ],
+  "childPolicy": {
+    "allowThirdPartyChildren": true,
+    "capabilityMode": "intersection",
+    "eventNamespace": "git-suite/*",
+    "requiresPlatformApprovalForNewCapabilities": true,
+    "allowedChildCapabilities": ["network.fetch", "browser.openUrl"]
+  },
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "src/index.ts", "tests/smoke.test.ts"],
+    "role": "parent-plugin",
+    "primaryOutput": "extension-points",
+    "repairStrategy": "formula-first"
+  }
+}

@@ -18,6 +18,10 @@
       "types": "./src/echarts/index.ts",
       "default": "./src/echarts/index.ts"
     },
+    "./view-renderer": {
+      "types": "./src/view-renderer/index.ts",
+      "default": "./src/view-renderer/index.ts"
+    },
     "./vxe-table": {
       "types": "./src/vxe-table/index.ts",
       "default": "./src/vxe-table/index.ts"

@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/plugin-publish-gate.v1.schema.json",
+  "title": "AIO Plugin Publish Gate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "pluginId",
+    "runId",
+    "status",
+    "checks",
+    "contentHash",
+    "verification",
+    "lock",
+    "signature",
+    "audit",
+    "remoteRegistryProtocolPath",
+    "writtenFiles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "plugin-publish-gate/v1"
+    },
+    "pluginId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["failed", "passed", "warning"]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/check"
+      }
+    },
+    "contentHash": {
+      "type": "string",
+      "minLength": 32
+    },
+    "verification": {
+      "type": "object"
+    },
+    "lock": {
+      "$ref": "#/$defs/lock"
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    },
+    "audit": {
+      "$ref": "#/$defs/audit"
+    },
+    "remoteRegistryProtocolPath": {
+      "type": "string",
+      "minLength": 1
+    },
+    "writtenFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "status", "detail"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": ["failed", "passed", "warning"]
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contentHash",
+        "enabled",
+        "id",
+        "lockedAt",
+        "registryPath",
+        "schemaVersion",
+        "signaturePath",
+        "sourcePath",
+        "updatedAt",
+        "version"
+      ],
+      "properties": {
+        "contentHash": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lockedAt": {
+          "type": "integer"
+        },
+        "registryPath": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "signaturePath": {
+          "type": "string"
+        },
+        "sourcePath": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "signature": {
+      "$ref": "plugin-signature-placeholder.v1.schema.json"
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "id", "status", "timestamp"],
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "contentHash": {
+          "type": ["null", "string"]
+        },
+        "detail": {
+          "type": ["null", "string"]
+        },
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": ["null", "string"]
+        },
+        "status": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}
