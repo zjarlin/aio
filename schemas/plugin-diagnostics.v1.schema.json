@@ -59,6 +59,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "domSnapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/domSnapshot"
+          }
         }
       }
     },
@@ -93,6 +99,24 @@
           "enum": ["macos", "windows", "linux", "web", "remote"]
         },
         "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "domSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "html"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "html": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
           "type": "string"
         }
       }

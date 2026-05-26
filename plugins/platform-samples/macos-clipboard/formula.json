@@ -4,7 +4,8 @@
   "kind": "plugin",
   "displayName": "macOS Clipboard Sample",
   "version": "1.0.0",
-  "intent": "Demonstrate a macOS-only plugin that uses the brokered clipboard.write capability.",
+  "trustLevel": "trusted-provider",
+  "intent": "Demonstrate a macOS-only trusted capability plugin that registers a clipboard.write provider.",
   "entry": {
     "node": "./src/index.ts"
   },
@@ -39,6 +40,19 @@
         "schema": "summary-list",
         "path": "/platform-samples/macos-clipboard",
         "when": "platform == 'macos'"
+      }
+    ],
+    "capabilityProviders": [
+      {
+        "id": "platform.macos-clipboard.native",
+        "title": "macOS Clipboard Native Provider",
+        "capability": "clipboard.write",
+        "kind": "native",
+        "platforms": ["macos"],
+        "trustLevel": "trusted-provider",
+        "entry": "./src/index.ts#macosClipboardProvider",
+        "fallback": "web:navigator.clipboard",
+        "when": "platform == 'macos' && capability('clipboard.write')"
       }
     ]
   },

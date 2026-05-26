@@ -4,10 +4,11 @@ use sqlx::SqlitePool;
 use tauri::{AppHandle, Manager};
 
 use crate::{
+    app_runtime::{AppRuntime, AppRuntimeStartInput},
     capability_broker::CapabilityBroker,
     db,
     error::AppResult,
-    event_bus::{EventBus, EventBusPublishInput},
+    event_bus::EventBus,
     extension_host::ExtensionHostRuntime,
     permission_core::PermissionCore,
 };
@@ -15,6 +16,7 @@ use crate::{
 #[derive(Clone)]
 pub struct AppState {
     pub data_dir: PathBuf,
+    pub app_runtime: AppRuntime,
     pub capability_broker: CapabilityBroker,
     pub event_bus: EventBus,
     pub extension_host: ExtensionHostRuntime,
@@ -39,19 +41,20 @@ impl AppState {
         }
 
         let event_bus = EventBus::default();
-        event_bus.publish(EventBusPublishInput {
-            event_type: "platform.started".to_string(),
-            payload: serde_json::json!({
-                "dataDir": data_dir.to_string_lossy(),
-            }),
-            source: "platform.runtime".to_string(),
-            target: None,
-            parent_trace_id: None,
-            permissions: None,
+        let app_runtime = AppRuntime::new(data_dir.clone());
+        let runtime_start = app_runtime.start(AppRuntimeStartInput {
+            workspace: std::env::current_dir()
+                .ok()
+                .map(|path| path.to_string_lossy().into_owned()),
+            session_id: None,
+            mode: Some("desktop".to_string()),
+            reason: Some("app state initialized".to_string()),
         })?;
+        event_bus.publish(runtime_start.event_input())?;
 
         Ok(Self {
             data_dir,
+            app_runtime,
             capability_broker: CapabilityBroker::default(),
             event_bus,
             extension_host: ExtensionHostRuntime::default(),

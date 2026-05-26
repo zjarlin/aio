@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/runtime/app-runtime.v1.schema.json",
+  "title": "AIO App Runtime Snapshot v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "mode",
+    "dataDir",
+    "platformId",
+    "reloadCount",
+    "updatedAt",
+    "lifecycle"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "app-runtime/v1"
+    },
+    "status": {
+      "enum": ["initialized", "running", "stopped", "unavailable"]
+    },
+    "workspace": {
+      "type": ["string", "null"]
+    },
+    "sessionId": {
+      "type": ["string", "null"]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "dataDir": {
+      "type": "string"
+    },
+    "platformId": {
+      "enum": ["macos", "windows", "linux", "web", "remote"]
+    },
+    "reloadCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "startedAt": {
+      "type": ["integer", "null"]
+    },
+    "stoppedAt": {
+      "type": ["integer", "null"]
+    },
+    "updatedAt": {
+      "type": "integer"
+    },
+    "lifecycle": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lifecycleRecord"
+      }
+    }
+  },
+  "$defs": {
+    "lifecycleRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "status",
+        "mode",
+        "dataDir",
+        "platformId",
+        "reloadCount",
+        "reason",
+        "timestamp"
+      ],
+      "properties": {
+        "action": {
+          "enum": ["start", "stop", "reload", "workspace", "session"]
+        },
+        "status": {
+          "enum": ["initialized", "running", "stopped", "unavailable"]
+        },
+        "workspace": {
+          "type": ["string", "null"]
+        },
+        "sessionId": {
+          "type": ["string", "null"]
+        },
+        "mode": {
+          "type": "string"
+        },
+        "dataDir": {
+          "type": "string"
+        },
+        "platformId": {
+          "enum": ["macos", "windows", "linux", "web", "remote"]
+        },
+        "reloadCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

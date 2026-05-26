@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/events/platform-runtime-lifecycle.v1.schema.json",
+  "title": "AIO Platform Runtime Lifecycle Event v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["action", "status", "dataDir", "platformId"],
+  "properties": {
+    "action": {
+      "enum": ["start", "stop", "reload", "workspace", "session"]
+    },
+    "status": {
+      "enum": ["initialized", "running", "stopped", "unavailable"]
+    },
+    "workspace": {
+      "type": ["string", "null"]
+    },
+    "sessionId": {
+      "type": ["string", "null"]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "dataDir": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platformId": {
+      "enum": ["macos", "windows", "linux", "web", "remote"]
+    },
+    "reloadCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}

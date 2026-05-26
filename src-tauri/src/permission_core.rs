@@ -520,7 +520,7 @@ fn scope_allowed(declared_scope: &str, requested_scope: &str) -> bool {
         || requested_scope.starts_with(&format!("{}/", declared_scope.trim_end_matches('/')))
 }
 
-fn current_platform() -> &'static str {
+pub fn current_platform() -> &'static str {
     #[cfg(target_os = "macos")]
     {
         "macos"

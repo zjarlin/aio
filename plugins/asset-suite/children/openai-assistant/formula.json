@@ -40,6 +40,17 @@
         "capabilities": ["network.fetch"]
       }
     ],
+    "tools": [
+      {
+        "id": "openai_assistant_ask",
+        "title": "Ask Assistant With Page Context",
+        "category": "openai-assistant",
+        "input": "schemas/tools/openai-assistant.input.v1.json",
+        "output": "schemas/tools/openai-assistant.output.v1.json",
+        "capabilities": ["page.context.read", "network.fetch"],
+        "when": "capability('network.fetch')"
+      }
+    ],
     "menus": [
       {
         "permissionId": "perm-assets-openai-assistant",

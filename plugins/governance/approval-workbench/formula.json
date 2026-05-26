@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "governance.approval-workbench",
+  "kind": "child-plugin",
+  "displayName": "Approval Workbench",
+  "version": "0.1.0",
+  "intent": "Provide a Permission Core approval UI sample that lists pending capability requests and lets an authorized user approve or deny them.",
+  "parent": {
+    "pluginId": "platform.permission-core",
+    "mount": "permission.approvalUI",
+    "compatibleParentRange": ""
+  },
+  "activation": ["onRoute:/system/plugins/permission-approvals"],
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "permission.approval",
+      "scope": "runtime-permission-approval",
+      "reason": "List and decide runtime capability approval requests."
+    },
+    {
+      "id": "permission.consent",
+      "scope": "runtime-permission-consent",
+      "reason": "Persist consent when an approval request is accepted."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "governance.approval-workbench.list",
+        "title": "List Approval Workbench Requests",
+        "category": "permission",
+        "capabilities": ["permission.approval"],
+        "when": "capability('permission.approval')"
+      },
+      {
+        "id": "governance.approval-workbench.approve",
+        "title": "Approve Workbench Permission Request",
+        "category": "permission",
+        "capabilities": ["permission.approval", "permission.consent"],
+        "when": "capability('permission.approval') && capability('permission.consent')"
+      },
+      {
+        "id": "governance.approval-workbench.deny",
+        "title": "Deny Workbench Permission Request",
+        "category": "permission",
+        "capabilities": ["permission.approval"],
+        "when": "capability('permission.approval')"
+      }
+    ],
+    "views": [
+      {
+        "id": "governance.approval-workbench.panel",
+        "slot": "main",
+        "schema": "table",
+        "path": "/system/plugins/permission-approvals",
+        "contract": "contracts/permission.approval-ui.v1.json",
+        "when": "capability('permission.approval')"
+      }
+    ]
+  },
+  "events": {
+    "publishes": [
+      {
+        "event": "permission.approval.approved",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      },
+      {
+        "event": "permission.approval.denied",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ],
+    "subscribes": [
+      {
+        "event": "permission.requested",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
+  },
+  "expectations": [
+    "The plugin must remain mounted under platform.permission-core permission.approvalUI.",
+    "Approving a request must persist Permission Consent instead of bypassing Permission Core.",
+    "Denying a request must leave the target capability denied until a later explicit approval or manual consent."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "README.md"],
+    "role": "approval-ui-plugin",
+    "primaryOutput": "permission-approval-ui",
+    "repairStrategy": "approval-contract-first"
+  }
+}

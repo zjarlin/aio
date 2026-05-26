@@ -168,6 +168,16 @@
         "category": "registry"
       },
       {
+        "id": "plugin_child_capability_approve",
+        "title": "Approve Child Plugin Capability",
+        "category": "registry"
+      },
+      {
+        "id": "plugin_child_capability_revoke",
+        "title": "Revoke Child Plugin Capability",
+        "category": "registry"
+      },
+      {
         "id": "plugin_registry_install",
         "title": "Install Plugin",
         "category": "registry"

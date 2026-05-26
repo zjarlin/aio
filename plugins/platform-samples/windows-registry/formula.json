@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "platform.windows-registry",
+  "kind": "plugin",
+  "displayName": "Windows Registry Sample",
+  "version": "0.1.0",
+  "trustLevel": "trusted-provider",
+  "intent": "Demonstrate a Windows-only Registry capability provider descriptor while keeping direct registry mutation disabled by default.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onCommand:windows_registry_preview"],
+  "platforms": {
+    "supported": ["windows"],
+    "degraded": ["web", "remote"],
+    "unsupported": ["macos", "linux"],
+    "reason": "Windows Registry access is host-specific, high-risk and unavailable outside Windows providers."
+  },
+  "capabilities": [
+    {
+      "id": "windows.registry.read",
+      "scope": "HKCU\\Software",
+      "platforms": ["windows"],
+      "optional": true,
+      "reason": "Preview read-only Registry inspection through a future trusted provider."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "windows_registry_preview",
+        "title": "Preview Windows Registry Request",
+        "category": "platform-samples",
+        "capabilities": ["windows.registry.read"],
+        "when": "platform == 'windows' && capability('windows.registry.read')"
+      }
+    ],
+    "views": [
+      {
+        "id": "platform.windows-registry.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/platform-samples/windows-registry",
+        "when": "platform == 'windows'"
+      }
+    ],
+    "capabilityProviders": [
+      {
+        "id": "platform.windows-registry.provider",
+        "title": "Windows Registry Guarded Provider",
+        "capability": "windows.registry.read",
+        "kind": "native",
+        "platforms": ["windows"],
+        "trustLevel": "trusted-provider",
+        "entry": "./src/index.ts#windowsRegistryProvider",
+        "fallback": "unsupported",
+        "when": "platform == 'windows' && capability('windows.registry.read')"
+      }
+    ]
+  },
+  "events": {
+    "publishes": [
+      {
+        "event": "platform.windows-registry.requested",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
+  },
+  "expectations": [
+    "The sample must prove Windows-only platform matrix handling for Registry capabilities.",
+    "Registry writes are intentionally not exposed in the MVP sample.",
+    "Non-Windows shells must report unsupported or degraded metadata instead of attempting registry access."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "README.md", "src/index.ts"],
+    "role": "windows-registry-sample",
+    "primaryOutput": "platform-diagnostics",
+    "repairStrategy": "formula-first"
+  }
+}

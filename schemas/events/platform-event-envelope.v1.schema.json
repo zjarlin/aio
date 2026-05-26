@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/events/platform-event-envelope.v1.schema.json",
+  "title": "AIO Platform Event Envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "schema", "kind", "source", "payload", "traceId", "timestamp"],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema": {
+      "type": "string",
+      "pattern": "^schemas/events/.+\\.v1\\.schema\\.json$"
+    },
+    "kind": {
+      "enum": ["publish", "request", "reply", "stream", "error"]
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": ["string", "null"]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "parentTraceId": {
+      "type": ["string", "null"]
+    },
+    "correlationId": {
+      "type": ["string", "null"]
+    },
+    "sequence": {
+      "type": ["integer", "null"]
+    },
+    "done": {
+      "type": "boolean"
+    },
+    "timestamp": {
+      "type": "integer"
+    },
+    "permissions": true
+  }
+}

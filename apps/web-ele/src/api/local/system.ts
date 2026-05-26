@@ -1,15 +1,27 @@
 import type {
+  AppRuntimeLifecycleRecord,
+  AppRuntimeReloadInput,
+  AppRuntimeSessionInput,
+  AppRuntimeSnapshot,
+  AppRuntimeStartInput,
+  AppRuntimeStopInput,
+  AppRuntimeWorkspaceInput,
   BrowserOpenUrlInput,
   CapabilityAuditRecord,
   CapabilityInvokeInput,
+  ChildCapabilityApprovalInput,
+  ChildCapabilityApprovalRecord,
   EventBusPublishInput,
   EventBusSnapshotRequest,
+  EventBusStreamInput,
   ExtensionHostPluginRecord,
   ExtensionHostSourceInput,
   FsReadInput,
   FsReadResult,
   FsWriteInput,
   FsWriteResult,
+  PermissionApprovalDecisionInput,
+  PermissionApprovalRecord,
   PermissionConsentGrantInput,
   PermissionConsentRecord,
   PermissionConsentRevokeInput,
@@ -615,6 +627,24 @@ export async function pluginRegistryLocalStateApi() {
   );
 }
 
+export async function pluginChildCapabilityApproveApi(
+  input: ChildCapabilityApprovalInput,
+) {
+  return await callAuthedCommand<ChildCapabilityApprovalRecord>(
+    'plugin_child_capability_approve',
+    { input },
+  );
+}
+
+export async function pluginChildCapabilityRevokeApi(
+  input: ChildCapabilityApprovalInput,
+) {
+  return await callAuthedCommand<ChildCapabilityApprovalRecord>(
+    'plugin_child_capability_revoke',
+    { input },
+  );
+}
+
 export async function pluginRegistryInstallApi(sourcePath: string) {
   return await callAuthedCommand<PluginRegistryInstalledRecord>(
     'plugin_registry_install',
@@ -649,8 +679,63 @@ export async function pluginRegistryRollbackApi(
   );
 }
 
+export async function appRuntimeSnapshotApi() {
+  return await callAuthedCommand<AppRuntimeSnapshot>('app_runtime_snapshot');
+}
+
+export async function appRuntimeStartApi(input: AppRuntimeStartInput) {
+  return await callAuthedCommand<AppRuntimeLifecycleRecord>(
+    'app_runtime_start',
+    {
+      input,
+    },
+  );
+}
+
+export async function appRuntimeStopApi(input: AppRuntimeStopInput) {
+  return await callAuthedCommand<AppRuntimeLifecycleRecord>(
+    'app_runtime_stop',
+    {
+      input,
+    },
+  );
+}
+
+export async function appRuntimeReloadApi(input: AppRuntimeReloadInput) {
+  return await callAuthedCommand<AppRuntimeLifecycleRecord>(
+    'app_runtime_reload',
+    {
+      input,
+    },
+  );
+}
+
+export async function appRuntimeWorkspaceApi(input: AppRuntimeWorkspaceInput) {
+  return await callAuthedCommand<AppRuntimeLifecycleRecord>(
+    'app_runtime_workspace',
+    {
+      input,
+    },
+  );
+}
+
+export async function appRuntimeSessionApi(input: AppRuntimeSessionInput) {
+  return await callAuthedCommand<AppRuntimeLifecycleRecord>(
+    'app_runtime_session',
+    {
+      input,
+    },
+  );
+}
+
 export async function eventBusPublishApi(input: EventBusPublishInput) {
   return await callAuthedCommand<PlatformEventRecord>('event_bus_publish', {
+    input,
+  });
+}
+
+export async function eventBusStreamApi(input: EventBusStreamInput) {
+  return await callAuthedCommand<PlatformEventRecord>('event_bus_stream', {
     input,
   });
 }
@@ -734,6 +819,30 @@ export async function permissionConsentRevokeApi(
 ) {
   return await callAuthedCommand<PermissionConsentRecord>(
     'permission_consent_revoke',
+    { input },
+  );
+}
+
+export async function permissionApprovalListApi() {
+  return await callAuthedCommand<PermissionApprovalRecord[]>(
+    'permission_approval_list',
+  );
+}
+
+export async function permissionApprovalApproveApi(
+  input: PermissionApprovalDecisionInput,
+) {
+  return await callAuthedCommand<PermissionApprovalRecord>(
+    'permission_approval_approve',
+    { input },
+  );
+}
+
+export async function permissionApprovalDenyApi(
+  input: PermissionApprovalDecisionInput,
+) {
+  return await callAuthedCommand<PermissionApprovalRecord>(
+    'permission_approval_deny',
     { input },
   );
 }

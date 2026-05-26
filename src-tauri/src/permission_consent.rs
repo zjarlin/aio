@@ -313,6 +313,16 @@ fn system_grants() -> Vec<SystemGrant> {
             capability: "permission.audit",
             scope: "*",
         },
+        SystemGrant {
+            source_id: "platform.permission-core",
+            capability: "permission.consent",
+            scope: "*",
+        },
+        SystemGrant {
+            source_id: "platform.permission-core",
+            capability: "permission.approval",
+            scope: "*",
+        },
     ]
 }
 

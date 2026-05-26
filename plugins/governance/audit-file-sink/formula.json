@@ -58,8 +58,22 @@
     ]
   },
   "events": {
-    "publishes": ["permission-core.audit-file-sink.appended"],
-    "subscribes": ["permission.granted", "permission.denied"]
+    "publishes": [
+      {
+        "event": "permission-core.audit-file-sink.appended",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ],
+    "subscribes": [
+      {
+        "event": "permission.granted",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      },
+      {
+        "event": "permission.denied",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
   },
   "expectations": [
     "The plugin must remain mounted under platform.permission-core permission.auditSink.",

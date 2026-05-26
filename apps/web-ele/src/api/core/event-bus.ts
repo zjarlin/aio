@@ -1,1 +1,5 @@
-export { eventBusPublishApi, eventBusSnapshotApi } from '../local/system';
+export {
+  eventBusPublishApi,
+  eventBusSnapshotApi,
+  eventBusStreamApi,
+} from '../local/system';

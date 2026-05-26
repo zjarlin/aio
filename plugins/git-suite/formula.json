@@ -41,6 +41,17 @@
         "category": "git"
       }
     ],
+    "tools": [
+      {
+        "id": "git_summarize_changes",
+        "title": "Summarize Git Changes",
+        "category": "git",
+        "input": "schemas/tools/git-summary.input.v1.json",
+        "output": "schemas/tools/git-summary.output.v1.json",
+        "capabilities": ["fs.read", "process.exec"],
+        "when": "capability('fs.read') && capability('process.exec')"
+      }
+    ],
     "menus": [
       {
         "permissionId": "perm-integrations-git",
@@ -51,6 +62,22 @@
         "icon": "lucide:git-branch",
         "sortOrder": 310,
         "ordinaryUser": true
+      }
+    ],
+    "settings": [
+      {
+        "id": "git-suite.settings",
+        "title": "Git Suite Settings",
+        "schema": "schemas/settings/git-suite.settings.v1.json"
+      }
+    ],
+    "routes": [
+      {
+        "id": "git-suite.route",
+        "path": "/integrations/git",
+        "component": "/integrations/git/index",
+        "title": "Git",
+        "slot": "main"
       }
     ],
     "views": [
@@ -81,7 +108,12 @@
     ]
   },
   "events": {
-    "publishes": ["git-suite.repository.changed"],
+    "publishes": [
+      {
+        "event": "git-suite.repository.changed",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ],
     "subscribes": []
   },
   "expectations": [

@@ -31,6 +31,9 @@
     "managedBy": {
       "type": "string"
     },
+    "trustLevel": {
+      "$ref": "#/$defs/trustLevel"
+    },
     "platforms": {
       "$ref": "#/$defs/platformMatrix"
     },
@@ -64,6 +67,9 @@
     "contributes": {
       "$ref": "#/$defs/contributes"
     },
+    "events": {
+      "$ref": "#/$defs/events"
+    },
     "ai": {
       "$ref": "#/$defs/ai"
     }
@@ -72,6 +78,12 @@
     "id": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "trustLevel": {
+      "enum": ["community", "verified", "trusted-provider", "platform"]
+    },
+    "providerKind": {
+      "enum": ["native", "web", "remote", "service"]
     },
     "platformId": {
       "enum": ["macos", "windows", "linux", "web", "remote"]
@@ -205,6 +217,18 @@
             "$ref": "#/$defs/resource"
           }
         },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/route"
+          }
+        },
+        "capabilityProviders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/capabilityProvider"
+          }
+        },
         "policies": {
           "type": "array",
           "items": {
@@ -218,6 +242,48 @@
           }
         }
       }
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "publishes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/eventDeclaration"
+          }
+        },
+        "subscribes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/eventDeclaration"
+          }
+        }
+      }
+    },
+    "eventDeclaration": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event", "schema"],
+          "properties": {
+            "event": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^schemas/events/.+\\.v1\\.schema\\.json$"
+            }
+          }
+        }
+      ]
     },
     "command": {
       "type": "object",
@@ -379,6 +445,70 @@
           "type": "string"
         },
         "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilityProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "capability", "trustLevel"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capability": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/providerKind"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "trustLevel": {
+          "$ref": "#/$defs/trustLevel"
+        },
+        "entry": {
+          "type": "string"
+        },
+        "fallback": {
+          "type": "string"
+        },
+        "when": {
           "type": "string"
         }
       }

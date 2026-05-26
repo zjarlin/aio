@@ -78,8 +78,18 @@
     ]
   },
   "events": {
-    "publishes": ["git-suite.github-provider.pull-requests.changed"],
-    "subscribes": ["git-suite.repository.changed"]
+    "publishes": [
+      {
+        "event": "git-suite.github-provider.pull-requests.changed",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ],
+    "subscribes": [
+      {
+        "event": "git-suite.repository.changed",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
   },
   "expectations": [
     "GitHub API calls must not expose tokens to the frontend.",

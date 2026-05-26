@@ -21,6 +21,18 @@ pub struct ExtensionHostSourceInput {
     pub source_path: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionHostApiSnapshot {
+    pub action: String,
+    pub entry_path: String,
+    pub host_kind: String,
+    pub plugin_id: String,
+    pub schema_version: String,
+    pub source_path: String,
+    pub supported_capabilities: Vec<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtensionHostPluginRecord {
@@ -221,6 +233,36 @@ impl ExtensionHostRuntime {
     }
 }
 
+fn lifecycle_api_context(
+    record: &ExtensionHostPluginRecord,
+    action: &str,
+) -> ExtensionHostApiSnapshot {
+    ExtensionHostApiSnapshot {
+        action: action.to_string(),
+        entry_path: record.entry_path.clone(),
+        host_kind: record.host_kind.clone(),
+        plugin_id: record.plugin_id.clone(),
+        schema_version: "extension-host-api/v1".to_string(),
+        source_path: record.source_path.clone(),
+        supported_capabilities: vec![
+            "host.describe".to_string(),
+            "host.snapshot".to_string(),
+            "capabilities.invoke".to_string(),
+            "events.publish".to_string(),
+            "events.request".to_string(),
+            "events.stream".to_string(),
+        ],
+    }
+}
+
+fn lifecycle_api_context_json(
+    record: &ExtensionHostPluginRecord,
+    action: &str,
+) -> AppResult<String> {
+    serde_json::to_string(&lifecycle_api_context(record, action))
+        .map_err(|source| AppError::Json { source })
+}
+
 fn normalize_source_path(path: &Path) -> AppResult<PathBuf> {
     if !path.is_dir() {
         return Err(AppError::BadRequest(format!(
@@ -292,10 +334,11 @@ fn run_lifecycle_hook(record: &mut ExtensionHostPluginRecord, action: &str) -> A
         return Ok(());
     }
 
+    let api_context_json = lifecycle_api_context_json(record, action)?;
     let script = if is_worker_host(&record.host_kind) {
         worker_lifecycle_runner()
     } else if record.host_kind == "remote" {
-        return run_remote_lifecycle_hook(record, action);
+        return run_remote_lifecycle_hook(record, action, &api_context_json);
     } else {
         node_lifecycle_runner()
     };
@@ -307,6 +350,7 @@ fn run_lifecycle_hook(record: &mut ExtensionHostPluginRecord, action: &str) -> A
         .arg(action)
         .arg(&record.entry_path)
         .arg(&record.plugin_id)
+        .arg(&api_context_json)
         .current_dir(&record.source_path)
         .output()
         .map_err(|source| {
@@ -342,12 +386,15 @@ fn is_worker_host(host_kind: &str) -> bool {
 fn run_remote_lifecycle_hook(
     record: &mut ExtensionHostPluginRecord,
     action: &str,
+    api_context_json: &str,
 ) -> AppResult<()> {
     let url = remote_lifecycle_url(&record.entry_path, action)?;
+    let api_context: serde_json::Value = serde_json::from_str(api_context_json)?;
     let response = reqwest::blocking::Client::new()
         .post(&url)
         .json(&json!({
             "action": action,
+            "apiContext": api_context,
             "pluginId": record.plugin_id,
             "sourcePath": record.source_path,
         }))
@@ -399,12 +446,131 @@ fn node_lifecycle_runner() -> &'static str {
     r#"
 import { readFile } from 'node:fs/promises';
 
-const [, action, entryPath, pluginId] = process.argv;
+const [, action, entryPath, pluginId, apiContextJson] = process.argv;
+const apiContext = JSON.parse(apiContextJson);
 
 function toRunnableModule(source) {
-  return source
-    .replace(/export\s+interface\s+\w+\s*\{[\s\S]*?\}\s*/g, '')
+  return stripExportedInterfaces(source)
     .replace(/\(\s*context\s*:\s*[A-Za-z0-9_<>,\s]+\s*=\s*\{\s*\}\s*\)/g, '(context = {})');
+}
+
+function stripExportedInterfaces(source) {
+  let output = '';
+  let index = 0;
+  const interfacePattern = /export\s+interface\s+\w+\s*\{/g;
+  let match;
+  while ((match = interfacePattern.exec(source)) !== null) {
+    output += source.slice(index, match.index);
+    let cursor = interfacePattern.lastIndex;
+    let depth = 1;
+    while (cursor < source.length && depth > 0) {
+      const char = source[cursor];
+      if (char === '{') {
+        depth += 1;
+      } else if (char === '}') {
+        depth -= 1;
+      }
+      cursor += 1;
+    }
+    while (cursor < source.length && /\s/.test(source[cursor])) {
+      cursor += 1;
+    }
+    index = cursor;
+    interfacePattern.lastIndex = cursor;
+  }
+  output += source.slice(index);
+  return output;
+}
+
+function createPluginApi(apiContext, logs) {
+  const schemaVersion = 'extension-host-api/v1';
+
+  function record(kind, payload) {
+    logs.push(`api.${kind}: ${JSON.stringify(payload)}`);
+  }
+
+  function snapshot() {
+    return {
+      action: apiContext.action,
+      entryPath: apiContext.entryPath,
+      hostKind: apiContext.hostKind,
+      pluginId: apiContext.pluginId,
+      schemaVersion,
+      sourcePath: apiContext.sourcePath,
+      supportedCapabilities: [...apiContext.supportedCapabilities],
+    };
+  }
+
+  return {
+    schemaVersion,
+    host: {
+      describe() {
+        const value = snapshot();
+        record('host.describe', value);
+        return value;
+      },
+      snapshot() {
+        const value = snapshot();
+        record('host.snapshot', value);
+        return value;
+      },
+    },
+    capabilities: {
+      invoke(capability, input = null) {
+        const value = {
+          capability,
+          hostKind: apiContext.hostKind,
+          input,
+          pluginId: apiContext.pluginId,
+          reason: 'extension host lifecycle runner only records capability requests',
+          schemaVersion,
+          status: 'unsupported',
+        };
+        record('capabilities.invoke', value);
+        return value;
+      },
+    },
+    events: {
+      publish(eventType, payload = null) {
+        const value = {
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          status: 'recorded',
+        };
+        record('events.publish', value);
+        return value;
+      },
+      request(eventType, payload = null) {
+        const value = {
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          status: 'recorded',
+        };
+        record('events.request', value);
+        return value;
+      },
+      stream(eventType, payload = null, sequence = null, done = false) {
+        const value = {
+          done,
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          sequence,
+          status: 'recorded',
+        };
+        record('events.stream', value);
+        return value;
+      },
+    },
+  };
 }
 
 const source = await readFile(entryPath, 'utf8');
@@ -413,6 +579,8 @@ const encoded = Buffer.from(transformed, 'utf8').toString('base64');
 const mod = await import(`data:text/javascript;base64,${encoded}`);
 const logs = [];
 const context = {
+  api: createPluginApi(apiContext, logs),
+  hostKind: apiContext.hostKind,
   pluginId,
   log(message) {
     logs.push(String(message));
@@ -432,7 +600,7 @@ fn worker_lifecycle_runner() -> &'static str {
     r#"
 import { Worker } from 'node:worker_threads';
 
-const [, action, entryPath, pluginId] = process.argv;
+const [, action, entryPath, pluginId, apiContextJson] = process.argv;
 
 function runWorker(task) {
   return new Promise((resolve, reject) => {
@@ -441,21 +609,141 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { readFile } from 'node:fs/promises';
 
 function toRunnableModule(source) {
-  return source
-    .replace(/export\\s+interface\\s+\\w+\\s*\\{[\\s\\S]*?\\}\\s*/g, '')
+  return stripExportedInterfaces(source)
     .replace(/\\(\\s*context\\s*:\\s*[A-Za-z0-9_<>,\\s]+\\s*=\\s*\\{\\s*\\}\\s*\\)/g, '(context = {})');
 }
 
+function stripExportedInterfaces(source) {
+  let output = '';
+  let index = 0;
+  const interfacePattern = /export\\s+interface\\s+\\w+\\s*\\{/g;
+  let match;
+  while ((match = interfacePattern.exec(source)) !== null) {
+    output += source.slice(index, match.index);
+    let cursor = interfacePattern.lastIndex;
+    let depth = 1;
+    while (cursor < source.length && depth > 0) {
+      const char = source[cursor];
+      if (char === '{') {
+        depth += 1;
+      } else if (char === '}') {
+        depth -= 1;
+      }
+      cursor += 1;
+    }
+    while (cursor < source.length && /\\s/.test(source[cursor])) {
+      cursor += 1;
+    }
+    index = cursor;
+    interfacePattern.lastIndex = cursor;
+  }
+  output += source.slice(index);
+  return output;
+}
+
+function createPluginApi(apiContext, logs) {
+  const schemaVersion = 'extension-host-api/v1';
+
+  function record(kind, payload) {
+    logs.push(\`api.\${kind}: \${JSON.stringify(payload)}\`);
+  }
+
+  function snapshot() {
+    return {
+      action: apiContext.action,
+      entryPath: apiContext.entryPath,
+      hostKind: apiContext.hostKind,
+      pluginId: apiContext.pluginId,
+      schemaVersion,
+      sourcePath: apiContext.sourcePath,
+      supportedCapabilities: [...apiContext.supportedCapabilities],
+    };
+  }
+
+  return {
+    schemaVersion,
+    host: {
+      describe() {
+        const value = snapshot();
+        record('host.describe', value);
+        return value;
+      },
+      snapshot() {
+        const value = snapshot();
+        record('host.snapshot', value);
+        return value;
+      },
+    },
+    capabilities: {
+      invoke(capability, input = null) {
+        const value = {
+          capability,
+          hostKind: apiContext.hostKind,
+          input,
+          pluginId: apiContext.pluginId,
+          reason: 'extension host lifecycle runner only records capability requests',
+          schemaVersion,
+          status: 'unsupported',
+        };
+        record('capabilities.invoke', value);
+        return value;
+      },
+    },
+    events: {
+      publish(eventType, payload = null) {
+        const value = {
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          status: 'recorded',
+        };
+        record('events.publish', value);
+        return value;
+      },
+      request(eventType, payload = null) {
+        const value = {
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          status: 'recorded',
+        };
+        record('events.request', value);
+        return value;
+      },
+      stream(eventType, payload = null, sequence = null, done = false) {
+        const value = {
+          done,
+          eventType,
+          hostKind: apiContext.hostKind,
+          payload,
+          pluginId: apiContext.pluginId,
+          schemaVersion,
+          sequence,
+          status: 'recorded',
+        };
+        record('events.stream', value);
+        return value;
+      },
+    },
+  };
+}
+
 try {
-  const { action, entryPath, pluginId } = workerData;
+  const { action, entryPath, pluginId, apiContextJson } = workerData;
+  const apiContext = JSON.parse(apiContextJson);
   const source = await readFile(entryPath, 'utf8');
   const transformed = entryPath.endsWith('.ts') ? toRunnableModule(source) : source;
   const encoded = Buffer.from(transformed, 'utf8').toString('base64');
   const mod = await import(\`data:text/javascript;base64,\${encoded}\`);
   const logs = [];
   const context = {
+    api: createPluginApi(apiContext, logs),
+    hostKind: apiContext.hostKind,
     pluginId,
-    hostKind: 'worker',
     log(message) {
       logs.push(String(message));
     }
@@ -489,7 +777,7 @@ try {
   });
 }
 
-const message = await runWorker({ action, entryPath, pluginId });
+  const message = await runWorker({ action, entryPath, pluginId, apiContextJson });
 if (message?.error) {
   throw new Error(message.error);
 }
@@ -555,6 +843,17 @@ mod tests {
             tempdir.path().join("src/index.ts"),
             r#"export interface PluginContext {
   log?: (message: string) => void;
+  api?: {
+    host: {
+      describe(): { hostKind: string; pluginId: string; schemaVersion: 'extension-host-api/v1' };
+    };
+    capabilities: {
+      invoke(capability: string, input?: unknown): { capability: string; status: string };
+    };
+    events: {
+      publish(eventType: string, payload?: unknown): { eventType: string; status: string };
+    };
+  };
 }
 
 export const pluginId = "workspace.generated-node";
@@ -563,6 +862,13 @@ export const commands = ["workspace.generated-node.run"];
 
 export async function activate(context: PluginContext = {}) {
   context.log?.(`${displayName} activated`);
+  context.api?.host.describe();
+  context.api?.capabilities.invoke('fs.read', {
+    path: '/tmp/generated-node',
+  });
+  context.api?.events.publish('plugin.generated-node.loaded', {
+    pluginId,
+  });
   return { pluginId, commands };
 }
 
@@ -598,6 +904,18 @@ export async function dispose(context: PluginContext = {}) {
             .logs
             .iter()
             .any(|log| log.contains("Generated Node activated")));
+        assert!(activated
+            .logs
+            .iter()
+            .any(|log| log.contains("api.host.describe")));
+        assert!(activated
+            .logs
+            .iter()
+            .any(|log| log.contains("api.capabilities.invoke")));
+        assert!(activated
+            .logs
+            .iter()
+            .any(|log| log.contains("api.events.publish")));
         let disposed = host.dispose(&loaded.plugin_id).expect("dispose");
         assert!(disposed
             .logs
@@ -613,6 +931,17 @@ export async function dispose(context: PluginContext = {}) {
             tempdir.path().join("src/worker.ts"),
             r#"export interface PluginContext {
   log?: (message: string) => void;
+  api?: {
+    host: {
+      describe(): { hostKind: string; pluginId: string; schemaVersion: 'extension-host-api/v1' };
+    };
+    capabilities: {
+      invoke(capability: string, input?: unknown): { capability: string; status: string };
+    };
+    events: {
+      publish(eventType: string, payload?: unknown): { eventType: string; status: string };
+    };
+  };
 }
 
 export const pluginId = "workspace.worker-demo";
@@ -620,6 +949,13 @@ export const displayName = "Worker Demo";
 
 export async function activate(context: PluginContext = {}) {
   context.log?.(`${displayName} activated`);
+  context.api?.host.describe();
+  context.api?.capabilities.invoke('db.sqlite.read', {
+    table: 'agent_preferences',
+  });
+  context.api?.events.publish('plugin.worker-demo.loaded', {
+    pluginId,
+  });
 }
 
 export async function deactivate(context: PluginContext = {}) {
@@ -654,6 +990,18 @@ export async function dispose(context: PluginContext = {}) {
             .logs
             .iter()
             .any(|log| log.contains("Worker Demo activated")));
+        assert!(records[1]
+            .logs
+            .iter()
+            .any(|log| log.contains("api.host.describe")));
+        assert!(records[1]
+            .logs
+            .iter()
+            .any(|log| log.contains("api.capabilities.invoke")));
+        assert!(records[1]
+            .logs
+            .iter()
+            .any(|log| log.contains("api.events.publish")));
         assert!(records[4]
             .logs
             .iter()
@@ -676,6 +1024,8 @@ export async function dispose(context: PluginContext = {}) {
                     .and_then(|line| line.split_whitespace().nth(1))
                     .unwrap_or_default()
                     .to_string();
+                assert!(request.contains(r#""apiContext""#));
+                assert!(request.contains(r#""schemaVersion":"extension-host-api/v1""#));
                 received_for_thread
                     .lock()
                     .expect("received")
@@ -784,14 +1134,36 @@ export async function dispose(context: PluginContext = {}) {
     fn read_http_request(stream: &mut TcpStream) -> String {
         let mut request = Vec::new();
         let mut buffer = [0_u8; 512];
+        let mut header_end = None;
         loop {
             let read = stream.read(&mut buffer).expect("read");
             if read == 0 {
                 break;
             }
             request.extend_from_slice(&buffer[..read]);
-            if request.windows(4).any(|window| window == b"\r\n\r\n") {
+            if let Some(index) = request.windows(4).position(|window| window == b"\r\n\r\n") {
+                header_end = Some(index);
                 break;
+            }
+        }
+        if let Some(header_end) = header_end {
+            let headers = String::from_utf8_lossy(&request[..header_end]);
+            let content_length = headers
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())
+                        .flatten()
+                })
+                .unwrap_or(0);
+            let body_start = header_end + 4;
+            while request.len().saturating_sub(body_start) < content_length {
+                let read = stream.read(&mut buffer).expect("read body");
+                if read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..read]);
             }
         }
         String::from_utf8_lossy(&request).into_owned()

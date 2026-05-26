@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
@@ -92,6 +92,30 @@ pub struct PluginRegistryVersionRecord {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ChildCapabilityApprovalRecord {
+    pub capability: String,
+    pub child_plugin_id: String,
+    pub created_at: i64,
+    pub parent_plugin_id: String,
+    pub reason: String,
+    pub revoked_at: Option<i64>,
+    pub revoked_reason: String,
+    pub status: String,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChildCapabilityApprovalInput {
+    pub capability: String,
+    pub child_plugin_id: String,
+    pub parent_plugin_id: String,
+    #[serde(default)]
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PluginRegistryRollbackInput {
     pub id: String,
     #[serde(default)]
@@ -110,6 +134,8 @@ pub struct PluginRegistryRollbackResult {
 #[serde(rename_all = "camelCase")]
 pub struct PluginRegistryLocalState {
     pub audits: Vec<RegistryAuditRecord>,
+    #[serde(default)]
+    pub child_capability_approvals: Vec<ChildCapabilityApprovalRecord>,
     #[serde(default)]
     pub history: Vec<PluginRegistryVersionRecord>,
     pub installed: Vec<InstalledPluginRecord>,
@@ -161,6 +187,10 @@ impl PluginRegistryStore {
         self.root.join("audit.jsonl")
     }
 
+    pub fn child_capability_approvals_path(&self) -> PathBuf {
+        self.root.join("child-capability-approvals.json")
+    }
+
     pub fn ensure_layout(&self) -> AppResult<()> {
         fs::create_dir_all(self.plugins_dir())?;
         fs::create_dir_all(self.history_dir())?;
@@ -203,6 +233,7 @@ impl PluginRegistryStore {
     pub fn state(&self) -> AppResult<PluginRegistryLocalState> {
         Ok(PluginRegistryLocalState {
             audits: self.load_audits()?,
+            child_capability_approvals: self.load_child_capability_approvals()?,
             history: self.load_history()?,
             installed: self.load_installed()?,
             locks: self.load_lock()?,
@@ -215,6 +246,102 @@ impl PluginRegistryStore {
             .into_iter()
             .map(|entry| (entry.id.clone(), entry.enabled))
             .collect())
+    }
+
+    pub fn load_child_capability_approvals(&self) -> AppResult<Vec<ChildCapabilityApprovalRecord>> {
+        read_json_list(&self.child_capability_approvals_path())
+    }
+
+    pub fn approve_child_capability(
+        &self,
+        input: ChildCapabilityApprovalInput,
+    ) -> AppResult<ChildCapabilityApprovalRecord> {
+        self.ensure_layout()?;
+        let parent_plugin_id = normalize_required(&input.parent_plugin_id, "parentPluginId")?;
+        let child_plugin_id = normalize_required(&input.child_plugin_id, "childPluginId")?;
+        let capability = normalize_required(&input.capability, "capability")?;
+        let now = now_millis();
+        let mut approvals = self.load_child_capability_approvals()?;
+        let record = ChildCapabilityApprovalRecord {
+            capability: capability.clone(),
+            child_plugin_id: child_plugin_id.clone(),
+            created_at: approvals
+                .iter()
+                .find(|approval| {
+                    approval.parent_plugin_id == parent_plugin_id
+                        && approval.child_plugin_id == child_plugin_id
+                        && approval.capability == capability
+                })
+                .map(|approval| approval.created_at)
+                .unwrap_or(now),
+            parent_plugin_id: parent_plugin_id.clone(),
+            reason: input.reason.trim().to_string(),
+            revoked_at: None,
+            revoked_reason: String::new(),
+            status: "approved".to_string(),
+            updated_at: now,
+        };
+        upsert_child_capability_approval(&mut approvals, record.clone());
+        save_json_list(&self.child_capability_approvals_path(), &approvals)?;
+        self.append_audit(RegistryAuditRecord {
+            action: "approve-child-capability".to_string(),
+            content_hash: None,
+            detail: Some(format!(
+                "parent={} child={} capability={} reason={}",
+                parent_plugin_id, child_plugin_id, capability, record.reason
+            )),
+            id: child_plugin_id,
+            path: Some(
+                self.child_capability_approvals_path()
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            status: "ok".to_string(),
+            timestamp: now,
+        })?;
+        Ok(record)
+    }
+
+    pub fn revoke_child_capability(
+        &self,
+        input: ChildCapabilityApprovalInput,
+    ) -> AppResult<ChildCapabilityApprovalRecord> {
+        self.ensure_layout()?;
+        let parent_plugin_id = normalize_required(&input.parent_plugin_id, "parentPluginId")?;
+        let child_plugin_id = normalize_required(&input.child_plugin_id, "childPluginId")?;
+        let capability = normalize_required(&input.capability, "capability")?;
+        let now = now_millis();
+        let mut approvals = self.load_child_capability_approvals()?;
+        let Some(record) = approvals.iter_mut().find(|approval| {
+            approval.parent_plugin_id == parent_plugin_id
+                && approval.child_plugin_id == child_plugin_id
+                && approval.capability == capability
+        }) else {
+            return Err(AppError::NotFound);
+        };
+        record.status = "revoked".to_string();
+        record.revoked_at = Some(now);
+        record.revoked_reason = input.reason.trim().to_string();
+        record.updated_at = now;
+        let record = record.clone();
+        save_json_list(&self.child_capability_approvals_path(), &approvals)?;
+        self.append_audit(RegistryAuditRecord {
+            action: "revoke-child-capability".to_string(),
+            content_hash: None,
+            detail: Some(format!(
+                "parent={} child={} capability={} reason={}",
+                parent_plugin_id, child_plugin_id, capability, record.revoked_reason
+            )),
+            id: child_plugin_id,
+            path: Some(
+                self.child_capability_approvals_path()
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
+            status: "ok".to_string(),
+            timestamp: now,
+        })?;
+        Ok(record)
     }
 
     pub fn install(&self, source_path: impl AsRef<Path>) -> AppResult<InstalledPluginRecord> {
@@ -373,21 +500,49 @@ impl PluginRegistryStore {
     }
 
     pub fn set_enabled(&self, id: &str, enabled: bool) -> AppResult<InstalledPluginRecord> {
+        self.ensure_layout()?;
         let mut installed = self.load_installed()?;
         let now = now_millis();
         let Some(index) = installed.iter().position(|entry| entry.id == id) else {
             return Err(AppError::NotFound);
         };
-        let record = &mut installed[index];
-        record.enabled = enabled;
-        record.updated_at = now;
-        let record = record.clone();
+
+        let parent_by_child = installed_parent_links(&installed)?;
+        if enabled {
+            ensure_installed_ancestors_enabled(&installed, &parent_by_child, id)?;
+        }
+
+        let cascade_ids = if enabled {
+            HashSet::new()
+        } else {
+            installed_descendant_ids(&parent_by_child, id)
+        };
+        let mut changed_ids = HashSet::new();
+        let mut cascade_disabled = Vec::new();
+
+        installed[index].enabled = enabled;
+        installed[index].updated_at = now;
+        changed_ids.insert(installed[index].id.clone());
+        for entry in &mut installed {
+            if cascade_ids.contains(&entry.id) && entry.enabled {
+                entry.enabled = false;
+                entry.updated_at = now;
+                changed_ids.insert(entry.id.clone());
+                cascade_disabled.push(entry.clone());
+            }
+        }
+
+        let record = installed[index].clone();
         save_json_list(&self.installed_path(), &installed)?;
 
         let mut locks = self.load_lock()?;
-        if let Some(lock) = locks.iter_mut().find(|entry| entry.id == id) {
-            lock.enabled = enabled;
-            lock.updated_at = now;
+        for lock in &mut locks {
+            if changed_ids.contains(&lock.id) {
+                if let Some(installed_record) = installed.iter().find(|entry| entry.id == lock.id) {
+                    lock.enabled = installed_record.enabled;
+                    lock.updated_at = now;
+                }
+            }
         }
         save_json_list(&self.lock_path(), &locks)?;
 
@@ -398,12 +553,35 @@ impl PluginRegistryStore {
                 "disable".to_string()
             },
             content_hash: Some(record.content_hash.clone()),
-            detail: None,
+            detail: if cascade_disabled.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "cascadeDisabled={}",
+                    cascade_disabled
+                        .iter()
+                        .map(|entry| entry.id.as_str())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ))
+            },
             id: record.id.clone(),
             path: Some(record.registry_path.clone()),
             status: "ok".to_string(),
             timestamp: now,
         })?;
+
+        for child in cascade_disabled {
+            self.append_audit(RegistryAuditRecord {
+                action: "disable-cascade".to_string(),
+                content_hash: Some(child.content_hash),
+                detail: Some(format!("parent={id}")),
+                id: child.id,
+                path: Some(child.registry_path),
+                status: "ok".to_string(),
+                timestamp: now,
+            })?;
+        }
 
         Ok(record)
     }
@@ -635,6 +813,89 @@ where
     Ok(())
 }
 
+fn installed_parent_links(
+    installed: &[InstalledPluginRecord],
+) -> AppResult<HashMap<String, String>> {
+    let mut links = HashMap::new();
+    for entry in installed {
+        if let Some(parent_id) = read_installed_parent_id(entry)? {
+            links.insert(entry.id.clone(), parent_id);
+        }
+    }
+    Ok(links)
+}
+
+fn read_installed_parent_id(entry: &InstalledPluginRecord) -> AppResult<Option<String>> {
+    let formula_path = Path::new(&entry.registry_path).join("formula.json");
+    if !formula_path.is_file() {
+        return Ok(None);
+    }
+
+    let formula: PluginFormula = read_json_file(&formula_path)?;
+    Ok(formula.parent.and_then(|parent| {
+        let parent_id = parent.plugin_id.trim().to_string();
+        if parent_id.is_empty() {
+            None
+        } else {
+            Some(parent_id)
+        }
+    }))
+}
+
+fn ensure_installed_ancestors_enabled(
+    installed: &[InstalledPluginRecord],
+    parent_by_child: &HashMap<String, String>,
+    id: &str,
+) -> AppResult<()> {
+    let installed_by_id = installed
+        .iter()
+        .map(|entry| (entry.id.as_str(), entry))
+        .collect::<HashMap<_, _>>();
+    let mut current = id;
+    let mut seen = HashSet::new();
+    while let Some(parent_id) = parent_by_child.get(current) {
+        if !seen.insert(parent_id.clone()) {
+            break;
+        }
+        if let Some(parent) = installed_by_id.get(parent_id.as_str()) {
+            if !parent.enabled {
+                return Err(AppError::Conflict(format!(
+                    "child plugin {id} cannot be enabled while parent plugin {parent_id} is disabled"
+                )));
+            }
+        }
+        current = parent_id;
+    }
+    Ok(())
+}
+
+fn installed_descendant_ids(
+    parent_by_child: &HashMap<String, String>,
+    parent_id: &str,
+) -> HashSet<String> {
+    let mut children_by_parent: HashMap<String, Vec<String>> = HashMap::new();
+    for (child_id, parent_id) in parent_by_child {
+        children_by_parent
+            .entry(parent_id.clone())
+            .or_default()
+            .push(child_id.clone());
+    }
+
+    let mut result = HashSet::new();
+    let mut stack = children_by_parent
+        .get(parent_id)
+        .cloned()
+        .unwrap_or_default();
+    while let Some(child_id) = stack.pop() {
+        if result.insert(child_id.clone()) {
+            if let Some(children) = children_by_parent.get(&child_id) {
+                stack.extend(children.iter().cloned());
+            }
+        }
+    }
+    result
+}
+
 fn upsert_installed(installed: &mut Vec<InstalledPluginRecord>, record: InstalledPluginRecord) {
     if let Some(existing) = installed.iter_mut().find(|entry| entry.id == record.id) {
         *existing = record;
@@ -649,6 +910,35 @@ fn upsert_lock(locks: &mut Vec<RegistryLockRecord>, record: RegistryLockRecord) 
     } else {
         locks.push(record);
     }
+}
+
+fn upsert_child_capability_approval(
+    approvals: &mut Vec<ChildCapabilityApprovalRecord>,
+    record: ChildCapabilityApprovalRecord,
+) {
+    if let Some(existing) = approvals.iter_mut().find(|entry| {
+        entry.parent_plugin_id == record.parent_plugin_id
+            && entry.child_plugin_id == record.child_plugin_id
+            && entry.capability == record.capability
+    }) {
+        *existing = record;
+    } else {
+        approvals.push(record);
+    }
+    approvals.sort_by(|left, right| {
+        left.parent_plugin_id
+            .cmp(&right.parent_plugin_id)
+            .then_with(|| left.child_plugin_id.cmp(&right.child_plugin_id))
+            .then_with(|| left.capability.cmp(&right.capability))
+    });
+}
+
+fn normalize_required(value: &str, field: &str) -> AppResult<String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Err(AppError::BadRequest(format!("{field} 不能为空")));
+    }
+    Ok(value.to_string())
 }
 
 fn copy_directory(source: &Path, destination: &Path) -> AppResult<()> {
@@ -733,7 +1023,8 @@ fn signature_path_from_placeholder(signature: &PluginPackageSignaturePlaceholder
 
 #[cfg(test)]
 mod tests {
-    use super::PluginRegistryStore;
+    use super::{ChildCapabilityApprovalInput, PluginRegistryStore};
+    use crate::error::AppError;
     use std::fs;
 
     #[test]
@@ -781,6 +1072,138 @@ mod tests {
         store.uninstall("test.plugin").expect("uninstall");
         let state = store.state().expect("state after uninstall");
         assert!(state.installed.is_empty());
+    }
+
+    #[test]
+    fn disabling_parent_plugin_disables_installed_child_subtree() {
+        let tempdir = tempfile::tempdir().expect("tempdir");
+        let parent = tempdir.path().join("parent-plugin");
+        let child = tempdir.path().join("child-plugin");
+        let grandchild = tempdir.path().join("grandchild-plugin");
+        fs::create_dir_all(&parent).expect("parent dir");
+        fs::create_dir_all(&child).expect("child dir");
+        fs::create_dir_all(&grandchild).expect("grandchild dir");
+        fs::write(
+            parent.join("formula.json"),
+            r#"{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "parent.plugin",
+  "kind": "plugin",
+  "displayName": "Parent Plugin",
+  "version": "1.0.0"
+}"#,
+        )
+        .expect("parent formula");
+        fs::write(
+            child.join("formula.json"),
+            r#"{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "parent.plugin.child",
+  "kind": "child-plugin",
+  "displayName": "Child Plugin",
+  "parent": {
+    "pluginId": "parent.plugin",
+    "mount": "parent.plugin.children",
+    "compatibleParentRange": "^1.0.0"
+  }
+}"#,
+        )
+        .expect("child formula");
+        fs::write(
+            grandchild.join("formula.json"),
+            r#"{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "parent.plugin.child.grandchild",
+  "kind": "child-plugin",
+  "displayName": "Grandchild Plugin",
+  "parent": {
+    "pluginId": "parent.plugin.child",
+    "mount": "parent.plugin.child.children",
+    "compatibleParentRange": "^1.0.0"
+  }
+}"#,
+        )
+        .expect("grandchild formula");
+
+        let store = PluginRegistryStore::new(tempdir.path());
+        store.install(&parent).expect("install parent");
+        store.install(&child).expect("install child");
+        store.install(&grandchild).expect("install grandchild");
+
+        store
+            .set_enabled("parent.plugin", false)
+            .expect("disable parent");
+        let state = store.state().expect("disabled state");
+        assert!(
+            !state
+                .installed
+                .iter()
+                .find(|entry| entry.id == "parent.plugin")
+                .expect("parent installed")
+                .enabled
+        );
+        assert!(
+            !state
+                .installed
+                .iter()
+                .find(|entry| entry.id == "parent.plugin.child")
+                .expect("child installed")
+                .enabled
+        );
+        assert!(
+            !state
+                .installed
+                .iter()
+                .find(|entry| entry.id == "parent.plugin.child.grandchild")
+                .expect("grandchild installed")
+                .enabled
+        );
+        assert!(state
+            .locks
+            .iter()
+            .filter(|entry| entry.id.starts_with("parent.plugin"))
+            .all(|entry| !entry.enabled));
+        assert!(
+            state
+                .audits
+                .iter()
+                .any(|record| record.action == "disable-cascade"
+                    && record.id == "parent.plugin.child")
+        );
+        assert!(state
+            .audits
+            .iter()
+            .any(|record| record.action == "disable-cascade"
+                && record.id == "parent.plugin.child.grandchild"));
+
+        let error = store
+            .set_enabled("parent.plugin.child", true)
+            .expect_err("disabled parent should block child enable");
+        assert!(matches!(error, AppError::Conflict(_)));
+
+        store
+            .set_enabled("parent.plugin", true)
+            .expect("enable parent");
+        store
+            .set_enabled("parent.plugin.child", true)
+            .expect("enable child after parent");
+        let state = store.state().expect("reenabled state");
+        assert!(
+            state
+                .installed
+                .iter()
+                .find(|entry| entry.id == "parent.plugin.child")
+                .expect("child installed")
+                .enabled
+        );
+        assert!(
+            !state
+                .installed
+                .iter()
+                .find(|entry| entry.id == "parent.plugin.child.grandchild")
+                .expect("grandchild installed")
+                .enabled
+        );
     }
 
     #[test]
@@ -835,5 +1258,43 @@ mod tests {
         )
         .expect("active formula");
         assert!(active_formula.contains("0.1.0"));
+    }
+
+    #[test]
+    fn child_capability_approvals_can_be_approved_and_revoked() {
+        let tempdir = tempfile::tempdir().expect("tempdir");
+        let store = PluginRegistryStore::new(tempdir.path());
+
+        let approved = store
+            .approve_child_capability(ChildCapabilityApprovalInput {
+                capability: "process.exec".to_string(),
+                child_plugin_id: "git-suite.github-provider".to_string(),
+                parent_plugin_id: "git-suite".to_string(),
+                reason: "allow git process bridge".to_string(),
+            })
+            .expect("approve");
+        assert_eq!(approved.status, "approved");
+        assert_eq!(
+            store
+                .state()
+                .expect("state")
+                .child_capability_approvals
+                .len(),
+            1
+        );
+
+        let revoked = store
+            .revoke_child_capability(ChildCapabilityApprovalInput {
+                capability: "process.exec".to_string(),
+                child_plugin_id: "git-suite.github-provider".to_string(),
+                parent_plugin_id: "git-suite".to_string(),
+                reason: "remove git process bridge".to_string(),
+            })
+            .expect("revoke");
+        assert_eq!(revoked.status, "revoked");
+        assert_eq!(
+            store.state().expect("state").child_capability_approvals[0].status,
+            "revoked"
+        );
     }
 }

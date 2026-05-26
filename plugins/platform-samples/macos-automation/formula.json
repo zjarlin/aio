@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "platform.macos-automation",
+  "kind": "plugin",
+  "displayName": "macOS Automation Sample",
+  "version": "0.1.0",
+  "trustLevel": "trusted-provider",
+  "intent": "Demonstrate a macOS-only automation capability request without granting direct AppleScript or accessibility execution to ordinary plugins.",
+  "entry": {
+    "node": "./src/index.ts"
+  },
+  "activation": ["onCommand:macos_automation_preview"],
+  "platforms": {
+    "supported": ["macos"],
+    "degraded": ["web", "remote"],
+    "unsupported": ["windows", "linux"],
+    "reason": "macOS automation depends on host-specific AppleScript or Accessibility providers and must stay unavailable on other local platforms."
+  },
+  "capabilities": [
+    {
+      "id": "macos.automation",
+      "scope": "automation.preview",
+      "platforms": ["macos"],
+      "optional": true,
+      "reason": "Preview a future macOS automation request while keeping real execution disabled until a trusted provider and approval UI are wired."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "macos_automation_preview",
+        "title": "Preview macOS Automation Request",
+        "category": "platform-samples",
+        "capabilities": ["macos.automation"],
+        "when": "platform == 'macos' && capability('macos.automation')"
+      }
+    ],
+    "views": [
+      {
+        "id": "platform.macos-automation.summary",
+        "slot": "main",
+        "schema": "summary-list",
+        "path": "/platform-samples/macos-automation",
+        "when": "platform == 'macos'"
+      }
+    ],
+    "capabilityProviders": [
+      {
+        "id": "platform.macos-automation.provider",
+        "title": "macOS Automation Guarded Provider",
+        "capability": "macos.automation",
+        "kind": "native",
+        "platforms": ["macos"],
+        "trustLevel": "trusted-provider",
+        "entry": "./src/index.ts#macosAutomationProvider",
+        "fallback": "approval-required",
+        "when": "platform == 'macos' && capability('macos.automation')"
+      }
+    ]
+  },
+  "events": {
+    "publishes": [
+      {
+        "event": "platform.macos-automation.requested",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
+  },
+  "expectations": [
+    "The sample must prove macOS-only platform matrix handling for automation capabilities.",
+    "Real automation execution must remain disabled until Permission Core consent and a trusted provider are present.",
+    "Non-macOS shells must show degraded or unsupported metadata rather than attempting execution."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "README.md", "src/index.ts"],
+    "role": "macos-automation-sample",
+    "primaryOutput": "platform-diagnostics",
+    "repairStrategy": "formula-first"
+  }
+}

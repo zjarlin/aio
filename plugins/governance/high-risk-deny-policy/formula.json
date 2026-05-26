@@ -53,7 +53,16 @@
     ]
   },
   "events": {
-    "subscribes": ["permission.requested", "permission.denied"]
+    "subscribes": [
+      {
+        "event": "permission.requested",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      },
+      {
+        "event": "permission.denied",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ]
   },
   "expectations": [
     "The plugin must remain mounted under platform.permission-core permission.policy.",

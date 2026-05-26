@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://addzero.site/schemas/aio/settings/git-suite.settings.v1.json",
+  "title": "Git Suite Settings v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "showCommitPolicy": {
+      "type": "boolean",
+      "default": true
+    },
+    "showRemoteProviders": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

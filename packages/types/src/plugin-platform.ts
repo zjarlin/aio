@@ -14,6 +14,30 @@ export interface PluginCapabilityFormula {
   scope?: string;
 }
 
+export type PluginTrustLevel =
+  | 'community'
+  | 'platform'
+  | 'trusted-provider'
+  | 'verified';
+
+export type PluginCapabilityProviderKind =
+  | 'native'
+  | 'remote'
+  | 'service'
+  | 'web';
+
+export interface PluginCapabilityProviderContribution {
+  capability: string;
+  entry?: string;
+  fallback?: string;
+  id: string;
+  kind?: PluginCapabilityProviderKind | string;
+  platforms?: string[];
+  title?: string;
+  trustLevel: PluginTrustLevel | string;
+  when?: string;
+}
+
 export interface PluginCommandContribution {
   capabilities?: string[];
   category?: string;
@@ -223,6 +247,15 @@ export interface PluginResourceContribution {
   title?: string;
 }
 
+export interface PluginRouteContribution {
+  component?: string;
+  id: string;
+  path: string;
+  slot?: string;
+  title?: string;
+  when?: string;
+}
+
 export interface PluginPolicyMatchContribution {
   capabilities?: string[];
   platforms?: string[];
@@ -243,12 +276,14 @@ export interface PluginPolicyContribution {
 }
 
 export interface PluginContributes {
+  capabilityProviders?: PluginCapabilityProviderContribution[];
   commands?: PluginCommandContribution[];
   extensionPoints?: PluginExtensionPointContribution[];
   menus?: PluginMenuContribution[];
   permissions?: PluginPermissionContribution[];
   policies?: PluginPolicyContribution[];
   resources?: PluginResourceContribution[];
+  routes?: PluginRouteContribution[];
   settings?: PluginSettingContribution[];
   tools?: PluginToolContribution[];
   views?: PluginViewContribution[];
@@ -267,9 +302,14 @@ export interface PluginEntry {
   worker?: string;
 }
 
+export interface PluginEventDeclaration {
+  event: string;
+  schema: string;
+}
+
 export interface PluginEvents {
-  publishes?: string[];
-  subscribes?: string[];
+  publishes?: Array<PluginEventDeclaration | string>;
+  subscribes?: Array<PluginEventDeclaration | string>;
 }
 
 export interface PluginAiHints {
@@ -306,6 +346,7 @@ export interface PluginFormulaContract {
   parent?: null | PluginParent;
   platforms?: PluginPlatformMatrix;
   schemaVersion: 'plugin-formula/v1';
+  trustLevel?: PluginTrustLevel | string;
   version?: string;
 }
 
@@ -329,6 +370,7 @@ export interface SystemCapsuleContract {
   provides?: SystemProvides;
   replaceable?: boolean;
   schemaVersion: 'system-capsule/v1';
+  trustLevel?: PluginTrustLevel | string;
 }
 
 export interface SeedPermission {
@@ -369,6 +411,21 @@ export interface PluginRegistrySnapshot<
     sourceId: string;
     sourceKind: string;
   }>;
+  capabilityProviders: Array<{
+    capability: string;
+    entry: string;
+    fallback: string;
+    id: string;
+    kind: PluginCapabilityProviderKind | string;
+    parentChain: string[];
+    platforms: string[];
+    sourceId: string;
+    sourceKind: string;
+    sourceTrustLevel: PluginTrustLevel | string;
+    title: string;
+    trustLevel: PluginTrustLevel | string;
+    when: string;
+  }>;
   policies: Array<{
     capabilities: string[];
     effect: string;
@@ -399,6 +456,7 @@ export interface PluginRegistrySnapshot<
       menus: string[];
       parentChain: string[];
       parentPluginId: string;
+      routes: string[];
       views: string[];
     }>;
     nodes: Array<{
@@ -416,6 +474,7 @@ export interface PluginRegistrySnapshot<
       parentMount?: null | string;
       parentPluginId?: null | string;
       pluginId: string;
+      routes: string[];
       version: string;
       views: string[];
     }>;
@@ -435,6 +494,7 @@ export interface PluginRegistrySnapshot<
     direction: 'publish' | 'subscribe' | string;
     event: string;
     parentChain: string[];
+    schema: string;
     sourceId: string;
     sourceKind: string;
   }>;
@@ -456,6 +516,7 @@ export interface PluginRegistrySnapshot<
   permissionSeeds: SeedPermission[];
   plugins: Array<{
     capabilities: string[];
+    capabilityProviders: string[];
     commands: string[];
     displayName: string;
     extensionPoints: string[];
@@ -467,13 +528,47 @@ export interface PluginRegistrySnapshot<
     parentPluginId?: null | string;
     platformDegraded: string[];
     platformSupported: string[];
+    platformUnsupported: string[];
+    resources: string[];
+    routes: string[];
+    settings: string[];
     tools: string[];
+    trustLevel: PluginTrustLevel | string;
     version: string;
     views: string[];
   }>;
+  resources: Array<{
+    id: string;
+    kind: string;
+    parentChain: string[];
+    schema: string;
+    sourceId: string;
+    sourceKind: string;
+    title: string;
+  }>;
+  routes: Array<{
+    component: string;
+    id: string;
+    parentChain: string[];
+    path: string;
+    slot: string;
+    sourceId: string;
+    sourceKind: string;
+    title: string;
+    when: string;
+  }>;
   schemaVersion: string;
+  settings: Array<{
+    id: string;
+    parentChain: string[];
+    schema: string;
+    sourceId: string;
+    sourceKind: string;
+    title: string;
+  }>;
   systemCapsules: Array<{
     capabilities: string[];
+    capabilityProviders: string[];
     commands: string[];
     displayName: string;
     extensionPoints: string[];
@@ -485,7 +580,12 @@ export interface PluginRegistrySnapshot<
     parentPluginId?: null | string;
     platformDegraded: string[];
     platformSupported: string[];
+    platformUnsupported: string[];
+    resources: string[];
+    routes: string[];
+    settings: string[];
     tools: string[];
+    trustLevel: PluginTrustLevel | string;
     version: string;
     views: string[];
   }>;
@@ -579,13 +679,46 @@ export interface PermissionConsentRevokeInput {
   sourceId: string;
 }
 
+export interface PermissionApprovalRecord {
+  capability: string;
+  createdAt: number;
+  decisionReason: string;
+  decidedAt?: null | number;
+  id: string;
+  reason: string;
+  scope: string;
+  sourceId: string;
+  sourceKind: string;
+  status: string;
+  target: string;
+  updatedAt: number;
+  userId: string;
+}
+
+export interface PermissionApprovalRequestInput {
+  capability: string;
+  reason?: string;
+  scope?: string;
+  sourceId: string;
+  sourceKind?: string;
+  target?: string;
+}
+
+export interface PermissionApprovalDecisionInput {
+  id: string;
+  reason?: string;
+}
+
 export interface PlatformEventRecord {
   correlationId?: null | string;
+  done?: boolean;
   id: string;
   kind: 'error' | 'publish' | 'reply' | 'request' | string;
   parentTraceId?: null | string;
   payload: unknown;
   permissions?: null | unknown;
+  schema: string;
+  sequence?: null | number;
   source: string;
   target?: null | string;
   timestamp: number;
@@ -598,13 +731,82 @@ export interface EventBusPublishInput {
   parentTraceId?: null | string;
   payload: unknown;
   permissions?: null | unknown;
+  schema?: null | string;
   source: string;
+  target?: null | string;
+}
+
+export interface EventBusStreamInput {
+  done?: boolean;
+  eventType: string;
+  parentTraceId?: null | string;
+  payload: unknown;
+  permissions?: null | unknown;
+  schema?: null | string;
+  sequence?: null | number;
+  source: string;
+  streamId?: null | string;
   target?: null | string;
 }
 
 export interface EventBusSnapshotRequest {
   eventType?: null | string;
   limit?: null | number;
+}
+
+export interface AppRuntimeLifecycleRecord {
+  action: string;
+  dataDir: string;
+  mode: string;
+  platformId: string;
+  reason: string;
+  reloadCount: number;
+  sessionId?: null | string;
+  status: string;
+  timestamp: number;
+  workspace?: null | string;
+}
+
+export interface AppRuntimeSnapshot {
+  dataDir: string;
+  lifecycle: AppRuntimeLifecycleRecord[];
+  mode: string;
+  platformId: string;
+  reloadCount: number;
+  schemaVersion: 'app-runtime/v1' | string;
+  sessionId?: null | string;
+  startedAt?: null | number;
+  status: string;
+  stoppedAt?: null | number;
+  updatedAt: number;
+  workspace?: null | string;
+}
+
+export interface AppRuntimeStartInput {
+  mode?: null | string;
+  reason?: null | string;
+  sessionId?: null | string;
+  workspace?: null | string;
+}
+
+export interface AppRuntimeStopInput {
+  reason?: null | string;
+}
+
+export interface AppRuntimeReloadInput {
+  reason?: null | string;
+  sessionId?: null | string;
+  workspace?: null | string;
+}
+
+export interface AppRuntimeWorkspaceInput {
+  reason?: null | string;
+  workspace: string;
+}
+
+export interface AppRuntimeSessionInput {
+  reason?: null | string;
+  sessionId: string;
 }
 
 export interface ClipboardWriteInput {
@@ -726,6 +928,25 @@ export interface PluginRegistryVersionRecord {
   version: string;
 }
 
+export interface ChildCapabilityApprovalRecord {
+  capability: string;
+  childPluginId: string;
+  createdAt: number;
+  parentPluginId: string;
+  reason: string;
+  revokedAt?: null | number;
+  revokedReason: string;
+  status: 'approved' | 'revoked' | string;
+  updatedAt: number;
+}
+
+export interface ChildCapabilityApprovalInput {
+  capability: string;
+  childPluginId: string;
+  parentPluginId: string;
+  reason?: string;
+}
+
 export interface PluginRegistryRollbackInput {
   contentHash?: string;
   id: string;
@@ -739,6 +960,7 @@ export interface PluginRegistryRollbackResult {
 
 export interface PluginRegistryLocalState {
   audits: PluginRegistryAuditRecord[];
+  childCapabilityApprovals: ChildCapabilityApprovalRecord[];
   history: PluginRegistryVersionRecord[];
   installed: PluginRegistryInstalledRecord[];
   locks: PluginRegistryLockRecord[];
@@ -793,7 +1015,14 @@ export interface PluginDiagnosticPlatformError {
   reason: string;
 }
 
+export interface PluginDiagnosticDomSnapshot {
+  html: string;
+  id: string;
+  path?: string;
+}
+
 export interface PluginDiagnosticUiPreview {
+  domSnapshots?: PluginDiagnosticDomSnapshot[];
   screenshots?: string[];
 }
 
@@ -858,6 +1087,58 @@ export interface ExtensionHostSourceInput {
   sourcePath: string;
 }
 
+export interface ExtensionHostApiSnapshot {
+  action: 'activate' | 'deactivate' | 'dispose' | 'load' | 'reload' | string;
+  entryPath: string;
+  hostKind: string;
+  pluginId: string;
+  schemaVersion: 'extension-host-api/v1';
+  sourcePath: string;
+  supportedCapabilities: string[];
+}
+
+export interface ExtensionHostApiInvocationResult {
+  capability: string;
+  hostKind: string;
+  input: unknown;
+  pluginId: string;
+  reason: string;
+  status: 'unsupported' | string;
+}
+
+export interface ExtensionHostApiEventResult {
+  eventType: string;
+  hostKind: string;
+  payload: unknown;
+  pluginId: string;
+  sequence?: number;
+  status: 'recorded' | string;
+}
+
+export interface PluginHostApi {
+  capabilities: {
+    invoke(
+      capability: string,
+      input?: unknown,
+    ): ExtensionHostApiInvocationResult;
+  };
+  events: {
+    publish(eventType: string, payload?: unknown): ExtensionHostApiEventResult;
+    request(eventType: string, payload?: unknown): ExtensionHostApiEventResult;
+    stream(
+      eventType: string,
+      payload?: unknown,
+      sequence?: number,
+      done?: boolean,
+    ): ExtensionHostApiEventResult;
+  };
+  host: {
+    describe(): ExtensionHostApiSnapshot;
+    snapshot(): ExtensionHostApiSnapshot;
+  };
+  schemaVersion: 'extension-host-api/v1';
+}
+
 export interface ExtensionHostPluginRecord {
   activatedAt?: null | number;
   deactivatedAt?: null | number;
@@ -872,6 +1153,13 @@ export interface ExtensionHostPluginRecord {
   reloadCount: number;
   sourcePath: string;
   state: 'activated' | 'deactivated' | 'disposed' | 'error' | 'loaded' | string;
+}
+
+export interface PluginContext {
+  api?: PluginHostApi;
+  hostKind?: string;
+  log?: (message: string) => void;
+  pluginId?: string;
 }
 
 export interface PluginCompileResult {

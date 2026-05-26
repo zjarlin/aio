@@ -13,6 +13,10 @@ use crate::{
         AgentPreferenceToggleInput, AgentPreferenceUpdateInput,
     },
     app_paths,
+    app_runtime::{
+        AppRuntimeLifecycleRecord, AppRuntimeReloadInput, AppRuntimeSessionInput,
+        AppRuntimeSnapshot, AppRuntimeStartInput, AppRuntimeStopInput, AppRuntimeWorkspaceInput,
+    },
     asset_items::{
         self, AssetItemDeployInput, AssetItemDeployPreview, AssetItemDeployPreviewRequest,
         AssetItemImportRequest, AssetItemImportResult, AssetItemInput, AssetItemPageRequest,
@@ -30,9 +34,15 @@ use crate::{
         DictTypeInput, DictTypeRecord, DictTypeUpdateInput,
     },
     error::{AppError, CommandError},
-    event_bus::{EventBusPublishInput, EventBusSnapshotRequest, PlatformEventRecord},
+    event_bus::{
+        EventBusPublishInput, EventBusSnapshotRequest, EventBusStreamInput, PlatformEventRecord,
+    },
     extension_host::{ExtensionHostPluginRecord, ExtensionHostSourceInput},
     notes::{self, NoteFlagInput, NoteInput, NotePageRequest, NoteRecord, NoteUpdateInput},
+    permission_approval::{
+        self, PermissionApprovalDecisionInput, PermissionApprovalRecord,
+        PermissionApprovalRequestInput,
+    },
     permission_consent::{
         self, PermissionConsentGrantInput, PermissionConsentRecord, PermissionConsentRevokeInput,
     },
@@ -43,8 +53,9 @@ use crate::{
     },
     plugin_registry::{self, PluginRegistrySnapshot},
     plugin_store::{
-        InstalledPluginRecord, PluginRegistryLocalState, PluginRegistryRollbackInput,
-        PluginRegistryRollbackResult, PluginRegistryStore, RegistryAuditRecord,
+        ChildCapabilityApprovalInput, ChildCapabilityApprovalRecord, InstalledPluginRecord,
+        PluginRegistryLocalState, PluginRegistryRollbackInput, PluginRegistryRollbackResult,
+        PluginRegistryStore, RegistryAuditRecord,
     },
     rbac::{
         self, AssignPermissionsInput, PageRequest, PageResult, PermissionInput, PermissionNode,
@@ -77,6 +88,21 @@ async fn authorize_broker_capability(
         &scope,
     )
     .await?;
+    if !consent_granted {
+        permission_approval::request_for_user(
+            &state.pool,
+            &user.user_id,
+            PermissionApprovalRequestInput {
+                source_id: "platform.capability-broker".to_string(),
+                source_kind: "system".to_string(),
+                capability: capability.to_string(),
+                scope: scope.clone(),
+                target: target.clone(),
+                reason: format!("missing consent for runtime capability {capability}"),
+            },
+        )
+        .await?;
+    }
     let mut request = PermissionCore::system_request(
         user.user_id,
         "platform.capability-broker",
@@ -95,6 +121,102 @@ async fn authorize_broker_capability(
         .permission_core
         .evaluate_runtime_with_policies(request, &policies)?;
     Ok(())
+}
+
+fn publish_runtime_lifecycle(
+    state: &AppState,
+    record: AppRuntimeLifecycleRecord,
+) -> Result<AppRuntimeLifecycleRecord, AppError> {
+    state.event_bus.publish(record.event_input())?;
+    Ok(record)
+}
+
+#[tauri::command]
+pub async fn app_runtime_snapshot(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<AppRuntimeSnapshot> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        Ok(state.app_runtime.snapshot())
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn app_runtime_start(
+    state: State<'_, AppState>,
+    token: String,
+    input: AppRuntimeStartInput,
+) -> CommandResult<AppRuntimeLifecycleRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        let record = state.app_runtime.start(input)?;
+        publish_runtime_lifecycle(&state, record)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn app_runtime_stop(
+    state: State<'_, AppState>,
+    token: String,
+    input: AppRuntimeStopInput,
+) -> CommandResult<AppRuntimeLifecycleRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        let record = state.app_runtime.stop(input)?;
+        publish_runtime_lifecycle(&state, record)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn app_runtime_reload(
+    state: State<'_, AppState>,
+    token: String,
+    input: AppRuntimeReloadInput,
+) -> CommandResult<AppRuntimeLifecycleRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        let record = state.app_runtime.reload(input)?;
+        publish_runtime_lifecycle(&state, record)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn app_runtime_workspace(
+    state: State<'_, AppState>,
+    token: String,
+    input: AppRuntimeWorkspaceInput,
+) -> CommandResult<AppRuntimeLifecycleRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        let record = state.app_runtime.set_workspace(input)?;
+        publish_runtime_lifecycle(&state, record)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn app_runtime_session(
+    state: State<'_, AppState>,
+    token: String,
+    input: AppRuntimeSessionInput,
+) -> CommandResult<AppRuntimeLifecycleRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        let record = state.app_runtime.set_session(input)?;
+        publish_runtime_lifecycle(&state, record)
+    }
+    .await;
+    map_result(result)
 }
 
 #[tauri::command]
@@ -452,6 +574,47 @@ pub async fn permission_consent_revoke(
 }
 
 #[tauri::command]
+pub async fn permission_approval_list(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<Vec<PermissionApprovalRecord>> {
+    let result = async {
+        let user = auth::require_session(&state.pool, &token).await?;
+        permission_approval::list_for_user(&state.pool, &user.user_id).await
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn permission_approval_approve(
+    state: State<'_, AppState>,
+    token: String,
+    input: PermissionApprovalDecisionInput,
+) -> CommandResult<PermissionApprovalRecord> {
+    let result = async {
+        let user = auth::require_session(&state.pool, &token).await?;
+        permission_approval::approve_for_user(&state.pool, &user.user_id, input).await
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn permission_approval_deny(
+    state: State<'_, AppState>,
+    token: String,
+    input: PermissionApprovalDecisionInput,
+) -> CommandResult<PermissionApprovalRecord> {
+    let result = async {
+        let user = auth::require_session(&state.pool, &token).await?;
+        permission_approval::deny_for_user(&state.pool, &user.user_id, input).await
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
 pub async fn event_bus_publish(
     state: State<'_, AppState>,
     token: String,
@@ -460,6 +623,20 @@ pub async fn event_bus_publish(
     let result = async {
         auth::current_user(&state.pool, token).await?;
         state.event_bus.publish(input)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn event_bus_stream(
+    state: State<'_, AppState>,
+    token: String,
+    input: EventBusStreamInput,
+) -> CommandResult<PlatformEventRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        state.event_bus.stream(input)
     }
     .await;
     map_result(result)
@@ -617,6 +794,7 @@ pub async fn plugin_registry_reload(
             "plugins": snapshot.plugins.len(),
             "systemCapsules": snapshot.system_capsules.len(),
             "commands": snapshot.commands.len(),
+            "routes": snapshot.routes.len(),
             "views": snapshot.views.len(),
         });
         PluginRegistryStore::new(&state.data_dir).append_audit(RegistryAuditRecord {
@@ -641,6 +819,7 @@ pub async fn plugin_registry_reload(
             target: None,
             parent_trace_id: None,
             permissions: None,
+            schema: Some("schemas/events/registry-reloaded.v1.schema.json".to_string()),
         })?;
         Ok(snapshot)
     }
@@ -656,6 +835,34 @@ pub async fn plugin_registry_local_state(
     let result = async {
         auth::current_user(&state.pool, token).await?;
         PluginRegistryStore::new(&state.data_dir).state()
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn plugin_child_capability_approve(
+    state: State<'_, AppState>,
+    token: String,
+    input: ChildCapabilityApprovalInput,
+) -> CommandResult<ChildCapabilityApprovalRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        PluginRegistryStore::new(&state.data_dir).approve_child_capability(input)
+    }
+    .await;
+    map_result(result)
+}
+
+#[tauri::command]
+pub async fn plugin_child_capability_revoke(
+    state: State<'_, AppState>,
+    token: String,
+    input: ChildCapabilityApprovalInput,
+) -> CommandResult<ChildCapabilityApprovalRecord> {
+    let result = async {
+        auth::current_user(&state.pool, token).await?;
+        PluginRegistryStore::new(&state.data_dir).revoke_child_capability(input)
     }
     .await;
     map_result(result)

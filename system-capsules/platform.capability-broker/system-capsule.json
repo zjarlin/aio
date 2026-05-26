@@ -52,6 +52,7 @@
       "reason": "Send local desktop notifications through the broker."
     }
   ],
+  "trustLevel": "platform",
   "contributes": {
     "commands": [
       {
@@ -110,6 +111,129 @@
         "title": "Send Notification",
         "category": "capability-broker",
         "capabilities": ["notification.send"]
+      }
+    ],
+    "capabilityProviders": [
+      {
+        "id": "platform.capability-broker.directory",
+        "title": "Built-in Directory Opener Provider",
+        "capability": "browser.openDirectory",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::open_directory",
+        "fallback": "web-fallback.readonly",
+        "when": "capability('browser.openDirectory')"
+      },
+      {
+        "id": "platform.capability-broker.fs",
+        "title": "Built-in File System Provider",
+        "capability": "fs.read",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::read_text_file",
+        "fallback": "web-fallback.readonly",
+        "when": "capability('fs.read')"
+      },
+      {
+        "id": "platform.capability-broker.fs-write",
+        "title": "Built-in File Write Provider",
+        "capability": "fs.write",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::write_text_file",
+        "fallback": "web-fallback.readonly",
+        "when": "capability('fs.write')"
+      },
+      {
+        "id": "platform.capability-broker.process",
+        "title": "Built-in Process Provider",
+        "capability": "process.exec",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::run_process",
+        "fallback": "unsupported",
+        "when": "capability('process.exec')"
+      },
+      {
+        "id": "platform.capability-broker.browser",
+        "title": "Built-in Browser URL Provider",
+        "capability": "browser.openUrl",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::open_url",
+        "fallback": "web:window.open",
+        "when": "capability('browser.openUrl')"
+      },
+      {
+        "id": "platform.capability-broker.clipboard",
+        "title": "Built-in Clipboard Provider",
+        "capability": "clipboard.write",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::write_clipboard",
+        "fallback": "web:navigator.clipboard",
+        "when": "capability('clipboard.write')"
+      },
+      {
+        "id": "platform.capability-broker.clipboard-read",
+        "title": "Built-in Clipboard Read Provider",
+        "capability": "clipboard.read",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::read_clipboard",
+        "fallback": "web:navigator.clipboard",
+        "when": "capability('clipboard.read')"
+      },
+      {
+        "id": "platform.capability-broker.notification",
+        "title": "Built-in Notification Provider",
+        "capability": "notification.send",
+        "kind": "native",
+        "platforms": ["macos", "windows", "linux"],
+        "trustLevel": "platform",
+        "entry": "rust:capability_broker::send_notification",
+        "fallback": "web:Notification",
+        "when": "capability('notification.send')"
+      },
+      {
+        "id": "platform.capability-broker.web-clipboard",
+        "title": "Web Clipboard Provider",
+        "capability": "clipboard.write",
+        "kind": "web",
+        "platforms": ["web"],
+        "trustLevel": "platform",
+        "entry": "web:navigator.clipboard.writeText",
+        "fallback": "manual-copy",
+        "when": "platform == 'web' && capability('clipboard.write')"
+      },
+      {
+        "id": "platform.capability-broker.web-clipboard-read",
+        "title": "Web Clipboard Read Provider",
+        "capability": "clipboard.read",
+        "kind": "web",
+        "platforms": ["web"],
+        "trustLevel": "platform",
+        "entry": "web:navigator.clipboard.readText",
+        "fallback": "manual-paste",
+        "when": "platform == 'web' && capability('clipboard.read')"
+      },
+      {
+        "id": "platform.capability-broker.web-notification",
+        "title": "Web Notification Provider",
+        "capability": "notification.send",
+        "kind": "web",
+        "platforms": ["web"],
+        "trustLevel": "platform",
+        "entry": "web:Notification",
+        "fallback": "in-app-toast",
+        "when": "platform == 'web' && capability('notification.send')"
       }
     ]
   },

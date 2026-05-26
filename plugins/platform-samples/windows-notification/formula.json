@@ -4,7 +4,8 @@
   "kind": "plugin",
   "displayName": "Windows Notification Sample",
   "version": "1.0.0",
-  "intent": "Demonstrate a Windows-only plugin that uses the brokered notification.send capability.",
+  "trustLevel": "trusted-provider",
+  "intent": "Demonstrate a Windows-only trusted capability plugin that registers a notification.send provider.",
   "entry": {
     "node": "./src/index.ts"
   },
@@ -39,6 +40,19 @@
         "schema": "summary-list",
         "path": "/platform-samples/windows-notification",
         "when": "platform == 'windows'"
+      }
+    ],
+    "capabilityProviders": [
+      {
+        "id": "platform.windows-notification.native",
+        "title": "Windows Notification Native Provider",
+        "capability": "notification.send",
+        "kind": "native",
+        "platforms": ["windows"],
+        "trustLevel": "trusted-provider",
+        "entry": "./src/index.ts#windowsNotificationProvider",
+        "fallback": "web:Notification",
+        "when": "platform == 'windows' && capability('notification.send')"
       }
     ]
   },

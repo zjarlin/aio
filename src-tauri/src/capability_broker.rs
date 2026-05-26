@@ -434,23 +434,7 @@ fn truncate_for_audit(value: &str) -> String {
 fn write_clipboard_command(text: &str) -> AppResult<()> {
     #[cfg(target_os = "macos")]
     {
-        use std::io::Write;
-
-        let mut child = Command::new("pbcopy").stdin(Stdio::piped()).spawn()?;
-        let Some(stdin) = child.stdin.as_mut() else {
-            return Err(AppError::BadRequest(
-                "无法打开 pbcopy stdin 写入剪贴板".to_string(),
-            ));
-        };
-        stdin.write_all(text.as_bytes())?;
-        let status = child.wait()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(AppError::BadRequest(format!(
-                "pbcopy exited with status {status}"
-            )))
-        }
+        write_stdin_command("pbcopy", &[], text)
     }
 
     #[cfg(target_os = "windows")]
@@ -474,10 +458,14 @@ fn write_clipboard_command(text: &str) -> AppResult<()> {
 
     #[cfg(target_os = "linux")]
     {
-        Err(AppError::BadRequest(
-            "clipboard.write is not available on linux without a configured clipboard provider"
-                .to_string(),
-        ))
+        write_clipboard_with_candidates(
+            &[
+                ("wl-copy", &[] as &[&str]),
+                ("xclip", &["-selection", "clipboard"]),
+                ("xsel", &["--clipboard", "--input"]),
+            ],
+            text,
+        )
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -519,10 +507,11 @@ fn read_clipboard_command() -> AppResult<String> {
 
     #[cfg(target_os = "linux")]
     {
-        Err(AppError::BadRequest(
-            "clipboard.read is not available on linux without a configured clipboard provider"
-                .to_string(),
-        ))
+        read_clipboard_with_candidates(&[
+            ("wl-paste", &["--no-newline"] as &[&str]),
+            ("xclip", &["-selection", "clipboard", "-out"]),
+            ("xsel", &["--clipboard", "--output"]),
+        ])
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -553,10 +542,23 @@ fn send_notification_command(title: &str, body: &str) -> AppResult<()> {
 
     #[cfg(target_os = "windows")]
     {
-        Err(AppError::BadRequest(
-            "notification.send is not available on windows without a configured notification provider"
-                .to_string(),
-        ))
+        let script = windows_notification_script(title, body);
+        let status = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                &script,
+            ])
+            .status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(AppError::BadRequest(format!(
+                "powershell notification exited with status {status}"
+            )))
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -581,6 +583,85 @@ fn send_notification_command(title: &str, body: &str) -> AppResult<()> {
 
 fn applescript_string(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+fn write_stdin_command(program: &str, args: &[&str], input: &str) -> AppResult<()> {
+    let mut child = Command::new(program)
+        .args(args)
+        .stdin(Stdio::piped())
+        .spawn()?;
+    let Some(stdin) = child.stdin.as_mut() else {
+        return Err(AppError::BadRequest(format!(
+            "无法打开 {program} stdin 写入剪贴板"
+        )));
+    };
+    stdin.write_all(input.as_bytes())?;
+    let status = child.wait()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(AppError::BadRequest(format!(
+            "{program} exited with status {status}"
+        )))
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn write_clipboard_with_candidates(candidates: &[(&str, &[&str])], text: &str) -> AppResult<()> {
+    let mut failures = Vec::new();
+    for (program, args) in candidates {
+        match write_stdin_command(program, args, text) {
+            Ok(()) => return Ok(()),
+            Err(error) => failures.push(format!("{program}: {error}")),
+        }
+    }
+    Err(AppError::BadRequest(format!(
+        "clipboard.write is not available; tried wl-copy, xclip and xsel ({})",
+        failures.join("; ")
+    )))
+}
+
+#[cfg(target_os = "linux")]
+fn read_clipboard_with_candidates(candidates: &[(&str, &[&str])]) -> AppResult<String> {
+    let mut failures = Vec::new();
+    for (program, args) in candidates {
+        match Command::new(program).args(*args).output() {
+            Ok(output) if output.status.success() => {
+                return Ok(String::from_utf8_lossy(&output.stdout).into_owned());
+            }
+            Ok(output) => failures.push(format!("{program}: exited with status {}", output.status)),
+            Err(error) => failures.push(format!("{program}: {error}")),
+        }
+    }
+    Err(AppError::BadRequest(format!(
+        "clipboard.read is not available; tried wl-paste, xclip and xsel ({})",
+        failures.join("; ")
+    )))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_notification_script(title: &str, body: &str) -> String {
+    format!(
+        r#"
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+$notify = New-Object System.Windows.Forms.NotifyIcon
+$notify.Icon = [System.Drawing.SystemIcons]::Information
+$notify.BalloonTipTitle = '{title}'
+$notify.BalloonTipText = '{body}'
+$notify.Visible = $true
+$notify.ShowBalloonTip(5000)
+Start-Sleep -Milliseconds 500
+$notify.Dispose()
+"#,
+        title = powershell_single_quoted(title),
+        body = powershell_single_quoted(body),
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn powershell_single_quoted(value: &str) -> String {
+    value.replace('\'', "''")
 }
 
 fn normalize_absolute_path(path: &str, capability: &str) -> AppResult<PathBuf> {

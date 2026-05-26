@@ -1,5 +1,11 @@
 export const pluginId = 'platform.windows-notification';
 export const displayName = 'Windows Notification Sample';
+export const windowsNotificationProvider = {
+  capability: 'notification.send',
+  kind: 'native',
+  platform: 'windows',
+  trustLevel: 'trusted-provider',
+};
 
 export async function activate(context = {}) {
   context.log?.(`${displayName} activated`);

@@ -31,6 +31,8 @@ pub struct EventBusPublishInput {
     pub parent_trace_id: Option<String>,
     #[serde(default)]
     pub permissions: Option<Value>,
+    #[serde(default)]
+    pub schema: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -50,6 +52,30 @@ pub struct EventBusRequestInput {
     pub permissions: Option<Value>,
     #[serde(default = "default_request_timeout_ms")]
     pub timeout_ms: u64,
+    #[serde(default)]
+    pub schema: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventBusStreamInput {
+    pub event_type: String,
+    pub payload: Value,
+    pub source: String,
+    #[serde(default)]
+    pub stream_id: Option<String>,
+    #[serde(default)]
+    pub sequence: Option<u64>,
+    #[serde(default)]
+    pub done: bool,
+    #[serde(default)]
+    pub target: Option<String>,
+    #[serde(default)]
+    pub parent_trace_id: Option<String>,
+    #[serde(default)]
+    pub permissions: Option<Value>,
+    #[serde(default)]
+    pub schema: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -77,9 +103,14 @@ pub struct PlatformEventRecord {
     pub parent_trace_id: Option<String>,
     #[serde(default)]
     pub correlation_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sequence: Option<u64>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub done: bool,
     pub timestamp: i64,
     #[serde(default)]
     pub permissions: Option<Value>,
+    pub schema: String,
 }
 
 #[derive(Debug, Clone)]
@@ -126,6 +157,7 @@ impl EventBus {
     pub fn publish(&self, input: EventBusPublishInput) -> AppResult<PlatformEventRecord> {
         let event_type = normalize_event_type(&input.event_type)?;
         let source = normalize_event_source(&input.source)?;
+        let schema = validate_event_schema(&event_type, input.schema.as_deref(), &input.payload)?;
         let record = PlatformEventRecord {
             id: Uuid::new_v4().to_string(),
             event_type,
@@ -136,8 +168,11 @@ impl EventBus {
             trace_id: Uuid::new_v4().to_string(),
             parent_trace_id: input.parent_trace_id,
             correlation_id: None,
+            sequence: None,
+            done: false,
             timestamp: now_millis(),
             permissions: input.permissions,
+            schema,
         };
         self.record(record.clone())?;
         Ok(record)
@@ -192,6 +227,7 @@ impl EventBus {
     pub async fn request(&self, input: EventBusRequestInput) -> AppResult<Value> {
         let event_type = normalize_event_type(&input.event_type)?;
         let source = normalize_event_source(&input.source)?;
+        let schema = validate_event_schema(&event_type, input.schema.as_deref(), &input.payload)?;
         let request_id = input
             .request_id
             .clone()
@@ -208,8 +244,11 @@ impl EventBus {
             trace_id: trace_id.clone(),
             parent_trace_id: input.parent_trace_id.clone(),
             correlation_id: Some(request_id.clone()),
+            sequence: None,
+            done: false,
             timestamp: now_millis(),
             permissions: input.permissions.clone(),
+            schema: schema.clone(),
         };
 
         let handler = {
@@ -268,8 +307,11 @@ impl EventBus {
                     trace_id,
                     parent_trace_id: input.parent_trace_id,
                     correlation_id: Some(request_id),
+                    sequence: None,
+                    done: false,
                     timestamp: now_millis(),
                     permissions: input.permissions,
+                    schema,
                 };
                 self.record(reply_record)?;
                 Ok(value)
@@ -285,8 +327,11 @@ impl EventBus {
                     trace_id,
                     parent_trace_id: input.parent_trace_id,
                     correlation_id: Some(request_id),
+                    sequence: None,
+                    done: false,
                     timestamp: now_millis(),
                     permissions: input.permissions,
+                    schema,
                 };
                 self.record(error_record)?;
                 Err(error)
@@ -296,6 +341,33 @@ impl EventBus {
                 request_id, timeout
             ))),
         }
+    }
+
+    pub fn stream(&self, input: EventBusStreamInput) -> AppResult<PlatformEventRecord> {
+        let event_type = normalize_event_type(&input.event_type)?;
+        let source = normalize_event_source(&input.source)?;
+        let schema = validate_event_schema(&event_type, input.schema.as_deref(), &input.payload)?;
+        let stream_id = input
+            .stream_id
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        let record = PlatformEventRecord {
+            id: Uuid::new_v4().to_string(),
+            event_type,
+            kind: "stream".to_string(),
+            source,
+            target: input.target,
+            payload: input.payload,
+            trace_id: Uuid::new_v4().to_string(),
+            parent_trace_id: input.parent_trace_id,
+            correlation_id: Some(stream_id),
+            sequence: input.sequence,
+            done: input.done,
+            timestamp: now_millis(),
+            permissions: input.permissions,
+            schema,
+        };
+        self.record(record.clone())?;
+        Ok(record)
     }
 
     #[allow(dead_code)]
@@ -349,9 +421,78 @@ fn normalize_event_source(source: &str) -> AppResult<String> {
     Ok(source.to_string())
 }
 
+pub fn default_event_schema() -> String {
+    "schemas/events/platform-event-envelope.v1.schema.json".to_string()
+}
+
+fn validate_event_schema(
+    event_type: &str,
+    schema: Option<&str>,
+    payload: &Value,
+) -> AppResult<String> {
+    let schema = schema
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(default_event_schema);
+    if !schema.ends_with(".v1.schema.json") {
+        return Err(AppError::BadRequest(format!(
+            "event.schema must be a versioned schema path ending in .v1.schema.json: {schema}"
+        )));
+    }
+    if !payload.is_object() {
+        return Err(AppError::BadRequest(format!(
+            "event.payload must be a JSON object for schema {schema}"
+        )));
+    }
+    match schema.as_str() {
+        "schemas/events/platform-runtime-lifecycle.v1.schema.json" => {
+            require_payload_string(payload, "action", &schema)?;
+            require_payload_string(payload, "status", &schema)?;
+            require_payload_string(payload, "dataDir", &schema)?;
+            require_payload_string(payload, "platformId", &schema)?;
+        }
+        "schemas/events/registry-reloaded.v1.schema.json" => {
+            require_payload_number(payload, "plugins", &schema)?;
+            require_payload_number(payload, "systemCapsules", &schema)?;
+            require_payload_number(payload, "commands", &schema)?;
+            require_payload_number(payload, "tools", &schema)?;
+            require_payload_number(payload, "settings", &schema)?;
+            require_payload_number(payload, "resources", &schema)?;
+            require_payload_number(payload, "routes", &schema)?;
+            require_payload_number(payload, "views", &schema)?;
+        }
+        _ => {}
+    }
+    let _ = event_type;
+    Ok(schema)
+}
+
+fn require_payload_string(payload: &Value, field: &str, schema: &str) -> AppResult<()> {
+    if payload.get(field).and_then(Value::as_str).is_none() {
+        return Err(AppError::BadRequest(format!(
+            "event.payload.{field} must be a string for schema {schema}"
+        )));
+    }
+    Ok(())
+}
+
+fn require_payload_number(payload: &Value, field: &str, schema: &str) -> AppResult<()> {
+    if payload.get(field).and_then(Value::as_i64).is_none() {
+        return Err(AppError::BadRequest(format!(
+            "event.payload.{field} must be a number for schema {schema}"
+        )));
+    }
+    Ok(())
+}
+
 #[allow(dead_code)]
 fn default_request_timeout_ms() -> u64 {
     DEFAULT_REQUEST_TIMEOUT_MS
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 #[cfg(test)]
@@ -371,6 +512,7 @@ mod tests {
                 target: None,
                 parent_trace_id: None,
                 permissions: None,
+                schema: None,
             })
             .expect("publish");
 
@@ -399,6 +541,7 @@ mod tests {
                 parent_trace_id: None,
                 permissions: None,
                 timeout_ms: 500,
+                schema: None,
             })
             .await
         })
@@ -406,6 +549,59 @@ mod tests {
 
         assert_eq!(reply["theme"], "day");
         assert_eq!(bus.snapshot(Some("settings.get"), None).len(), 2);
+    }
+
+    #[test]
+    fn stream_should_record_correlated_chunks() {
+        let bus = EventBus::new();
+        let mut receiver = bus.subscribe();
+
+        let first = bus
+            .stream(EventBusStreamInput {
+                event_type: "ai.generate.delta".to_string(),
+                payload: json!({ "text": "hello" }),
+                source: "plugin.ai-workflow".to_string(),
+                stream_id: Some("stream-1".to_string()),
+                sequence: Some(0),
+                done: false,
+                target: Some("platform.renderer".to_string()),
+                parent_trace_id: None,
+                permissions: None,
+                schema: None,
+            })
+            .expect("first chunk");
+        let last = bus
+            .stream(EventBusStreamInput {
+                event_type: "ai.generate.delta".to_string(),
+                payload: json!({ "text": " world" }),
+                source: "plugin.ai-workflow".to_string(),
+                stream_id: Some("stream-1".to_string()),
+                sequence: Some(1),
+                done: true,
+                target: Some("platform.renderer".to_string()),
+                parent_trace_id: Some(first.trace_id.clone()),
+                permissions: None,
+                schema: None,
+            })
+            .expect("last chunk");
+
+        assert_eq!(first.kind, "stream");
+        assert_eq!(first.correlation_id.as_deref(), Some("stream-1"));
+        assert_eq!(first.sequence, Some(0));
+        assert!(!first.done);
+        assert_eq!(last.sequence, Some(1));
+        assert!(last.done);
+        assert_eq!(
+            bus.snapshot(Some("ai.generate.delta"), None)
+                .iter()
+                .map(|record| record.sequence)
+                .collect::<Vec<_>>(),
+            vec![Some(0), Some(1)]
+        );
+
+        let received =
+            tauri::async_runtime::block_on(async move { receiver.recv().await.expect("event") });
+        assert_eq!(received.kind, "stream");
     }
 
     #[test]
@@ -426,6 +622,7 @@ mod tests {
                 parent_trace_id: None,
                 permissions: None,
                 timeout_ms: 1,
+                schema: None,
             })
             .await
         });
@@ -454,6 +651,7 @@ mod tests {
                         parent_trace_id: None,
                         permissions: None,
                         timeout_ms: 500,
+                        schema: None,
                     })
                     .await
             });
@@ -464,5 +662,79 @@ mod tests {
         });
 
         assert!(matches!(result, Err(AppError::Conflict(_))));
+    }
+
+    #[test]
+    fn publish_should_attach_and_validate_event_schema() {
+        let bus = EventBus::new();
+
+        let record = bus
+            .publish(EventBusPublishInput {
+                event_type: "platform.runtime.lifecycle".to_string(),
+                payload: json!({
+                    "action": "reload",
+                    "status": "running",
+                    "dataDir": "/tmp/aio",
+                    "platformId": "macos"
+                }),
+                source: "platform.runtime".to_string(),
+                target: None,
+                parent_trace_id: None,
+                permissions: None,
+                schema: Some(
+                    "schemas/events/platform-runtime-lifecycle.v1.schema.json".to_string(),
+                ),
+            })
+            .expect("schema-valid event");
+
+        assert_eq!(
+            record.schema,
+            "schemas/events/platform-runtime-lifecycle.v1.schema.json"
+        );
+    }
+
+    #[test]
+    fn publish_should_attach_and_validate_registry_reload_schema() {
+        let bus = EventBus::new();
+
+        let record = bus
+            .publish(EventBusPublishInput {
+                event_type: "registry.reloaded".to_string(),
+                payload: json!({
+                    "plugins": 20,
+                    "systemCapsules": 9,
+                    "commands": 115,
+                    "tools": 2,
+                    "settings": 1,
+                    "resources": 3,
+                    "routes": 2,
+                    "views": 19
+                }),
+                source: "platform.registry".to_string(),
+                target: None,
+                parent_trace_id: None,
+                permissions: None,
+                schema: Some("schemas/events/registry-reloaded.v1.schema.json".to_string()),
+            })
+            .expect("schema-valid registry reload event");
+
+        assert_eq!(record.schema, "schemas/events/registry-reloaded.v1.schema.json");
+    }
+
+    #[test]
+    fn publish_should_reject_payload_that_does_not_match_known_schema() {
+        let bus = EventBus::new();
+
+        let result = bus.publish(EventBusPublishInput {
+            event_type: "platform.runtime.lifecycle".to_string(),
+            payload: json!({ "status": "running" }),
+            source: "platform.runtime".to_string(),
+            target: None,
+            parent_trace_id: None,
+            permissions: None,
+            schema: Some("schemas/events/platform-runtime-lifecycle.v1.schema.json".to_string()),
+        });
+
+        assert!(matches!(result, Err(AppError::BadRequest(_))));
     }
 }

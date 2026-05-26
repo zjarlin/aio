@@ -7,6 +7,7 @@ use app_lib::{
         verify_plugin_draft, PluginCreateFromPromptInput, PluginRepairFromDiagnosticsInput,
         PluginVerifyDraftInput,
     },
+    plugin_migration::{migrate_plugin_manifest, PluginMigrationInput},
     plugin_registry::{default_project_root, registry_from_project_root},
     plugin_store::{PluginRegistryRollbackInput, PluginRegistryStore},
     web_bridge,
@@ -44,11 +45,14 @@ fn run() -> Result<i32, Box<dyn Error>> {
                 "plugins": snapshot.plugins.len(),
                 "commands": snapshot.commands.len(),
                 "tools": snapshot.tools.len(),
+                "settings": snapshot.settings.len(),
+                "resources": snapshot.resources.len(),
                 "views": snapshot.views.len(),
                 "events": snapshot.events.len(),
                 "extensionPoints": snapshot.extension_points.len(),
                 "permissions": snapshot.permissions.len(),
                 "capabilities": snapshot.capabilities.len(),
+                "capabilityProviders": snapshot.capability_providers.len(),
                 "policies": snapshot.policies.len(),
                 "diagnostics": snapshot.diagnostics,
             });
@@ -65,10 +69,13 @@ fn run() -> Result<i32, Box<dyn Error>> {
                 "extensionTree": snapshot.extension_tree,
                 "commands": snapshot.commands,
                 "tools": snapshot.tools,
+                "settings": snapshot.settings,
+                "resources": snapshot.resources,
                 "views": snapshot.views,
                 "events": snapshot.events,
                 "extensionPoints": snapshot.extension_points,
                 "capabilities": snapshot.capabilities,
+                "capabilityProviders": snapshot.capability_providers,
                 "policies": snapshot.policies,
                 "diagnostics": snapshot.diagnostics,
             });
@@ -84,6 +91,12 @@ fn run() -> Result<i32, Box<dyn Error>> {
             } else {
                 2
             })
+        }
+        "migrate" => {
+            let input = parse_migrate_input(&args[1..])?;
+            let report = migrate_plugin_manifest(input)?;
+            println!("{}", serde_json::to_string_pretty(&report)?);
+            Ok(0)
         }
         "create-from-prompt" => {
             let input = parse_prompt_input(&args[1..])?;
@@ -233,6 +246,41 @@ fn parse_prompt_input(args: &[String]) -> Result<PluginCreateFromPromptInput, Bo
         output_dir,
         force,
     })
+}
+
+fn parse_migrate_input(args: &[String]) -> Result<PluginMigrationInput, Box<dyn Error>> {
+    let mut source_path = None;
+    let mut write = false;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--source-path" | "--path" => {
+                source_path = Some(PathBuf::from(parse_value(
+                    args,
+                    &mut index,
+                    "--source-path",
+                )?));
+            }
+            "--write" => {
+                write = true;
+                index += 1;
+            }
+            other if other.starts_with('-') => {
+                return Err(format!("不支持的 aio-plugin 参数：{other}").into());
+            }
+            other => {
+                if source_path.is_some() {
+                    return Err(format!("多余的位置参数：{other}").into());
+                }
+                source_path = Some(PathBuf::from(other));
+                index += 1;
+            }
+        }
+    }
+    let Some(source_path) = source_path else {
+        return Err("migrate 需要 source-path 参数".into());
+    };
+    Ok(PluginMigrationInput { source_path, write })
 }
 
 struct PublishLocalArgs {
@@ -540,6 +588,7 @@ fn parse_value(args: &[String], index: &mut usize, flag: &str) -> Result<String,
 fn print_usage() {
     eprintln!(
         "用法: aio-plugin <validate|inspect|compile> [--root <repo-root>]\n\
+         aio-plugin migrate --source-path <formula-or-capsule-dir-or-file> [--write]\n\
          aio-plugin create-from-prompt --prompt <text> [--display-name <name>] [--id <plugin-id>] [--kind <plugin|child-plugin>] [--parent-plugin-id <id>] [--parent-mount <mount>] [--route-path <path>] [--output-dir <dir>] [--force]\n\
          aio-plugin publish-gate --source-path <dir> --data-dir <dir> [--no-write]\n\
          aio-plugin publish-local --source-path <dir> --data-dir <dir>\n\

@@ -9,8 +9,9 @@ use walkdir::WalkDir;
 use crate::{
     auth::require_session,
     error::{AppError, AppResult},
+    event_bus::default_event_schema,
     permission_core::PermissionCore,
-    plugin_store::PluginRegistryStore,
+    plugin_store::{ChildCapabilityApprovalRecord, PluginRegistryStore},
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -93,6 +94,42 @@ pub struct ResourceContribution {
     pub kind: String,
     #[serde(default)]
     pub schema: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteContribution {
+    pub id: String,
+    pub path: String,
+    #[serde(default)]
+    pub component: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub slot: String,
+    #[serde(default)]
+    pub when: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapabilityProviderContribution {
+    pub id: String,
+    #[serde(default)]
+    pub title: String,
+    pub capability: String,
+    #[serde(default = "native_provider_kind")]
+    pub kind: String,
+    #[serde(default)]
+    pub platforms: Vec<String>,
+    #[serde(default)]
+    pub trust_level: String,
+    #[serde(default)]
+    pub entry: String,
+    #[serde(default)]
+    pub fallback: String,
+    #[serde(default)]
+    pub when: String,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -227,6 +264,10 @@ pub struct ContributionBlock {
     #[serde(default)]
     pub resources: Vec<ResourceContribution>,
     #[serde(default)]
+    pub routes: Vec<RouteContribution>,
+    #[serde(default)]
+    pub capability_providers: Vec<CapabilityProviderContribution>,
+    #[serde(default)]
     pub policies: Vec<PolicyContribution>,
     #[serde(default)]
     pub extension_points: Vec<ExtensionPointContribution>,
@@ -254,13 +295,53 @@ pub struct PluginEntry {
     pub remote: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EventDeclaration {
+    pub event: String,
+    pub schema: String,
+}
+
+impl<'de> Deserialize<'de> for EventDeclaration {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum EventDeclarationInput {
+            Name(String),
+            Object {
+                event: String,
+                #[serde(default)]
+                schema: String,
+            },
+        }
+
+        match EventDeclarationInput::deserialize(deserializer)? {
+            EventDeclarationInput::Name(event) => Ok(Self {
+                event,
+                schema: default_event_schema(),
+            }),
+            EventDeclarationInput::Object { event, schema } => Ok(Self {
+                event,
+                schema: if schema.trim().is_empty() {
+                    default_event_schema()
+                } else {
+                    schema
+                },
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EventBlock {
     #[serde(default)]
-    pub publishes: Vec<String>,
+    pub publishes: Vec<EventDeclaration>,
     #[serde(default)]
-    pub subscribes: Vec<String>,
+    pub subscribes: Vec<EventDeclaration>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -315,6 +396,8 @@ pub struct PluginFormula {
     pub display_name: String,
     #[serde(default)]
     pub version: String,
+    #[serde(default = "plugin_trust_level")]
+    pub trust_level: String,
     #[serde(default)]
     pub intent: String,
     #[serde(default)]
@@ -354,6 +437,8 @@ pub struct SystemCapsule {
     pub replaceable: bool,
     #[serde(default)]
     pub managed_by: String,
+    #[serde(default = "system_trust_level")]
+    pub trust_level: String,
     #[serde(default)]
     pub platforms: Option<PlatformMatrix>,
     #[serde(default)]
@@ -365,6 +450,8 @@ pub struct SystemCapsule {
     #[serde(default)]
     pub contributes: ContributionBlock,
     #[serde(default)]
+    pub events: EventBlock,
+    #[serde(default)]
     pub ai: PluginAiHints,
 }
 
@@ -375,16 +462,22 @@ pub struct RegistryPluginRecord {
     pub kind: String,
     pub display_name: String,
     pub version: String,
+    pub trust_level: String,
     pub intent: String,
     pub parent_plugin_id: Option<String>,
     pub parent_mount: Option<String>,
     pub platform_supported: Vec<String>,
     pub platform_degraded: Vec<String>,
+    pub platform_unsupported: Vec<String>,
     pub commands: Vec<String>,
     pub tools: Vec<String>,
+    pub settings: Vec<String>,
+    pub resources: Vec<String>,
+    pub routes: Vec<String>,
     pub menus: Vec<String>,
     pub views: Vec<String>,
     pub extension_points: Vec<String>,
+    pub capability_providers: Vec<String>,
     pub capabilities: Vec<String>,
 }
 
@@ -433,6 +526,43 @@ pub struct RegistryToolRecord {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RegistrySettingRecord {
+    pub id: String,
+    pub title: String,
+    pub schema: String,
+    pub source_id: String,
+    pub source_kind: String,
+    pub parent_chain: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistryResourceRecord {
+    pub id: String,
+    pub title: String,
+    pub kind: String,
+    pub schema: String,
+    pub source_id: String,
+    pub source_kind: String,
+    pub parent_chain: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegistryRouteRecord {
+    pub id: String,
+    pub path: String,
+    pub component: String,
+    pub title: String,
+    pub slot: String,
+    pub when: String,
+    pub source_id: String,
+    pub source_kind: String,
+    pub parent_chain: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegistryViewRecord {
     pub id: String,
     pub schema: String,
@@ -461,8 +591,27 @@ pub struct RegistryCapabilityRecord {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RegistryCapabilityProviderRecord {
+    pub id: String,
+    pub title: String,
+    pub capability: String,
+    pub kind: String,
+    pub platforms: Vec<String>,
+    pub trust_level: String,
+    pub source_trust_level: String,
+    pub entry: String,
+    pub fallback: String,
+    pub when: String,
+    pub source_id: String,
+    pub source_kind: String,
+    pub parent_chain: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RegistryEventRecord {
     pub event: String,
+    pub schema: String,
     pub direction: String,
     pub source_id: String,
     pub source_kind: String,
@@ -543,6 +692,7 @@ pub struct RegistryExtensionTreeNode {
     pub commands: Vec<String>,
     pub views: Vec<String>,
     pub menus: Vec<String>,
+    pub routes: Vec<String>,
     pub capabilities: Vec<String>,
     pub extension_points: Vec<String>,
     pub effective_capabilities: Vec<String>,
@@ -560,6 +710,7 @@ pub struct RegistryExtensionTreeMount {
     pub commands: Vec<String>,
     pub views: Vec<String>,
     pub menus: Vec<String>,
+    pub routes: Vec<String>,
     pub capabilities: Vec<String>,
     pub effective_capabilities: Vec<String>,
     pub capability_escalations: Vec<String>,
@@ -574,8 +725,12 @@ pub struct PluginRegistrySnapshot {
     pub extension_tree: RegistryExtensionTree,
     pub commands: Vec<RegistryCommandRecord>,
     pub tools: Vec<RegistryToolRecord>,
+    pub settings: Vec<RegistrySettingRecord>,
+    pub resources: Vec<RegistryResourceRecord>,
+    pub routes: Vec<RegistryRouteRecord>,
     pub views: Vec<RegistryViewRecord>,
     pub capabilities: Vec<RegistryCapabilityRecord>,
+    pub capability_providers: Vec<RegistryCapabilityProviderRecord>,
     pub policies: Vec<RegistryPolicyRecord>,
     pub events: Vec<RegistryEventRecord>,
     pub extension_points: Vec<RegistryExtensionPointRecord>,
@@ -591,6 +746,7 @@ struct SourceRef {
     kind: String,
     display_name: String,
     version: String,
+    trust_level: String,
     intent: String,
     parent: Option<PluginParent>,
     child_policy: Option<ChildPolicy>,
@@ -647,7 +803,11 @@ pub fn registry_from_workspace(
     let (external_system_capsules, external_plugins) = load_external_sources(&store)?;
     system_capsules.extend(external_system_capsules);
     plugins.extend(external_plugins);
-    Ok(compile_registry(system_capsules, plugins))
+    Ok(compile_registry_with_child_approvals(
+        system_capsules,
+        plugins,
+        store.load_child_capability_approvals()?,
+    ))
 }
 
 pub fn builtin_seed_permissions() -> AppResult<Vec<SeedPermission>> {
@@ -690,7 +850,16 @@ fn compile_registry(
     system_capsules: Vec<SystemCapsule>,
     plugin_formulas: Vec<PluginFormula>,
 ) -> PluginRegistrySnapshot {
+    compile_registry_with_child_approvals(system_capsules, plugin_formulas, Vec::new())
+}
+
+fn compile_registry_with_child_approvals(
+    system_capsules: Vec<SystemCapsule>,
+    plugin_formulas: Vec<PluginFormula>,
+    child_capability_approvals: Vec<ChildCapabilityApprovalRecord>,
+) -> PluginRegistrySnapshot {
     let mut diagnostics = Vec::new();
+    let approved_child_capabilities = approved_child_capability_keys(&child_capability_approvals);
     let mut parent_by_source = HashMap::new();
     for plugin in &plugin_formulas {
         if let Some(parent) = &plugin.parent {
@@ -706,13 +875,14 @@ fn compile_registry(
             kind: capsule.kind.clone(),
             display_name: capsule.display_name.clone(),
             version: String::new(),
+            trust_level: capsule.trust_level.clone(),
             intent: capsule.intent.clone(),
             parent: None,
             child_policy: capsule.child_policy.clone(),
             platforms: capsule.platforms.clone(),
             contributes: capsule.contributes.clone(),
             capabilities: capsule.capabilities.clone(),
-            events: EventBlock::default(),
+            events: capsule.events.clone(),
         })
         .collect::<Vec<_>>();
     let plugin_sources = plugin_formulas
@@ -723,6 +893,7 @@ fn compile_registry(
             kind: plugin.kind.clone(),
             display_name: plugin.display_name.clone(),
             version: plugin.version.clone(),
+            trust_level: plugin.trust_level.clone(),
             intent: plugin.intent.clone(),
             parent: plugin.parent.clone(),
             child_policy: plugin.child_policy.clone(),
@@ -743,19 +914,27 @@ fn compile_registry(
 
     let mut commands = Vec::new();
     let mut tools = Vec::new();
+    let mut settings = Vec::new();
+    let mut resources = Vec::new();
+    let mut routes = Vec::new();
     let mut views = Vec::new();
     let mut capability_records = Vec::new();
+    let mut capability_providers = Vec::new();
     let mut policies = Vec::new();
     let mut events = Vec::new();
     let mut extension_points = Vec::new();
     let mut permissions = Vec::new();
     let mut seen_commands = HashSet::new();
     let mut seen_tools = HashSet::new();
+    let mut seen_settings = HashSet::new();
+    let mut seen_resources = HashSet::new();
+    let mut seen_routes = HashSet::new();
     let mut seen_views = HashSet::new();
+    let mut seen_capability_providers = HashSet::new();
     let mut seen_extension_points = HashSet::new();
     let mut seen_permissions = HashSet::new();
 
-    validate_source_graph(&all_sources, &mut diagnostics);
+    validate_source_graph(&all_sources, &approved_child_capabilities, &mut diagnostics);
 
     for source in all_sources.iter() {
         let parent_chain = parent_chain_for(&source.id, &parent_by_source);
@@ -785,6 +964,38 @@ fn compile_registry(
         }
 
         append_event_records(source, &parent_chain, &mut events, &mut diagnostics);
+
+        for provider in &source.contributes.capability_providers {
+            if !seen_capability_providers.insert(provider.id.clone()) {
+                diagnostics.push(format!(
+                    "duplicate capability provider contribution: {}",
+                    provider.id
+                ));
+            }
+            let trust_level = effective_provider_trust_level(source, provider);
+            validate_capability_provider_contribution(
+                source,
+                provider,
+                &trust_level,
+                &declared_capabilities,
+                &mut diagnostics,
+            );
+            capability_providers.push(RegistryCapabilityProviderRecord {
+                id: provider.id.clone(),
+                title: provider.title.clone(),
+                capability: provider.capability.clone(),
+                kind: provider.kind.clone(),
+                platforms: provider.platforms.clone(),
+                trust_level,
+                source_trust_level: source.trust_level.clone(),
+                entry: provider.entry.clone(),
+                fallback: provider.fallback.clone(),
+                when: provider.when.clone(),
+                source_id: source.id.clone(),
+                source_kind: source.kind.clone(),
+                parent_chain: parent_chain.clone(),
+            });
+        }
 
         for policy in &source.contributes.policies {
             validate_policy_contribution(source, policy, &declared_capabilities, &mut diagnostics);
@@ -871,6 +1082,60 @@ fn compile_registry(
                 parent_chain: parent_chain.clone(),
                 capabilities: tool.capabilities.clone(),
             });
+        }
+
+        for setting in &source.contributes.settings {
+            if !seen_settings.insert(setting.id.clone()) {
+                diagnostics.push(format!("duplicate setting contribution: {}", setting.id));
+            }
+            settings.push(RegistrySettingRecord {
+                id: setting.id.clone(),
+                title: setting.title.clone(),
+                schema: setting.schema.clone(),
+                source_id: source.id.clone(),
+                source_kind: source.kind.clone(),
+                parent_chain: parent_chain.clone(),
+            });
+        }
+
+        for resource in &source.contributes.resources {
+            if !seen_resources.insert(resource.id.clone()) {
+                diagnostics.push(format!("duplicate resource contribution: {}", resource.id));
+            }
+            resources.push(RegistryResourceRecord {
+                id: resource.id.clone(),
+                title: resource.title.clone(),
+                kind: resource.kind.clone(),
+                schema: resource.schema.clone(),
+                source_id: source.id.clone(),
+                source_kind: source.kind.clone(),
+                parent_chain: parent_chain.clone(),
+            });
+        }
+
+        for route in &source.contributes.routes {
+            if !seen_routes.insert(route.id.clone()) {
+                diagnostics.push(format!("duplicate route contribution: {}", route.id));
+            }
+            routes.push(RegistryRouteRecord {
+                id: route.id.clone(),
+                path: route.path.clone(),
+                component: route.component.clone(),
+                title: route.title.clone(),
+                slot: route.slot.clone(),
+                when: route.when.clone(),
+                source_id: source.id.clone(),
+                source_kind: source.kind.clone(),
+                parent_chain: parent_chain.clone(),
+            });
+            validate_contribution_when(
+                source,
+                "route",
+                &route.id,
+                &route.when,
+                &declared_capabilities,
+                &mut diagnostics,
+            );
         }
 
         for view in &source.contributes.views {
@@ -971,12 +1236,21 @@ fn compile_registry(
 
     commands.sort_by(|a, b| a.id.cmp(&b.id));
     tools.sort_by(|a, b| a.id.cmp(&b.id));
+    settings.sort_by(|a, b| a.id.cmp(&b.id));
+    resources.sort_by(|a, b| a.id.cmp(&b.id));
+    routes.sort_by(|a, b| a.id.cmp(&b.id));
     views.sort_by(|a, b| a.id.cmp(&b.id));
     capability_records.sort_by(|a, b| {
         a.source_id
             .cmp(&b.source_id)
             .then_with(|| a.id.cmp(&b.id))
             .then_with(|| a.scope.cmp(&b.scope))
+    });
+    capability_providers.sort_by(|a, b| {
+        a.capability
+            .cmp(&b.capability)
+            .then_with(|| a.id.cmp(&b.id))
+            .then_with(|| a.source_id.cmp(&b.source_id))
     });
     policies.sort_by(|a, b| {
         a.priority
@@ -990,7 +1264,12 @@ fn compile_registry(
             .cmp(&b.sort_order)
             .then_with(|| a.code.cmp(&b.code))
     });
-    let extension_tree = compile_extension_tree(&plugin_sources, &all_sources, &parent_by_source);
+    let extension_tree = compile_extension_tree(
+        &plugin_sources,
+        &all_sources,
+        &parent_by_source,
+        &approved_child_capabilities,
+    );
     validate_permission_graph(&permissions, &mut diagnostics);
     let permission_seeds = permissions
         .iter()
@@ -1015,8 +1294,12 @@ fn compile_registry(
         extension_tree,
         commands,
         tools,
+        settings,
+        resources,
+        routes,
         views,
         capabilities: capability_records,
+        capability_providers,
         policies,
         events,
         extension_points,
@@ -1032,6 +1315,7 @@ fn plugin_record(source: &SourceRef) -> RegistryPluginRecord {
         kind: source.kind.clone(),
         display_name: source.display_name.clone(),
         version: source.version.clone(),
+        trust_level: source.trust_level.clone(),
         intent: source.intent.clone(),
         parent_plugin_id: source
             .parent
@@ -1048,6 +1332,11 @@ fn plugin_record(source: &SourceRef) -> RegistryPluginRecord {
             .as_ref()
             .map(|platforms| platforms.degraded.clone())
             .unwrap_or_default(),
+        platform_unsupported: source
+            .platforms
+            .as_ref()
+            .map(|platforms| platforms.unsupported.clone())
+            .unwrap_or_default(),
         commands: source
             .contributes
             .commands
@@ -1059,6 +1348,24 @@ fn plugin_record(source: &SourceRef) -> RegistryPluginRecord {
             .tools
             .iter()
             .map(|tool| tool.id.clone())
+            .collect(),
+        settings: source
+            .contributes
+            .settings
+            .iter()
+            .map(|setting| setting.id.clone())
+            .collect(),
+        resources: source
+            .contributes
+            .resources
+            .iter()
+            .map(|resource| resource.id.clone())
+            .collect(),
+        routes: source
+            .contributes
+            .routes
+            .iter()
+            .map(|route| route.id.clone())
             .collect(),
         menus: source
             .contributes
@@ -1078,6 +1385,12 @@ fn plugin_record(source: &SourceRef) -> RegistryPluginRecord {
             .iter()
             .map(|extension_point| extension_point.id.clone())
             .collect(),
+        capability_providers: source
+            .contributes
+            .capability_providers
+            .iter()
+            .map(|provider| provider.id.clone())
+            .collect(),
         capabilities: source
             .capabilities
             .iter()
@@ -1090,6 +1403,7 @@ fn compile_extension_tree(
     plugin_sources: &[SourceRef],
     sources: &[SourceRef],
     parent_by_source: &HashMap<String, String>,
+    approved_child_capabilities: &HashSet<String>,
 ) -> RegistryExtensionTree {
     let mut child_count_by_parent: HashMap<String, usize> = HashMap::new();
     for source in plugin_sources {
@@ -1105,7 +1419,8 @@ fn compile_extension_tree(
         .map(|source| {
             let parent_chain = parent_chain_for(&source.id, parent_by_source);
             let capabilities = capability_ids(&source.capabilities);
-            let capability_escalations = capability_escalations(source, sources);
+            let capability_escalations =
+                capability_escalations(source, sources, approved_child_capabilities);
             let effective_capabilities = capabilities
                 .iter()
                 .filter(|capability| !capability_escalations.contains(*capability))
@@ -1130,6 +1445,7 @@ fn compile_extension_tree(
                 commands: command_ids(source),
                 views: view_ids(source),
                 menus: menu_codes(source),
+                routes: route_ids(source),
                 capabilities,
                 extension_points: extension_point_ids(source),
                 effective_capabilities,
@@ -1143,7 +1459,8 @@ fn compile_extension_tree(
         .filter_map(|source| {
             let parent = source.parent.as_ref()?;
             let capabilities = capability_ids(&source.capabilities);
-            let capability_escalations = capability_escalations(source, sources);
+            let capability_escalations =
+                capability_escalations(source, sources, approved_child_capabilities);
             let effective_capabilities = capabilities
                 .iter()
                 .filter(|capability| !capability_escalations.contains(*capability))
@@ -1158,6 +1475,7 @@ fn compile_extension_tree(
                 commands: command_ids(source),
                 views: view_ids(source),
                 menus: menu_codes(source),
+                routes: route_ids(source),
                 capabilities,
                 effective_capabilities,
                 capability_escalations,
@@ -1179,7 +1497,11 @@ fn compile_extension_tree(
     RegistryExtensionTree { nodes, mounts }
 }
 
-fn capability_escalations(source: &SourceRef, sources: &[SourceRef]) -> Vec<String> {
+fn capability_escalations(
+    source: &SourceRef,
+    sources: &[SourceRef],
+    approved_child_capabilities: &HashSet<String>,
+) -> Vec<String> {
     let Some(parent) = &source.parent else {
         return Vec::new();
     };
@@ -1192,8 +1514,33 @@ fn capability_escalations(source: &SourceRef, sources: &[SourceRef]) -> Vec<Stri
     let allowed = allowed_child_capabilities(parent_source);
     capability_ids(&source.capabilities)
         .into_iter()
-        .filter(|capability| !allowed.contains(capability))
+        .filter(|capability| {
+            !allowed.contains(capability)
+                && !approved_child_capabilities.contains(&child_capability_key(
+                    &parent.plugin_id,
+                    &source.id,
+                    capability,
+                ))
+        })
         .collect()
+}
+
+fn approved_child_capability_keys(approvals: &[ChildCapabilityApprovalRecord]) -> HashSet<String> {
+    approvals
+        .iter()
+        .filter(|approval| approval.status == "approved")
+        .map(|approval| {
+            child_capability_key(
+                &approval.parent_plugin_id,
+                &approval.child_plugin_id,
+                &approval.capability,
+            )
+        })
+        .collect()
+}
+
+fn child_capability_key(parent_plugin_id: &str, child_plugin_id: &str, capability: &str) -> String {
+    format!("{parent_plugin_id}\u{1f}{child_plugin_id}\u{1f}{capability}")
 }
 
 fn allowed_child_capabilities(parent_source: &SourceRef) -> HashSet<String> {
@@ -1236,6 +1583,10 @@ fn menu_codes(source: &SourceRef) -> Vec<String> {
             .iter()
             .map(|menu| menu.code.clone()),
     )
+}
+
+fn route_ids(source: &SourceRef) -> Vec<String> {
+    sorted_unique(source.contributes.routes.iter().map(|route| route.id.clone()))
 }
 
 fn extension_point_ids(source: &SourceRef) -> Vec<String> {
@@ -1475,7 +1826,11 @@ where
     })
 }
 
-fn validate_source_graph(sources: &[SourceRef], diagnostics: &mut Vec<String>) {
+fn validate_source_graph(
+    sources: &[SourceRef],
+    approved_child_capabilities: &HashSet<String>,
+    diagnostics: &mut Vec<String>,
+) {
     let mut source_ids = HashSet::new();
     let mut source_by_id = HashMap::new();
     for source in sources {
@@ -1487,6 +1842,17 @@ fn validate_source_graph(sources: &[SourceRef], diagnostics: &mut Vec<String>) {
             diagnostics.push(format!("duplicate source id: {}", source.id));
         }
         validate_platform_matrix(&source.id, source.platforms.as_ref(), diagnostics);
+        validate_trust_level(
+            &source.trust_level,
+            &format!("{}.trustLevel", source.id),
+            diagnostics,
+        );
+        if source.kind != "system" && source.trust_level == "platform" {
+            diagnostics.push(format!(
+                "{} cannot declare platform trustLevel outside a system capsule",
+                source.id
+            ));
+        }
 
         match source.kind.as_str() {
             "system" => {
@@ -1544,7 +1910,12 @@ fn validate_source_graph(sources: &[SourceRef], diagnostics: &mut Vec<String>) {
             ));
         }
         validate_parent_compatibility(source, parent_source, parent, diagnostics);
-        validate_child_capability_policy(source, parent_source, diagnostics);
+        validate_child_capability_policy(
+            source,
+            parent_source,
+            approved_child_capabilities,
+            diagnostics,
+        );
     }
 }
 
@@ -1583,6 +1954,7 @@ fn validate_parent_compatibility(
 fn validate_child_capability_policy(
     child_source: &SourceRef,
     parent_source: &SourceRef,
+    approved_child_capabilities: &HashSet<String>,
     diagnostics: &mut Vec<String>,
 ) {
     let child_capabilities = capability_ids(&child_source.capabilities);
@@ -1592,7 +1964,12 @@ fn validate_child_capability_policy(
 
     let allowed = allowed_child_capabilities(parent_source);
     for capability in child_capabilities {
-        if !allowed.contains(&capability) {
+        let approved = approved_child_capabilities.contains(&child_capability_key(
+            &parent_source.id,
+            &child_source.id,
+            &capability,
+        ));
+        if !allowed.contains(&capability) && !approved {
             diagnostics.push(format!(
                 "child plugin {} requests capability {} outside parent {} child policy; platform approval required",
                 child_source.id, capability, parent_source.id
@@ -1683,19 +2060,113 @@ fn validate_policy_contribution(
     );
 }
 
+fn effective_provider_trust_level(
+    source: &SourceRef,
+    provider: &CapabilityProviderContribution,
+) -> String {
+    let provider_trust = provider.trust_level.trim();
+    if provider_trust.is_empty() {
+        source.trust_level.clone()
+    } else {
+        provider_trust.to_string()
+    }
+}
+
+fn validate_capability_provider_contribution(
+    source: &SourceRef,
+    provider: &CapabilityProviderContribution,
+    trust_level: &str,
+    declared_capabilities: &HashSet<&str>,
+    diagnostics: &mut Vec<String>,
+) {
+    if provider.capability.trim().is_empty() {
+        diagnostics.push(format!(
+            "{} capabilityProvider.{} is missing capability",
+            source.id, provider.id
+        ));
+    } else if !declared_capabilities.contains(provider.capability.as_str()) {
+        diagnostics.push(format!(
+            "{} capabilityProvider.{} provides undeclared capability {}",
+            source.id, provider.id, provider.capability
+        ));
+    }
+
+    validate_provider_kind(
+        &provider.kind,
+        &format!("{}.capabilityProviders.{}.kind", source.id, provider.id),
+        diagnostics,
+    );
+    validate_trust_level(
+        trust_level,
+        &format!(
+            "{}.capabilityProviders.{}.trustLevel",
+            source.id, provider.id
+        ),
+        diagnostics,
+    );
+    PermissionCore::validate_platform_values(
+        &provider.platforms,
+        &format!(
+            "{}.capabilityProviders.{}.platforms",
+            source.id, provider.id
+        ),
+        diagnostics,
+    );
+    validate_contribution_when(
+        source,
+        "capabilityProvider",
+        &provider.id,
+        &provider.when,
+        declared_capabilities,
+        diagnostics,
+    );
+
+    if provider.kind == "native" && !matches!(trust_level, "trusted-provider" | "platform") {
+        diagnostics.push(format!(
+            "{} capabilityProvider.{} is native but trustLevel is {}; native providers require trusted-provider or platform",
+            source.id, provider.id, trust_level
+        ));
+    }
+    if trust_level == "platform" && source.kind != "system" {
+        diagnostics.push(format!(
+            "{} capabilityProvider.{} cannot use platform trustLevel outside a system capsule",
+            source.id, provider.id
+        ));
+    }
+}
+
+fn validate_provider_kind(kind: &str, path: &str, diagnostics: &mut Vec<String>) {
+    if !matches!(kind, "native" | "web" | "remote" | "service") {
+        diagnostics.push(format!("unknown capability provider kind {kind} at {path}"));
+    }
+}
+
+fn validate_trust_level(trust_level: &str, path: &str, diagnostics: &mut Vec<String>) {
+    if !matches!(
+        trust_level,
+        "community" | "verified" | "trusted-provider" | "platform"
+    ) {
+        diagnostics.push(format!("unknown trustLevel {trust_level} at {path}"));
+    }
+}
+
 fn append_event_records(
     source: &SourceRef,
     parent_chain: &[String],
     records: &mut Vec<RegistryEventRecord>,
     diagnostics: &mut Vec<String>,
 ) {
-    PermissionCore::validate_event_names(
+    let publishes = event_names(&source.events.publishes);
+    let subscribes = event_names(&source.events.subscribes);
+    PermissionCore::validate_event_names(&source.id, "publishes", &publishes, diagnostics);
+    PermissionCore::validate_event_names(&source.id, "subscribes", &subscribes, diagnostics);
+    validate_event_schemas(
         &source.id,
         "publishes",
         &source.events.publishes,
         diagnostics,
     );
-    PermissionCore::validate_event_names(
+    validate_event_schemas(
         &source.id,
         "subscribes",
         &source.events.subscribes,
@@ -1706,10 +2177,11 @@ fn append_event_records(
         .events
         .publishes
         .iter()
-        .filter(|event| !event.trim().is_empty())
+        .filter(|event| !event.event.trim().is_empty())
     {
         records.push(RegistryEventRecord {
-            event: event.clone(),
+            event: event.event.clone(),
+            schema: event.schema.clone(),
             direction: "publish".to_string(),
             source_id: source.id.clone(),
             source_kind: source.kind.clone(),
@@ -1720,15 +2192,47 @@ fn append_event_records(
         .events
         .subscribes
         .iter()
-        .filter(|event| !event.trim().is_empty())
+        .filter(|event| !event.event.trim().is_empty())
     {
         records.push(RegistryEventRecord {
-            event: event.clone(),
+            event: event.event.clone(),
+            schema: event.schema.clone(),
             direction: "subscribe".to_string(),
             source_id: source.id.clone(),
             source_kind: source.kind.clone(),
             parent_chain: parent_chain.to_vec(),
         });
+    }
+}
+
+fn event_names(events: &[EventDeclaration]) -> Vec<String> {
+    events.iter().map(|event| event.event.clone()).collect()
+}
+
+fn validate_event_schemas(
+    source_id: &str,
+    list_name: &str,
+    events: &[EventDeclaration],
+    diagnostics: &mut Vec<String>,
+) {
+    for event in events {
+        let schema = event.schema.trim();
+        if event.event.trim().is_empty() {
+            continue;
+        }
+        if schema.is_empty() {
+            diagnostics.push(format!(
+                "{source_id}.events.{list_name}.{} is missing schema",
+                event.event
+            ));
+            continue;
+        }
+        if !schema.ends_with(".v1.schema.json") {
+            diagnostics.push(format!(
+                "{source_id}.events.{list_name}.{} has non-versioned schema {}",
+                event.event, event.schema
+            ));
+        }
     }
 }
 
@@ -1756,6 +2260,18 @@ fn button_permission_type() -> String {
     "button".to_string()
 }
 
+fn native_provider_kind() -> String {
+    "native".to_string()
+}
+
+fn plugin_trust_level() -> String {
+    "community".to_string()
+}
+
+fn system_trust_level() -> String {
+    "platform".to_string()
+}
+
 fn deny_policy_effect() -> String {
     "deny".to_string()
 }
@@ -1764,11 +2280,14 @@ fn deny_policy_effect() -> String {
 mod tests {
     use super::{
         builtin_registry, builtin_seed_permissions, command_source, compile_registry,
-        default_project_root, registry_from_project_root, registry_from_workspace,
-        CapabilityFormula, ChildPolicy, CommandContribution, ContributionBlock, EventBlock,
-        ExtensionPointContribution, PlatformMatrix, PluginAiHints, PluginFormula, PluginParent,
-        ResourceContribution, SystemCapsule, ToolContribution, ViewContribution,
+        compile_registry_with_child_approvals, default_project_root, registry_from_project_root,
+        registry_from_workspace, CapabilityFormula, CapabilityProviderContribution, ChildPolicy,
+        CommandContribution, ContributionBlock, EventBlock, ExtensionPointContribution,
+        PlatformMatrix, PluginAiHints, PluginFormula, PluginParent, ResourceContribution,
+        SettingContribution, SystemCapsule, ToolContribution, ViewContribution,
     };
+
+    use crate::plugin_store::ChildCapabilityApprovalRecord;
 
     #[test]
     fn builtin_registry_compiles_current_asset_tree() {
@@ -1834,6 +2353,16 @@ mod tests {
             command.id == "github_sync_pull_requests"
                 && command.source_id == "git-suite.github-provider"
                 && command.parent_chain == vec!["git-suite".to_string()]
+        }));
+        assert!(registry.tools.iter().any(|tool| {
+            tool.id == "git_summarize_changes"
+                && tool.source_id == "git-suite"
+                && tool.capabilities == vec!["fs.read".to_string(), "process.exec".to_string()]
+        }));
+        assert!(registry.tools.iter().any(|tool| {
+            tool.id == "openai_assistant_ask"
+                && tool.source_id == "asset.openai-assistant"
+                && tool.parent_chain == vec!["asset-suite".to_string()]
         }));
         assert!(registry.events.iter().any(|event| {
             event.event == "asset.item.changed"
@@ -1924,6 +2453,64 @@ mod tests {
     }
 
     #[test]
+    fn settings_and_resources_contributions_are_registered() {
+        let plugin = PluginFormula {
+            schema_version: "plugin-formula/v1".to_string(),
+            id: "workspace.contract-registry".to_string(),
+            kind: "plugin".to_string(),
+            display_name: "Contract Registry".to_string(),
+            version: "1.0.0".to_string(),
+            trust_level: "community".to_string(),
+            intent: String::new(),
+            entry: None,
+            parent: None,
+            activation: Vec::new(),
+            platforms: None,
+            capabilities: Vec::new(),
+            contributes: ContributionBlock {
+                settings: vec![SettingContribution {
+                    id: "workspace.contract-registry.settings".to_string(),
+                    title: "Settings".to_string(),
+                    schema: "contracts/settings.schema.json".to_string(),
+                }],
+                resources: vec![ResourceContribution {
+                    id: "workspace.contract-registry.resource".to_string(),
+                    title: "Resource".to_string(),
+                    kind: "contract".to_string(),
+                    schema: "contracts/resource.schema.json".to_string(),
+                }],
+                ..ContributionBlock::default()
+            },
+            events: EventBlock::default(),
+            expectations: Vec::new(),
+            ai: PluginAiHints::default(),
+            child_policy: None,
+        };
+
+        let registry = compile_registry(Vec::new(), vec![plugin]);
+
+        assert!(registry.settings.iter().any(|setting| {
+            setting.id == "workspace.contract-registry.settings"
+                && setting.source_id == "workspace.contract-registry"
+                && setting.schema == "contracts/settings.schema.json"
+        }));
+        assert!(registry.resources.iter().any(|resource| {
+            resource.id == "workspace.contract-registry.resource"
+                && resource.kind == "contract"
+                && resource.source_id == "workspace.contract-registry"
+        }));
+        assert!(registry.plugins.iter().any(|plugin| {
+            plugin.id == "workspace.contract-registry"
+                && plugin
+                    .settings
+                    .contains(&"workspace.contract-registry.settings".to_string())
+                && plugin
+                    .resources
+                    .contains(&"workspace.contract-registry.resource".to_string())
+        }));
+    }
+
+    #[test]
     fn filesystem_discovery_loads_registry_contract_files() {
         let registry =
             registry_from_project_root(default_project_root()).expect("registry loads from disk");
@@ -1936,11 +2523,15 @@ mod tests {
             .capabilities
             .iter()
             .any(|capability| capability.id == "fs.read" && capability.source_id == "asset-suite"));
-        assert_eq!(registry.system_capsules.len(), 8);
+        assert_eq!(registry.system_capsules.len(), 9);
         assert!(registry
             .system_capsules
             .iter()
             .any(|capsule| capsule.id == "platform.permission-core"));
+        assert!(registry
+            .system_capsules
+            .iter()
+            .any(|capsule| capsule.id == "platform.runtime"));
         assert!(registry
             .commands
             .iter()
@@ -1954,6 +2545,22 @@ mod tests {
             .iter()
             .any(|command| command.id == "plugin_host_load"));
         assert!(registry
+            .commands
+            .iter()
+            .any(|command| command.id == "app_runtime_reload"));
+        assert!(registry
+            .settings
+            .iter()
+            .any(|setting| setting.id == "git-suite.settings"
+                && setting.source_id == "git-suite"
+                && setting.schema == "schemas/settings/git-suite.settings.v1.json"));
+        assert!(registry
+            .routes
+            .iter()
+            .any(|route| route.id == "git-suite.route"
+                && route.source_id == "git-suite"
+                && route.path == "/integrations/git"));
+        assert!(registry
             .system_capsules
             .iter()
             .any(|capsule| capsule.id == "platform.event-bus"));
@@ -1966,6 +2573,11 @@ mod tests {
             .commands
             .iter()
             .any(|command| command.id == "event_bus_snapshot"));
+        assert!(registry.events.iter().any(|event| {
+            event.event == "platform.runtime.lifecycle"
+                && event.schema == "schemas/events/platform-runtime-lifecycle.v1.schema.json"
+                && event.source_id == "platform.runtime"
+        }));
         assert!(registry
             .system_capsules
             .iter()
@@ -1983,19 +2595,68 @@ mod tests {
             .commands
             .iter()
             .any(|command| command.id == "capability_notification_send"));
-        assert_eq!(registry.system_capsules.len(), 8);
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.capability-broker.fs"
+                && provider.capability == "fs.read"
+                && provider.trust_level == "platform"
+        }));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.capability-broker.clipboard"
+                && provider.capability == "clipboard.write"
+                && provider.platforms.contains(&"linux".to_string())
+        }));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.capability-broker.notification"
+                && provider.capability == "notification.send"
+                && provider.platforms.contains(&"windows".to_string())
+        }));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.capability-broker.web-clipboard"
+                && provider.kind == "web"
+                && provider.platforms == vec!["web".to_string()]
+                && provider.entry == "web:navigator.clipboard.writeText"
+        }));
+        assert_eq!(registry.system_capsules.len(), 9);
         assert!(registry
             .plugins
             .iter()
             .any(|plugin| plugin.id == "platform.macos-clipboard"
                 && plugin.platform_supported == vec!["macos".to_string()]
                 && plugin.platform_degraded == vec!["web".to_string(), "remote".to_string()]));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.macos-clipboard.native"
+                && provider.capability == "clipboard.write"
+                && provider.trust_level == "trusted-provider"
+                && provider.source_trust_level == "trusted-provider"
+        }));
         assert!(registry
             .plugins
             .iter()
             .any(|plugin| plugin.id == "platform.windows-notification"
                 && plugin.platform_supported == vec!["windows".to_string()]
                 && plugin.platform_degraded == vec!["web".to_string(), "remote".to_string()]));
+        assert!(registry.plugins.iter().any(|plugin| {
+            plugin.id == "platform.macos-automation"
+                && plugin.platform_supported == vec!["macos".to_string()]
+                && plugin.platform_unsupported == vec!["windows".to_string(), "linux".to_string()]
+        }));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.macos-automation.provider"
+                && provider.capability == "macos.automation"
+                && provider.platforms == vec!["macos".to_string()]
+                && provider.fallback == "approval-required"
+        }));
+        assert!(registry.plugins.iter().any(|plugin| {
+            plugin.id == "platform.windows-registry"
+                && plugin.platform_supported == vec!["windows".to_string()]
+                && plugin.platform_unsupported == vec!["macos".to_string(), "linux".to_string()]
+        }));
+        assert!(registry.capability_providers.iter().any(|provider| {
+            provider.id == "platform.windows-registry.provider"
+                && provider.capability == "windows.registry.read"
+                && provider.platforms == vec!["windows".to_string()]
+                && provider.fallback == "unsupported"
+        }));
     }
 
     #[test]
@@ -2025,6 +2686,7 @@ mod tests {
             kind: "plugin".to_string(),
             display_name: "Parent Suite".to_string(),
             version: "1.2.0".to_string(),
+            trust_level: "community".to_string(),
             intent: String::new(),
             entry: None,
             parent: None,
@@ -2066,6 +2728,7 @@ mod tests {
             kind: "child-plugin".to_string(),
             display_name: "Child".to_string(),
             version: String::new(),
+            trust_level: "community".to_string(),
             intent: String::new(),
             entry: None,
             parent: Some(PluginParent {
@@ -2133,6 +2796,122 @@ mod tests {
     }
 
     #[test]
+    fn child_capability_approval_turns_escalation_into_effective_capability() {
+        let parent = PluginFormula {
+            schema_version: "plugin-formula/v1".to_string(),
+            id: "parent-suite".to_string(),
+            kind: "plugin".to_string(),
+            display_name: "Parent".to_string(),
+            version: "2.0.0".to_string(),
+            trust_level: "community".to_string(),
+            intent: String::new(),
+            entry: None,
+            parent: None,
+            activation: Vec::new(),
+            platforms: None,
+            capabilities: vec![CapabilityFormula {
+                id: "fs.read".to_string(),
+                scope: "workspace".to_string(),
+                allow: Vec::new(),
+                reason: String::new(),
+                platforms: Vec::new(),
+                optional: false,
+            }],
+            contributes: ContributionBlock {
+                extension_points: vec![ExtensionPointContribution {
+                    id: "parent-suite.slot".to_string(),
+                    title: "Slot".to_string(),
+                    contract: String::new(),
+                    multiplicity: "many".to_string(),
+                    activation: "withParent".to_string(),
+                    allowed_contribution_kinds: vec!["command".to_string()],
+                }],
+                ..ContributionBlock::default()
+            },
+            events: EventBlock::default(),
+            expectations: Vec::new(),
+            ai: PluginAiHints::default(),
+            child_policy: Some(ChildPolicy {
+                allow_third_party_children: true,
+                capability_mode: "intersection".to_string(),
+                event_namespace: "parent-suite/*".to_string(),
+                requires_platform_approval_for_new_capabilities: true,
+                allowed_child_capabilities: vec!["fs.read".to_string()],
+            }),
+        };
+        let child = PluginFormula {
+            schema_version: "plugin-formula/v1".to_string(),
+            id: "parent-suite.child".to_string(),
+            kind: "child-plugin".to_string(),
+            display_name: "Child".to_string(),
+            version: String::new(),
+            trust_level: "community".to_string(),
+            intent: String::new(),
+            entry: None,
+            parent: Some(PluginParent {
+                plugin_id: "parent-suite".to_string(),
+                mount: "parent-suite.slot".to_string(),
+                compatible_parent_range: "^2.0.0".to_string(),
+            }),
+            activation: Vec::new(),
+            platforms: None,
+            capabilities: vec![
+                CapabilityFormula {
+                    id: "fs.read".to_string(),
+                    scope: "workspace".to_string(),
+                    allow: Vec::new(),
+                    reason: String::new(),
+                    platforms: Vec::new(),
+                    optional: false,
+                },
+                CapabilityFormula {
+                    id: "process.exec".to_string(),
+                    scope: "git".to_string(),
+                    allow: Vec::new(),
+                    reason: String::new(),
+                    platforms: Vec::new(),
+                    optional: false,
+                },
+            ],
+            contributes: ContributionBlock::default(),
+            events: EventBlock::default(),
+            expectations: Vec::new(),
+            ai: PluginAiHints::default(),
+            child_policy: None,
+        };
+
+        let registry = compile_registry_with_child_approvals(
+            Vec::new(),
+            vec![parent, child],
+            vec![ChildCapabilityApprovalRecord {
+                capability: "process.exec".to_string(),
+                child_plugin_id: "parent-suite.child".to_string(),
+                created_at: 1,
+                parent_plugin_id: "parent-suite".to_string(),
+                reason: "platform approved git process access".to_string(),
+                revoked_at: None,
+                revoked_reason: String::new(),
+                status: "approved".to_string(),
+                updated_at: 1,
+            }],
+        );
+
+        let child_node = registry
+            .extension_tree
+            .nodes
+            .iter()
+            .find(|node| node.plugin_id == "parent-suite.child")
+            .expect("child node");
+        assert!(child_node.capability_escalations.is_empty());
+        assert_eq!(
+            child_node.effective_capabilities,
+            vec!["fs.read".to_string(), "process.exec".to_string()]
+        );
+        assert!(registry.diagnostics.iter().all(|diagnostic| !diagnostic
+            .contains("capability process.exec outside parent parent-suite child policy")));
+    }
+
+    #[test]
     fn child_plugin_can_mount_system_capsule_extension_point() {
         let permission_core = SystemCapsule {
             schema_version: "system-capsule/v1".to_string(),
@@ -2143,6 +2922,7 @@ mod tests {
             mutable: false,
             replaceable: false,
             managed_by: "platform".to_string(),
+            trust_level: "platform".to_string(),
             platforms: None,
             capabilities: vec![CapabilityFormula {
                 id: "permission.audit".to_string(),
@@ -2171,6 +2951,7 @@ mod tests {
                 }],
                 ..ContributionBlock::default()
             },
+            events: EventBlock::default(),
             ai: PluginAiHints::default(),
         };
         let audit_sink = PluginFormula {
@@ -2179,6 +2960,7 @@ mod tests {
             kind: "child-plugin".to_string(),
             display_name: "Audit File Sink".to_string(),
             version: "0.1.0".to_string(),
+            trust_level: "community".to_string(),
             intent: String::new(),
             entry: None,
             parent: Some(PluginParent {
@@ -2245,6 +3027,7 @@ mod tests {
             mutable: false,
             replaceable: false,
             managed_by: "platform".to_string(),
+            trust_level: "platform".to_string(),
             platforms: None,
             capabilities: Vec::new(),
             provides: None,
@@ -2266,6 +3049,7 @@ mod tests {
                 }],
                 ..ContributionBlock::default()
             },
+            events: EventBlock::default(),
             ai: PluginAiHints::default(),
         };
         let policy_plugin = PluginFormula {
@@ -2274,6 +3058,7 @@ mod tests {
             kind: "child-plugin".to_string(),
             display_name: "High Risk Deny Policy".to_string(),
             version: "0.1.0".to_string(),
+            trust_level: "community".to_string(),
             intent: String::new(),
             entry: None,
             parent: Some(PluginParent {
@@ -2325,6 +3110,64 @@ mod tests {
     }
 
     #[test]
+    fn capability_provider_registry_should_enforce_trust_level() {
+        let provider_plugin = PluginFormula {
+            schema_version: "plugin-formula/v1".to_string(),
+            id: "community.clipboard".to_string(),
+            kind: "plugin".to_string(),
+            display_name: "Community Clipboard".to_string(),
+            version: "0.1.0".to_string(),
+            trust_level: "community".to_string(),
+            intent: String::new(),
+            entry: None,
+            parent: None,
+            activation: Vec::new(),
+            platforms: Some(PlatformMatrix {
+                supported: vec!["macos".to_string()],
+                degraded: Vec::new(),
+                unsupported: Vec::new(),
+                reason: String::new(),
+            }),
+            capabilities: vec![CapabilityFormula {
+                id: "clipboard.write".to_string(),
+                scope: "system-clipboard".to_string(),
+                allow: Vec::new(),
+                reason: String::new(),
+                platforms: vec!["macos".to_string()],
+                optional: false,
+            }],
+            contributes: ContributionBlock {
+                capability_providers: vec![CapabilityProviderContribution {
+                    id: "community.clipboard.native".to_string(),
+                    title: "Community Clipboard Native Provider".to_string(),
+                    capability: "clipboard.write".to_string(),
+                    kind: "native".to_string(),
+                    platforms: vec!["macos".to_string()],
+                    trust_level: "community".to_string(),
+                    entry: "./src/index.ts#provider".to_string(),
+                    fallback: "web:navigator.clipboard".to_string(),
+                    when: "platform == 'macos' && capability('clipboard.write')".to_string(),
+                }],
+                ..ContributionBlock::default()
+            },
+            events: EventBlock::default(),
+            expectations: Vec::new(),
+            ai: PluginAiHints::default(),
+            child_policy: None,
+        };
+
+        let registry = compile_registry(Vec::new(), vec![provider_plugin]);
+
+        assert_eq!(registry.capability_providers.len(), 1);
+        assert_eq!(
+            registry.capability_providers[0].id,
+            "community.clipboard.native"
+        );
+        assert!(registry.diagnostics.iter().any(|diagnostic| diagnostic
+            .contains("native providers require trusted-provider or platform")));
+    }
+
+    #[test]
     fn compile_registry_should_report_when_platform_and_capability_mismatches() {
         let plugin = PluginFormula {
             schema_version: "plugin-formula/v1".to_string(),
@@ -2332,6 +3175,7 @@ mod tests {
             kind: "plugin".to_string(),
             display_name: "When Check".to_string(),
             version: "1.0.0".to_string(),
+            trust_level: "community".to_string(),
             intent: String::new(),
             entry: None,
             parent: None,

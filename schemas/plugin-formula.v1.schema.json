@@ -23,6 +23,9 @@
       "type": "string",
       "minLength": 1
     },
+    "trustLevel": {
+      "$ref": "#/$defs/trustLevel"
+    },
     "intent": {
       "type": "string"
     },
@@ -72,6 +75,12 @@
     "id": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
+    "trustLevel": {
+      "enum": ["community", "verified", "trusted-provider", "platform"]
+    },
+    "providerKind": {
+      "enum": ["native", "web", "remote", "service"]
     },
     "platformId": {
       "enum": ["macos", "windows", "linux", "web", "remote"]
@@ -213,6 +222,18 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/resource"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/route"
+          }
+        },
+        "capabilityProviders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/capabilityProvider"
           }
         },
         "policies": {
@@ -407,6 +428,70 @@
         }
       }
     },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilityProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "capability", "trustLevel"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capability": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "$ref": "#/$defs/providerKind"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/platformId"
+          }
+        },
+        "trustLevel": {
+          "$ref": "#/$defs/trustLevel"
+        },
+        "entry": {
+          "type": "string"
+        },
+        "fallback": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      }
+    },
     "policy": {
       "type": "object",
       "additionalProperties": false,
@@ -517,18 +602,40 @@
         "publishes": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/$defs/eventDeclaration"
           }
         },
         "subscribes": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/$defs/eventDeclaration"
           }
         }
       }
+    },
+    "eventDeclaration": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event", "schema"],
+          "properties": {
+            "event": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^schemas/events/.+\\.v1\\.schema\\.json$"
+            }
+          }
+        }
+      ]
     },
     "ai": {
       "type": "object",

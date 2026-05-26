@@ -136,7 +136,16 @@
     ]
   },
   "events": {
-    "publishes": ["asset.item.changed", "asset.variable.changed"],
+    "publishes": [
+      {
+        "event": "asset.item.changed",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      },
+      {
+        "event": "asset.variable.changed",
+        "schema": "schemas/events/platform-event-envelope.v1.schema.json"
+      }
+    ],
     "subscribes": []
   },
   "expectations": [

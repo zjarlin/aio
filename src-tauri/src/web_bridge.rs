@@ -8,7 +8,7 @@ use axum::{
     Router,
 };
 use serde::{de::DeserializeOwned, Deserialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::net::TcpListener;
 use tokio::runtime::Builder;
 use tower_http::cors::{Any, CorsLayer};
@@ -23,6 +23,10 @@ use crate::{
         AgentPreferenceUpdateInput,
     },
     app_paths,
+    app_runtime::{
+        AppRuntimeReloadInput, AppRuntimeSessionInput, AppRuntimeStartInput, AppRuntimeStopInput,
+        AppRuntimeWorkspaceInput,
+    },
     asset_items::{
         self, AssetItemDeployInput, AssetItemDeployPreviewRequest, AssetItemImportRequest,
         AssetItemInput, AssetItemPageRequest, AssetItemToggleInput, AssetItemUpdateInput,
@@ -38,16 +42,19 @@ use crate::{
         DictTypeUpdateInput,
     },
     error::{AppError, AppResult},
-    event_bus::{EventBusPublishInput, EventBusSnapshotRequest},
+    event_bus::{EventBusPublishInput, EventBusSnapshotRequest, EventBusStreamInput},
     extension_host::ExtensionHostSourceInput,
     notes::{self, NoteFlagInput, NoteInput, NotePageRequest, NoteUpdateInput},
+    permission_approval::{self, PermissionApprovalDecisionInput, PermissionApprovalRequestInput},
     permission_consent::{self, PermissionConsentGrantInput, PermissionConsentRevokeInput},
     permission_core::PermissionCore,
     plugin_factory::{
         self, PluginCreateFromPromptInput, PluginRepairFromDiagnosticsInput, PluginVerifyDraftInput,
     },
     plugin_registry,
-    plugin_store::{PluginRegistryRollbackInput, PluginRegistryStore},
+    plugin_store::{
+        ChildCapabilityApprovalInput, PluginRegistryRollbackInput, PluginRegistryStore,
+    },
     rbac::{
         self, AssignPermissionsInput, PageRequest, PermissionInput, RoleInput, RoleUpdateInput,
         UserInput, UserPasswordInput, UserUpdateInput,
@@ -56,7 +63,7 @@ use crate::{
     state::AppState,
 };
 
-const BRIDGE_PORT: u16 = 18777;
+const DEFAULT_BRIDGE_PORT: u16 = 18777;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -92,7 +99,7 @@ pub fn serve_headless(data_dir: PathBuf) -> AppResult<()> {
 }
 
 async fn run(state: AppState) -> AppResult<()> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], BRIDGE_PORT));
+    let addr = SocketAddr::from(([127, 0, 0, 1], bridge_port()));
     let listener = match TcpListener::bind(addr).await {
         Ok(listener) => listener,
         Err(error) => {
@@ -117,6 +124,14 @@ async fn run(state: AppState) -> AppResult<()> {
 
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+fn bridge_port() -> u16 {
+    std::env::var("AIO_COMMAND_BRIDGE_PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .filter(|port| *port != 0)
+        .unwrap_or(DEFAULT_BRIDGE_PORT)
 }
 
 async fn handle_command(
@@ -361,12 +376,98 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             )
             .map_err(|source| AppError::Json { source })
         }
+        "permission_approval_list" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(permission_approval::list_for_user(pool, &user.user_id).await?)
+                .map_err(|source| AppError::Json { source })
+        }
+        "permission_approval_approve" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(
+                permission_approval::approve_for_user(
+                    pool,
+                    &user.user_id,
+                    payload_field::<PermissionApprovalDecisionInput>(&payload, "input")?,
+                )
+                .await?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "permission_approval_deny" => {
+            let token = payload_field::<String>(&payload, "token")?;
+            let user = auth::require_session(pool, &token).await?;
+            serde_json::to_value(
+                permission_approval::deny_for_user(
+                    pool,
+                    &user.user_id,
+                    payload_field::<PermissionApprovalDecisionInput>(&payload, "input")?,
+                )
+                .await?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_snapshot" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(state.app_runtime.snapshot())
+                .map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_start" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let record = state
+                .app_runtime
+                .start(payload_field::<AppRuntimeStartInput>(&payload, "input")?)?;
+            state.event_bus.publish(record.event_input())?;
+            serde_json::to_value(record).map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_stop" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let record = state
+                .app_runtime
+                .stop(payload_field::<AppRuntimeStopInput>(&payload, "input")?)?;
+            state.event_bus.publish(record.event_input())?;
+            serde_json::to_value(record).map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_reload" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let record = state
+                .app_runtime
+                .reload(payload_field::<AppRuntimeReloadInput>(&payload, "input")?)?;
+            state.event_bus.publish(record.event_input())?;
+            serde_json::to_value(record).map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_workspace" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let record = state.app_runtime.set_workspace(payload_field::<
+                AppRuntimeWorkspaceInput,
+            >(&payload, "input")?)?;
+            state.event_bus.publish(record.event_input())?;
+            serde_json::to_value(record).map_err(|source| AppError::Json { source })
+        }
+        "app_runtime_session" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let record = state
+                .app_runtime
+                .set_session(payload_field::<AppRuntimeSessionInput>(&payload, "input")?)?;
+            state.event_bus.publish(record.event_input())?;
+            serde_json::to_value(record).map_err(|source| AppError::Json { source })
+        }
         "event_bus_publish" => {
             auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
             serde_json::to_value(
                 state
                     .event_bus
                     .publish(payload_field::<EventBusPublishInput>(&payload, "input")?)?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "event_bus_stream" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                state
+                    .event_bus
+                    .stream(payload_field::<EventBusStreamInput>(&payload, "input")?)?,
             )
             .map_err(|source| AppError::Json { source })
         }
@@ -566,15 +667,29 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
                 &state.data_dir,
             )
             .await?;
+            let event_detail = json!({
+                "plugins": snapshot.plugins.len(),
+                "systemCapsules": snapshot.system_capsules.len(),
+                "commands": snapshot.commands.len(),
+                "tools": snapshot.tools.len(),
+                "settings": snapshot.settings.len(),
+                "resources": snapshot.resources.len(),
+                "routes": snapshot.routes.len(),
+                "views": snapshot.views.len(),
+            });
             PluginRegistryStore::new(&state.data_dir).append_audit(
                 crate::plugin_store::RegistryAuditRecord {
                     action: "reload".to_string(),
                     content_hash: None,
                     detail: Some(format!(
-                        "plugins={},systemCapsules={},commands={},views={}",
+                        "plugins={},systemCapsules={},commands={},tools={},settings={},resources={},routes={},views={}",
                         snapshot.plugins.len(),
                         snapshot.system_capsules.len(),
                         snapshot.commands.len(),
+                        snapshot.tools.len(),
+                        snapshot.settings.len(),
+                        snapshot.resources.len(),
+                        snapshot.routes.len(),
                         snapshot.views.len()
                     )),
                     id: "registry".to_string(),
@@ -589,7 +704,34 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
                     timestamp: crate::db::now_millis(),
                 },
             )?;
+            state.event_bus.publish(EventBusPublishInput {
+                event_type: "registry.reloaded".to_string(),
+                payload: event_detail,
+                source: "platform.registry".to_string(),
+                target: None,
+                parent_trace_id: None,
+                permissions: None,
+                schema: Some("schemas/events/registry-reloaded.v1.schema.json".to_string()),
+            })?;
             serde_json::to_value(snapshot).map_err(|source| AppError::Json { source })
+        }
+        "plugin_child_capability_approve" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir).approve_child_capability(
+                    payload_field::<ChildCapabilityApprovalInput>(&payload, "input")?,
+                )?,
+            )
+            .map_err(|source| AppError::Json { source })
+        }
+        "plugin_child_capability_revoke" => {
+            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            serde_json::to_value(
+                PluginRegistryStore::new(&state.data_dir).revoke_child_capability(
+                    payload_field::<ChildCapabilityApprovalInput>(&payload, "input")?,
+                )?,
+            )
+            .map_err(|source| AppError::Json { source })
         }
         "user_page" => boxed!(rbac::user_page(
             pool,
@@ -844,6 +986,21 @@ async fn authorize_broker_capability(
         &scope,
     )
     .await?;
+    if !consent_granted {
+        permission_approval::request_for_user(
+            &state.pool,
+            &user.user_id,
+            PermissionApprovalRequestInput {
+                source_id: "platform.capability-broker".to_string(),
+                source_kind: "system".to_string(),
+                capability: capability.to_string(),
+                scope: scope.clone(),
+                target: target.clone(),
+                reason: format!("missing consent for runtime capability {capability}"),
+            },
+        )
+        .await?;
+    }
     let mut request = PermissionCore::system_request(
         user.user_id,
         "platform.capability-broker",

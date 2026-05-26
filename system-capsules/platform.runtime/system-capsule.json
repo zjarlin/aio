@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "system-capsule/v1",
+  "id": "platform.runtime",
+  "kind": "system",
+  "displayName": "App Runtime",
+  "intent": "Track app lifecycle, workspace, session, platform identity and reload transitions for all plugin shells.",
+  "mutable": false,
+  "replaceable": false,
+  "managedBy": "platform",
+  "platforms": {
+    "supported": ["macos", "windows", "linux", "web", "remote"]
+  },
+  "capabilities": [
+    {
+      "id": "runtime.lifecycle",
+      "scope": "app-runtime",
+      "reason": "Read and mutate platform runtime lifecycle state."
+    },
+    {
+      "id": "runtime.workspace",
+      "scope": "workspace",
+      "reason": "Track the active workspace identity for plugin activation and when conditions."
+    },
+    {
+      "id": "runtime.session",
+      "scope": "session",
+      "reason": "Track the active app session identity for plugin correlation and audit."
+    }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "app_runtime_snapshot",
+        "title": "App Runtime Snapshot",
+        "category": "runtime",
+        "capabilities": ["runtime.lifecycle"]
+      },
+      {
+        "id": "app_runtime_start",
+        "title": "Start App Runtime",
+        "category": "runtime",
+        "capabilities": ["runtime.lifecycle"]
+      },
+      {
+        "id": "app_runtime_stop",
+        "title": "Stop App Runtime",
+        "category": "runtime",
+        "capabilities": ["runtime.lifecycle"]
+      },
+      {
+        "id": "app_runtime_reload",
+        "title": "Reload App Runtime",
+        "category": "runtime",
+        "capabilities": ["runtime.lifecycle"]
+      },
+      {
+        "id": "app_runtime_workspace",
+        "title": "Set Runtime Workspace",
+        "category": "runtime",
+        "capabilities": ["runtime.workspace"]
+      },
+      {
+        "id": "app_runtime_session",
+        "title": "Set Runtime Session",
+        "category": "runtime",
+        "capabilities": ["runtime.session"]
+      }
+    ],
+    "resources": [
+      {
+        "id": "platform.runtime.snapshot",
+        "title": "Runtime Snapshot",
+        "kind": "runtime-state",
+        "schema": "schemas/runtime/app-runtime.v1.schema.json"
+      }
+    ]
+  },
+  "events": {
+    "publishes": [
+      {
+        "event": "platform.runtime.lifecycle",
+        "schema": "schemas/events/platform-runtime-lifecycle.v1.schema.json"
+      }
+    ]
+  },
+  "ai": {
+    "editableByAI": false,
+    "role": "runtime",
+    "primaryOutput": "runtime-state",
+    "repairStrategy": "diagnostics-first"
+  }
+}

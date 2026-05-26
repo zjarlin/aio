@@ -17,6 +17,11 @@
       "reason": "Persist and evaluate user consent records for runtime capability access."
     },
     {
+      "id": "permission.approval",
+      "scope": "runtime-permission-approval",
+      "reason": "Create, list and decide runtime capability approval requests."
+    },
+    {
       "id": "permission.evaluate",
       "scope": "runtime-permission-request",
       "reason": "Evaluate runtime requests against declared capabilities, platform support and consent."
@@ -88,6 +93,24 @@
         "title": "Revoke Permission Consent",
         "category": "permission-core",
         "capabilities": ["permission.consent"]
+      },
+      {
+        "id": "permission_approval_list",
+        "title": "List Permission Approvals",
+        "category": "permission-core",
+        "capabilities": ["permission.approval"]
+      },
+      {
+        "id": "permission_approval_approve",
+        "title": "Approve Permission Request",
+        "category": "permission-core",
+        "capabilities": ["permission.approval", "permission.consent"]
+      },
+      {
+        "id": "permission_approval_deny",
+        "title": "Deny Permission Request",
+        "category": "permission-core",
+        "capabilities": ["permission.approval"]
       }
     ]
   },

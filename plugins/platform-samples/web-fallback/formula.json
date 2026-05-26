@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "plugin-formula/v1",
+  "id": "platform-samples.web-fallback",
+  "kind": "plugin",
+  "displayName": "Web Fallback Sample",
+  "version": "0.1.0",
+  "intent": "Demonstrate a read-only Web and Remote fallback plugin that remains useful when native providers are unavailable.",
+  "entry": {
+    "browser": "./src/index.ts"
+  },
+  "activation": ["onRoute:/system/plugins/web-fallback"],
+  "platforms": {
+    "supported": ["web", "remote"],
+    "degraded": ["macos", "windows", "linux"],
+    "reason": "Desktop hosts can render the same declarative view, but this sample intentionally avoids native providers to model a fallback path."
+  },
+  "capabilities": [],
+  "contributes": {
+    "views": [
+      {
+        "id": "platform-samples.web-fallback.readonly",
+        "slot": "main",
+        "schema": "markdown",
+        "path": "/system/plugins/web-fallback",
+        "contract": "schemas/plugin-ui-view.v1.schema.json"
+      }
+    ],
+    "menus": [
+      {
+        "code": "platform.samples.webFallback",
+        "title": "Web Fallback Sample",
+        "permissionType": "menu",
+        "path": "/system/plugins/web-fallback",
+        "component": "/system/plugins/index",
+        "sortOrder": 508,
+        "ordinaryUser": false
+      }
+    ],
+    "routes": [
+      {
+        "id": "platform-samples.web-fallback.route",
+        "path": "/system/plugins/web-fallback",
+        "component": "/system/plugins/index",
+        "title": "Web Fallback Sample",
+        "slot": "main"
+      }
+    ]
+  },
+  "expectations": [
+    "The plugin must stay read-only and must not request native capabilities.",
+    "The same view contract must render in Web, Remote and Desktop shells.",
+    "If a future native implementation is added, this fallback remains the unsupported-platform presentation."
+  ],
+  "ai": {
+    "editableByAI": true,
+    "primaryEditFile": "formula.json",
+    "preferredFiles": ["formula.json", "README.md", "src/index.ts"],
+    "role": "web-fallback-plugin",
+    "primaryOutput": "read-only-view",
+    "repairStrategy": "view-contract-first"
+  }
+}

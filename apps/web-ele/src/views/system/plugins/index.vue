@@ -1,5 +1,14 @@
 <script lang="ts" setup>
 import type {
+  AppRuntimeLifecycleRecord,
+  AppRuntimeReloadInput,
+  AppRuntimeSessionInput,
+  AppRuntimeSnapshot,
+  AppRuntimeStartInput,
+  AppRuntimeStopInput,
+  AppRuntimeWorkspaceInput,
+  ChildCapabilityApprovalRecord,
+  PermissionApprovalRecord,
   PermissionConsentRecord,
   PermissionDecisionRecord,
   PlatformEventRecord,
@@ -31,11 +40,22 @@ import {
 } from 'element-plus';
 
 import {
+  appRuntimeReloadApi,
+  appRuntimeSessionApi,
+  appRuntimeSnapshotApi,
+  appRuntimeStartApi,
+  appRuntimeStopApi,
+  appRuntimeWorkspaceApi,
   eventBusSnapshotApi,
+  permissionApprovalApproveApi,
+  permissionApprovalDenyApi,
+  permissionApprovalListApi,
   permissionAuditLogApi,
   permissionConsentGrantApi,
   permissionConsentListApi,
   permissionConsentRevokeApi,
+  pluginChildCapabilityApproveApi,
+  pluginChildCapabilityRevokeApi,
   pluginPublishGateApi,
   pluginRegistryLocalStateApi,
   pluginRegistryReloadApi,
@@ -48,11 +68,15 @@ import { formatTime } from '../shared';
 import PluginViewRenderer from './components/plugin-view-renderer.vue';
 
 const loading = ref(false);
+const runtimeSnapshot = ref<AppRuntimeSnapshot | null>(null);
 const eventBusRecords = ref<PlatformEventRecord[]>([]);
 const permissionAuditRecords = ref<PermissionDecisionRecord[]>([]);
+const permissionApprovalRecords = ref<PermissionApprovalRecord[]>([]);
 const permissionConsentRecords = ref<PermissionConsentRecord[]>([]);
 const localState = ref<null | PluginRegistryLocalState>(null);
 const snapshot = ref<null | PluginRegistrySnapshot>(null);
+const approvalDecisionKey = ref('');
+const childCapabilityDecisionKey = ref('');
 const consentGrantLoading = ref(false);
 const consentRevokeKey = ref('');
 const consentGrantForm = reactive({
@@ -75,27 +99,56 @@ const rollbackContentHash = ref('');
 const rollbackId = ref('');
 const rollbackLoading = ref(false);
 const rollbackResult = ref<null | PluginRegistryRollbackResult>(null);
+const runtimeActionLoading = ref('');
+const runtimeStartForm = reactive<AppRuntimeStartInput>({
+  mode: 'desktop',
+  reason: 'manual runtime start',
+  sessionId: '',
+  workspace: '',
+});
+const runtimeReloadForm = reactive<AppRuntimeReloadInput>({
+  reason: 'manual runtime reload',
+  sessionId: '',
+  workspace: '',
+});
+const runtimeWorkspaceForm = reactive<AppRuntimeWorkspaceInput>({
+  reason: 'manual runtime workspace change',
+  workspace: '',
+});
+const runtimeSessionForm = reactive<AppRuntimeSessionInput>({
+  reason: 'manual runtime session change',
+  sessionId: '',
+});
+const runtimeStopForm = reactive<AppRuntimeStopInput>({
+  reason: 'manual runtime stop',
+});
 
 async function loadSnapshot() {
   loading.value = true;
   try {
     const [
+      runtime,
       registrySnapshot,
       registryState,
       eventRecords,
       permissionRecords,
+      approvalRecords,
       consentRecords,
     ] = await Promise.all([
+      appRuntimeSnapshotApi(),
       pluginRegistrySnapshotApi(),
       pluginRegistryLocalStateApi(),
       eventBusSnapshotApi({ limit: 50 }),
       permissionAuditLogApi(),
+      permissionApprovalListApi(),
       permissionConsentListApi(),
     ]);
+    runtimeSnapshot.value = runtime;
     snapshot.value = registrySnapshot;
     localState.value = registryState;
     eventBusRecords.value = eventRecords;
     permissionAuditRecords.value = permissionRecords;
+    permissionApprovalRecords.value = approvalRecords;
     permissionConsentRecords.value = consentRecords;
   } finally {
     loading.value = false;
@@ -134,12 +187,112 @@ function countItems(value: unknown) {
   return Array.isArray(value) ? value.length : 0;
 }
 
+function runtimeActionKey(action: string) {
+  return action;
+}
+
+const runtimeUpdatedAtText = computed(() =>
+  runtimeSnapshot.value?.updatedAt
+    ? formatTime(runtimeSnapshot.value.updatedAt)
+    : '-',
+);
+
+async function withRuntimeAction(
+  action: string,
+  handler: () => Promise<AppRuntimeLifecycleRecord>,
+) {
+  runtimeActionLoading.value = action;
+  try {
+    await handler();
+    await loadSnapshot();
+  } finally {
+    runtimeActionLoading.value = '';
+  }
+}
+
+async function startRuntime() {
+  await withRuntimeAction('start', () =>
+    appRuntimeStartApi({
+      ...runtimeStartForm,
+      mode: runtimeStartForm.mode?.trim() || 'desktop',
+      reason: runtimeStartForm.reason?.trim() || undefined,
+      sessionId: runtimeStartForm.sessionId?.trim() || undefined,
+      workspace: runtimeStartForm.workspace?.trim() || undefined,
+    }),
+  );
+}
+
+async function stopRuntime() {
+  await withRuntimeAction('stop', () =>
+    appRuntimeStopApi({
+      reason: runtimeStopForm.reason?.trim() || undefined,
+    }),
+  );
+}
+
+async function reloadRuntime() {
+  await withRuntimeAction('reload', () =>
+    appRuntimeReloadApi({
+      ...runtimeReloadForm,
+      reason: runtimeReloadForm.reason?.trim() || undefined,
+      sessionId: runtimeReloadForm.sessionId?.trim() || undefined,
+      workspace: runtimeReloadForm.workspace?.trim() || undefined,
+    }),
+  );
+}
+
+async function updateRuntimeWorkspace() {
+  const workspace = runtimeWorkspaceForm.workspace.trim();
+  if (!workspace) {
+    return;
+  }
+  await withRuntimeAction('workspace', () =>
+    appRuntimeWorkspaceApi({
+      reason: runtimeWorkspaceForm.reason?.trim() || undefined,
+      workspace,
+    }),
+  );
+}
+
+async function updateRuntimeSession() {
+  const sessionId = runtimeSessionForm.sessionId.trim();
+  if (!sessionId) {
+    return;
+  }
+  await withRuntimeAction('session', () =>
+    appRuntimeSessionApi({
+      reason: runtimeSessionForm.reason?.trim() || undefined,
+      sessionId,
+    }),
+  );
+}
+
 function normalizeConsentScope(scope?: string) {
   return scope?.trim() || '*';
 }
 
 function consentRowKey(row: PermissionConsentRecord) {
   return [row.sourceId, row.capability, row.scope].join('::');
+}
+
+function approvalRowKey(row: PermissionApprovalRecord) {
+  return row.id;
+}
+
+function childCapabilityKey(
+  parentPluginId: string,
+  childPluginId: string,
+  capability: string,
+) {
+  return [parentPluginId, childPluginId, capability].join('::');
+}
+
+function childCapabilityApprovalKey(row: ChildCapabilityApprovalRecord) {
+  return childCapabilityKey(
+    row.parentPluginId,
+    row.childPluginId,
+    row.capability,
+  );
 }
 
 function fillConsentFromCapability(
@@ -204,6 +357,96 @@ async function revokeConsent(row: PermissionConsentRecord) {
     await loadSnapshot();
   } finally {
     consentRevokeKey.value = '';
+  }
+}
+
+async function approveApproval(row: PermissionApprovalRecord) {
+  await ElMessageBox.confirm(
+    `确认通过 ${row.sourceId} / ${row.capability} / ${row.scope}？`,
+    '通过权限审批',
+  );
+  approvalDecisionKey.value = approvalRowKey(row);
+  try {
+    await permissionApprovalApproveApi({
+      id: row.id,
+      reason: `approved from registry UI for ${row.capability}`,
+    });
+    ElMessage.success('已通过审批并写入权限同意');
+    await loadSnapshot();
+  } finally {
+    approvalDecisionKey.value = '';
+  }
+}
+
+async function denyApproval(row: PermissionApprovalRecord) {
+  await ElMessageBox.confirm(
+    `确认拒绝 ${row.sourceId} / ${row.capability} / ${row.scope}？`,
+    '拒绝权限审批',
+    { type: 'warning' },
+  );
+  approvalDecisionKey.value = approvalRowKey(row);
+  try {
+    await permissionApprovalDenyApi({
+      id: row.id,
+      reason: `denied from registry UI for ${row.capability}`,
+    });
+    ElMessage.success('已拒绝审批');
+    await loadSnapshot();
+  } finally {
+    approvalDecisionKey.value = '';
+  }
+}
+
+async function approveChildCapability(
+  row: PluginRegistrySnapshot['extensionTree']['nodes'][number],
+  capability: string,
+) {
+  const parentPluginId = row.parentPluginId || '';
+  if (!parentPluginId) {
+    ElMessage.warning('只有子插件能力升级需要审批');
+    return;
+  }
+  await ElMessageBox.confirm(
+    `确认批准 ${row.pluginId} 请求 ${capability}？`,
+    '批准子插件能力',
+  );
+  childCapabilityDecisionKey.value = childCapabilityKey(
+    parentPluginId,
+    row.pluginId,
+    capability,
+  );
+  try {
+    await pluginChildCapabilityApproveApi({
+      capability,
+      childPluginId: row.pluginId,
+      parentPluginId,
+      reason: `approved from registry UI for ${row.pluginId}/${capability}`,
+    });
+    ElMessage.success('已批准子插件能力');
+    await loadSnapshot();
+  } finally {
+    childCapabilityDecisionKey.value = '';
+  }
+}
+
+async function revokeChildCapability(row: ChildCapabilityApprovalRecord) {
+  await ElMessageBox.confirm(
+    `确认撤销 ${row.childPluginId} / ${row.capability} 的批准？`,
+    '撤销子插件能力批准',
+    { type: 'warning' },
+  );
+  childCapabilityDecisionKey.value = childCapabilityApprovalKey(row);
+  try {
+    await pluginChildCapabilityRevokeApi({
+      capability: row.capability,
+      childPluginId: row.childPluginId,
+      parentPluginId: row.parentPluginId,
+      reason: `revoked from registry UI for ${row.childPluginId}/${row.capability}`,
+    });
+    ElMessage.success('已撤销子插件能力批准');
+    await loadSnapshot();
+  } finally {
+    childCapabilityDecisionKey.value = '';
   }
 }
 
@@ -314,7 +557,10 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
   const plugins = snapshot.value?.plugins || [];
   const systemCapsules = snapshot.value?.systemCapsules || [];
   const capabilities = snapshot.value?.capabilities || [];
+  const capabilityProviders = snapshot.value?.capabilityProviders || [];
   const policies = snapshot.value?.policies || [];
+  const settings = snapshot.value?.settings || [];
+  const resources = snapshot.value?.resources || [];
   const extensionPoints = snapshot.value?.extensionPoints || [];
   const events = snapshot.value?.events || [];
   const tree = snapshot.value?.extensionTree?.nodes || [];
@@ -334,6 +580,9 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         { label: '插件', value: `${countItems(plugins)}` },
         { label: '系统胶囊', value: `${countItems(systemCapsules)}` },
         { label: '能力', value: `${countItems(capabilities)}` },
+        { label: 'Provider', value: `${countItems(capabilityProviders)}` },
+        { label: '设置', value: `${countItems(settings)}` },
+        { label: '资源', value: `${countItems(resources)}` },
         { label: '策略', value: `${countItems(policies)}` },
         { label: '扩展点', value: `${countItems(extensionPoints)}` },
         { label: '事件', value: `${countItems(events)}` },
@@ -351,7 +600,13 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
             { label: '父级', value: firstPlugin.parentPluginId || '-' },
             { label: '命令', value: `${countItems(firstPlugin.commands)}` },
             { label: '视图', value: `${countItems(firstPlugin.views)}` },
+            { label: '设置', value: `${countItems(firstPlugin.settings)}` },
+            { label: '资源', value: `${countItems(firstPlugin.resources)}` },
             { label: '能力', value: `${countItems(firstPlugin.capabilities)}` },
+            {
+              label: 'Provider',
+              value: `${countItems(firstPlugin.capabilityProviders)}`,
+            },
           ]
         : [{ label: '状态', value: '暂无插件快照' }],
     },
@@ -395,7 +650,10 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         { key: 'version', label: '版本', width: 100 },
         { key: 'commands', label: '命令', width: 90, align: 'center' },
         { key: 'views', label: '视图', width: 90, align: 'center' },
+        { key: 'settings', label: '设置', width: 90, align: 'center' },
+        { key: 'resources', label: '资源', width: 90, align: 'center' },
         { key: 'capabilities', label: '能力', width: 90, align: 'center' },
+        { key: 'providers', label: 'Provider', width: 110, align: 'center' },
       ],
       rows: plugins.slice(0, 8).map((plugin) => ({
         id: plugin.id,
@@ -404,7 +662,10 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         version: plugin.version || '-',
         commands: countItems(plugin.commands),
         views: countItems(plugin.views),
+        settings: countItems(plugin.settings),
+        resources: countItems(plugin.resources),
         capabilities: countItems(plugin.capabilities),
+        providers: countItems(plugin.capabilityProviders),
       })),
     },
     {
@@ -499,6 +760,118 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         title="当前页面直接读取 Rust 插件注册表快照，并用同一份合同预览声明式视图。"
         type="info"
       />
+
+      <section class="border-border/60 space-y-3 rounded-sm border p-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium">App Runtime</div>
+            <div class="text-muted-foreground text-xs">
+              记录 start / stop / reload / workspace / session 生命周期，并把
+              runtime 事件写入事件总线。
+            </div>
+          </div>
+          <ElTag
+            :type="runtimeSnapshot?.status === 'running' ? 'success' : 'info'"
+            size="small"
+          >
+            {{ runtimeSnapshot?.status || '-' }}
+          </ElTag>
+        </div>
+        <div class="flex flex-wrap gap-3 text-sm">
+          <span>平台: {{ runtimeSnapshot?.platformId || '-' }}</span>
+          <span>模式: {{ runtimeSnapshot?.mode || '-' }}</span>
+          <span>工作区: {{ runtimeSnapshot?.workspace || '-' }}</span>
+          <span>会话: {{ runtimeSnapshot?.sessionId || '-' }}</span>
+          <span>重载: {{ runtimeSnapshot?.reloadCount ?? 0 }}</span>
+          <span>更新时间: {{ runtimeUpdatedAtText }}</span>
+        </div>
+        <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <ElInput
+            v-model="runtimeStartForm.workspace"
+            clearable
+            placeholder="启动工作区，例如 /Users/zjarlin/IdeaProjects/aio"
+          />
+          <ElInput
+            v-model="runtimeStartForm.sessionId"
+            clearable
+            placeholder="启动会话，可留空"
+          />
+          <ElButton
+            :loading="runtimeActionLoading === runtimeActionKey('start')"
+            type="primary"
+            @click="startRuntime"
+          >
+            启动
+          </ElButton>
+          <ElInput
+            v-model="runtimeReloadForm.workspace"
+            clearable
+            placeholder="重载时切换工作区，可留空"
+          />
+          <ElInput
+            v-model="runtimeReloadForm.sessionId"
+            clearable
+            placeholder="重载时切换会话，可留空"
+          />
+          <ElButton
+            :loading="runtimeActionLoading === runtimeActionKey('reload')"
+            type="primary"
+            @click="reloadRuntime"
+          >
+            重载
+          </ElButton>
+          <ElInput
+            v-model="runtimeWorkspaceForm.workspace"
+            clearable
+            placeholder="设置 runtime 工作区"
+          />
+          <ElInput
+            v-model="runtimeSessionForm.sessionId"
+            clearable
+            placeholder="设置 runtime 会话"
+          />
+          <div class="flex items-center gap-2">
+            <ElButton
+              :loading="runtimeActionLoading === runtimeActionKey('workspace')"
+              @click="updateRuntimeWorkspace"
+            >
+              工作区
+            </ElButton>
+            <ElButton
+              :loading="runtimeActionLoading === runtimeActionKey('session')"
+              @click="updateRuntimeSession"
+            >
+              会话
+            </ElButton>
+            <ElButton
+              :loading="runtimeActionLoading === runtimeActionKey('stop')"
+              type="warning"
+              @click="stopRuntime"
+            >
+              停止
+            </ElButton>
+          </div>
+        </div>
+        <div
+          class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
+        >
+          <ElInput
+            v-model="runtimeStartForm.mode"
+            clearable
+            placeholder="启动模式，默认 desktop"
+          />
+          <ElInput
+            v-model="runtimeStartForm.reason"
+            clearable
+            placeholder="启动原因"
+          />
+          <ElInput
+            v-model="runtimeStopForm.reason"
+            clearable
+            placeholder="停止原因"
+          />
+        </div>
+      </section>
 
       <section class="border-border/60 space-y-3 rounded-sm border p-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -675,15 +1048,25 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
       </section>
 
       <div class="flex items-center gap-3 text-sm">
+        <span>Runtime: {{ runtimeSnapshot?.status || '-' }}</span>
         <span>Schema: {{ snapshot?.schemaVersion || '-' }}</span>
         <span>插件数: {{ countItems(snapshot?.plugins) }}</span>
         <span>系统胶囊: {{ countItems(snapshot?.systemCapsules) }}</span>
         <span>能力: {{ countItems(snapshot?.capabilities) }}</span>
+        <span>Provider: {{ countItems(snapshot?.capabilityProviders) }}</span>
+        <span>工具: {{ countItems(snapshot?.tools) }}</span>
+        <span>设置: {{ countItems(snapshot?.settings) }}</span>
+        <span>路由: {{ countItems(snapshot?.routes) }}</span>
+        <span>资源: {{ countItems(snapshot?.resources) }}</span>
         <span>策略: {{ countItems(snapshot?.policies) }}</span>
         <span>扩展点: {{ countItems(snapshot?.extensionPoints) }}</span>
         <span>事件声明: {{ countItems(snapshot?.events) }}</span>
         <span>树节点: {{ countItems(snapshot?.extensionTree?.nodes) }}</span>
+        <span>权限审批: {{ countItems(permissionApprovalRecords) }}</span>
         <span>权限同意: {{ countItems(permissionConsentRecords) }}</span>
+        <span>
+          能力批准: {{ countItems(localState?.childCapabilityApprovals) }}
+        </span>
         <span>诊断数: {{ countItems(snapshot?.diagnostics) }}</span>
         <ElButton :loading="loading" size="small" @click="reloadRegistry">
           重新加载
@@ -707,6 +1090,21 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
               <span>{{ row.parentPluginId || '-' }}</span>
             </template>
           </ElTableColumn>
+          <ElTableColumn label="支持" min-width="140">
+            <template #default="{ row }">
+              <span>{{ row.platformSupported?.join(', ') || '-' }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="降级" min-width="140">
+            <template #default="{ row }">
+              <span>{{ row.platformDegraded?.join(', ') || '-' }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="不支持" min-width="140">
+            <template #default="{ row }">
+              <span>{{ row.platformUnsupported?.join(', ') || '-' }}</span>
+            </template>
+          </ElTableColumn>
           <ElTableColumn label="命令" width="80">
             <template #default="{ row }">
               <ElTag size="small">{{ countItems(row.commands) }}</ElTag>
@@ -722,9 +1120,31 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
               <ElTag size="small">{{ countItems(row.views) }}</ElTag>
             </template>
           </ElTableColumn>
+          <ElTableColumn label="设置" width="80">
+            <template #default="{ row }">
+              <ElTag size="small">{{ countItems(row.settings) }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="路由" width="80">
+            <template #default="{ row }">
+              <ElTag size="small">{{ countItems(row.routes) }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="资源" width="80">
+            <template #default="{ row }">
+              <ElTag size="small">{{ countItems(row.resources) }}</ElTag>
+            </template>
+          </ElTableColumn>
           <ElTableColumn label="能力" width="80">
             <template #default="{ row }">
               <ElTag size="small">{{ countItems(row.capabilities) }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="Provider" width="90">
+            <template #default="{ row }">
+              <ElTag size="small">
+                {{ countItems(row.capabilityProviders) }}
+              </ElTag>
             </template>
           </ElTableColumn>
           <ElTableColumn label="扩展点" width="90">
@@ -773,15 +1193,33 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
           </ElTableColumn>
           <ElTableColumn label="待审批能力" min-width="180">
             <template #default="{ row }">
-              <ElTag
-                v-for="capability in row.capabilityEscalations"
-                :key="capability"
-                class="mr-1"
-                size="small"
-                type="warning"
-              >
-                {{ capability }}
-              </ElTag>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="capability in row.capabilityEscalations"
+                  :key="capability"
+                  class="inline-flex items-center gap-1"
+                >
+                  <ElTag size="small" type="warning">
+                    {{ capability }}
+                  </ElTag>
+                  <ElButton
+                    :loading="
+                      childCapabilityDecisionKey ===
+                      childCapabilityKey(
+                        row.parentPluginId || '',
+                        row.pluginId,
+                        capability,
+                      )
+                    "
+                    link
+                    size="small"
+                    type="primary"
+                    @click="approveChildCapability(row, capability)"
+                  >
+                    批准
+                  </ElButton>
+                </span>
+              </div>
               <span v-if="countItems(row.capabilityEscalations) === 0">-</span>
             </template>
           </ElTableColumn>
@@ -822,6 +1260,16 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
           <ElTableColumn label="菜单" width="80">
             <template #default="{ row }">
               <ElTag size="small">{{ countItems(row.menus) }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="设置" width="80">
+            <template #default="{ row }">
+              <ElTag size="small">{{ countItems(row.settings) }}</ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="资源" width="80">
+            <template #default="{ row }">
+              <ElTag size="small">{{ countItems(row.resources) }}</ElTag>
             </template>
           </ElTableColumn>
         </ElTable>
@@ -882,6 +1330,58 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
           <ElTableColumn label="来源" min-width="160" prop="sourceId" />
           <ElTableColumn label="类别" min-width="120" prop="category" />
           <ElTableColumn label="条件" min-width="220" prop="when" />
+        </ElTable>
+      </section>
+
+      <section class="space-y-2">
+        <div class="text-sm font-medium">设置</div>
+        <ElTable
+          :data="snapshot?.settings || []"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="ID" min-width="180" prop="id" />
+          <ElTableColumn label="标题" min-width="180" prop="title" />
+          <ElTableColumn label="Schema" min-width="180" prop="schema" />
+          <ElTableColumn label="来源" min-width="160" prop="sourceId" />
+          <ElTableColumn label="类型" min-width="120" prop="sourceKind" />
+        </ElTable>
+      </section>
+
+      <section class="space-y-2">
+        <div class="text-sm font-medium">路由</div>
+        <ElTable
+          :data="snapshot?.routes || []"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="ID" min-width="180" prop="id" />
+          <ElTableColumn label="标题" min-width="160" prop="title" />
+          <ElTableColumn label="路径" min-width="180" prop="path" />
+          <ElTableColumn label="组件" min-width="220" prop="component" />
+          <ElTableColumn label="来源" min-width="160" prop="sourceId" />
+          <ElTableColumn label="条件" min-width="220" prop="when" />
+        </ElTable>
+      </section>
+
+      <section class="space-y-2">
+        <div class="text-sm font-medium">资源</div>
+        <ElTable
+          :data="snapshot?.resources || []"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="ID" min-width="180" prop="id" />
+          <ElTableColumn label="标题" min-width="180" prop="title" />
+          <ElTableColumn label="类型" min-width="120" prop="kind" />
+          <ElTableColumn label="Schema" min-width="180" prop="schema" />
+          <ElTableColumn label="来源" min-width="160" prop="sourceId" />
         </ElTable>
       </section>
 
@@ -950,6 +1450,45 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
               </ElButton>
             </template>
           </ElTableColumn>
+        </ElTable>
+      </section>
+
+      <section class="space-y-2">
+        <div class="text-sm font-medium">能力 Provider</div>
+        <ElTable
+          :data="snapshot?.capabilityProviders || []"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="Provider" min-width="220" prop="id" />
+          <ElTableColumn label="能力" min-width="160" prop="capability" />
+          <ElTableColumn label="类型" prop="kind" width="100" />
+          <ElTableColumn label="信任" min-width="150">
+            <template #default="{ row }">
+              <ElTag
+                :type="
+                  row.trustLevel === 'platform'
+                    ? 'success'
+                    : row.trustLevel === 'trusted-provider'
+                      ? 'warning'
+                      : 'info'
+                "
+                size="small"
+              >
+                {{ row.trustLevel }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="平台" min-width="180">
+            <template #default="{ row }">
+              <span>{{ row.platforms?.join(', ') || '-' }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="来源" min-width="180" prop="sourceId" />
+          <ElTableColumn label="入口" min-width="240" prop="entry" />
+          <ElTableColumn label="降级" min-width="180" prop="fallback" />
         </ElTable>
       </section>
 
@@ -1088,6 +1627,89 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         </ElTable>
       </section>
 
+      <section class="border-border/60 space-y-3 rounded-sm border p-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div class="text-sm font-medium">权限审批</div>
+            <div class="text-muted-foreground text-xs">
+              Capability Broker 缺少运行时 consent 时自动创建 pending
+              请求；通过后会写入同意记录，后续同作用域调用直接放行。
+            </div>
+          </div>
+          <ElTag size="small">
+            {{ countItems(permissionApprovalRecords) }}
+          </ElTag>
+        </div>
+        <ElTable
+          :data="permissionApprovalRecords"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="状态" width="90">
+            <template #default="{ row }">
+              <ElTag
+                :type="
+                  row.status === 'pending'
+                    ? 'warning'
+                    : row.status === 'approved'
+                      ? 'success'
+                      : 'danger'
+                "
+                size="small"
+              >
+                {{
+                  row.status === 'pending'
+                    ? '待审批'
+                    : row.status === 'approved'
+                      ? '已通过'
+                      : '已拒绝'
+                }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="来源" min-width="200" prop="sourceId" />
+          <ElTableColumn label="类型" prop="sourceKind" width="120" />
+          <ElTableColumn label="能力" min-width="160" prop="capability" />
+          <ElTableColumn label="作用域" min-width="180" prop="scope" />
+          <ElTableColumn label="目标" min-width="220" prop="target" />
+          <ElTableColumn label="请求原因" min-width="240" prop="reason" />
+          <ElTableColumn
+            label="审批原因"
+            min-width="220"
+            prop="decisionReason"
+          />
+          <ElTableColumn label="更新时间" width="170">
+            <template #default="{ row }">
+              <span>{{ formatTime(row.updatedAt) }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn fixed="right" label="操作" width="130">
+            <template #default="{ row }">
+              <ElButton
+                :disabled="row.status !== 'pending'"
+                :loading="approvalDecisionKey === approvalRowKey(row)"
+                link
+                type="primary"
+                @click="approveApproval(row)"
+              >
+                通过
+              </ElButton>
+              <ElButton
+                :disabled="row.status !== 'pending'"
+                :loading="approvalDecisionKey === approvalRowKey(row)"
+                link
+                type="danger"
+                @click="denyApproval(row)"
+              >
+                拒绝
+              </ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
+      </section>
+
       <section class="space-y-2">
         <div class="text-sm font-medium">扩展点</div>
         <ElTable
@@ -1114,6 +1736,7 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
           v-loading="loading"
         >
           <ElTableColumn label="事件" min-width="220" prop="event" />
+          <ElTableColumn label="Schema" min-width="220" prop="schema" />
           <ElTableColumn label="方向" prop="direction" width="110" />
           <ElTableColumn label="来源" min-width="180" prop="sourceId" />
           <ElTableColumn label="类型" prop="sourceKind" width="120" />
@@ -1147,7 +1770,30 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
           v-loading="loading"
         >
           <ElTableColumn label="类型" min-width="180" prop="type" />
+          <ElTableColumn label="Schema" min-width="220" prop="schema" />
           <ElTableColumn label="消息" prop="kind" width="100" />
+          <ElTableColumn label="流" width="150">
+            <template #default="{ row }">
+              <span>{{ row.correlationId || '-' }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="序号" width="90">
+            <template #default="{ row }">
+              <span>{{ row.sequence ?? '-' }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="结束" width="80">
+            <template #default="{ row }">
+              <ElTag
+                v-if="row.kind === 'stream'"
+                :type="row.done ? 'success' : 'info'"
+                size="small"
+              >
+                {{ row.done ? '是' : '否' }}
+              </ElTag>
+              <span v-else>-</span>
+            </template>
+          </ElTableColumn>
           <ElTableColumn label="来源" min-width="160" prop="source" />
           <ElTableColumn label="目标" min-width="140">
             <template #default="{ row }">
@@ -1213,6 +1859,9 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
         <div class="flex items-center gap-3 text-sm">
           <span>安装: {{ countItems(localState?.installed) }}</span>
           <span>锁定: {{ countItems(localState?.locks) }}</span>
+          <span>
+            能力批准: {{ countItems(localState?.childCapabilityApprovals) }}
+          </span>
           <span>历史: {{ countItems(localState?.history) }}</span>
           <span>审计: {{ countItems(localState?.audits) }}</span>
         </div>
@@ -1265,6 +1914,54 @@ const viewPreviews = computed<PluginUiRenderSchema[]>(() => {
                 @click="rollbackPlugin(row.id)"
               >
                 上一版
+              </ElButton>
+            </template>
+          </ElTableColumn>
+        </ElTable>
+
+        <ElTable
+          :data="localState?.childCapabilityApprovals || []"
+          border
+          size="small"
+          stripe
+          v-loading="loading"
+        >
+          <ElTableColumn label="状态" width="90">
+            <template #default="{ row }">
+              <ElTag
+                :type="row.status === 'approved' ? 'success' : 'info'"
+                size="small"
+              >
+                {{ row.status === 'approved' ? '已批准' : '已撤销' }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="父插件" min-width="180" prop="parentPluginId" />
+          <ElTableColumn label="子插件" min-width="180" prop="childPluginId" />
+          <ElTableColumn label="能力" min-width="160" prop="capability" />
+          <ElTableColumn label="批准原因" min-width="240" prop="reason" />
+          <ElTableColumn
+            label="撤销原因"
+            min-width="220"
+            prop="revokedReason"
+          />
+          <ElTableColumn label="更新时间" width="170">
+            <template #default="{ row }">
+              <span>{{ formatTime(row.updatedAt) }}</span>
+            </template>
+          </ElTableColumn>
+          <ElTableColumn label="操作" width="100">
+            <template #default="{ row }">
+              <ElButton
+                :disabled="row.status !== 'approved'"
+                :loading="
+                  childCapabilityDecisionKey === childCapabilityApprovalKey(row)
+                "
+                link
+                type="danger"
+                @click="revokeChildCapability(row)"
+              >
+                撤销
               </ElButton>
             </template>
           </ElTableColumn>

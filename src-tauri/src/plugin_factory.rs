@@ -12,8 +12,9 @@ use crate::{
     db::now_millis,
     error::{AppError, AppResult},
     plugin_registry::{
-        CapabilityFormula, CommandContribution, ContributionBlock, EventBlock, MenuContribution,
-        PlatformMatrix, PluginAiHints, PluginEntry, PluginFormula, PluginParent, ViewContribution,
+        CapabilityFormula, CommandContribution, ContributionBlock, EventBlock, EventDeclaration,
+        MenuContribution, PlatformMatrix, PluginAiHints, PluginEntry, PluginFormula, PluginParent,
+        ViewContribution,
     },
     plugin_store::{
         InstalledPluginRecord, PluginPackageSignaturePlaceholder, PluginRegistryStore,
@@ -124,6 +125,17 @@ pub struct PluginDiagnosticPlatformError {
 pub struct PluginDiagnosticUiPreview {
     #[serde(default)]
     pub screenshots: Vec<String>,
+    #[serde(default)]
+    pub dom_snapshots: Vec<PluginDiagnosticDomSnapshot>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginDiagnosticDomSnapshot {
+    pub id: String,
+    pub html: String,
+    #[serde(default)]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
@@ -241,6 +253,7 @@ pub fn create_from_prompt(input: PluginCreateFromPromptInput) -> AppResult<Plugi
         kind,
         display_name: display_name.clone(),
         version: "0.1.0".to_string(),
+        trust_level: "community".to_string(),
         intent: prompt.to_string(),
         entry: Some(PluginEntry {
             node: "./src/index.ts".to_string(),
@@ -265,7 +278,10 @@ pub fn create_from_prompt(input: PluginCreateFromPromptInput) -> AppResult<Plugi
             ..ContributionBlock::default()
         },
         events: EventBlock {
-            publishes: vec![format!("{id}.activated")],
+            publishes: vec![EventDeclaration {
+                event: format!("{id}.activated"),
+                schema: "schemas/events/platform-event-envelope.v1.schema.json".to_string(),
+            }],
             subscribes: Vec::new(),
         },
         expectations: vec![
@@ -626,6 +642,7 @@ pub fn verify_plugin_draft(input: PluginVerifyDraftInput) -> AppResult<PluginVer
         kind: "plugin".to_string(),
         display_name: "Unknown".to_string(),
         version: String::new(),
+        trust_level: "community".to_string(),
         intent: String::new(),
         entry: None,
         parent: None,
@@ -655,6 +672,13 @@ pub fn verify_plugin_draft(input: PluginVerifyDraftInput) -> AppResult<PluginVer
         "passed"
     };
 
+    let ui_preview = build_ui_preview(formula);
+    checks.push(passed_check(
+        "ui.preview",
+        "Generate UI preview DOM snapshot",
+        format!("{} DOM snapshot(s)", ui_preview.dom_snapshots.len()),
+    ));
+
     let diagnostics = PluginDiagnosticsPackage {
         plugin_id: formula.id.clone(),
         run_id: run_id.clone(),
@@ -663,9 +687,7 @@ pub fn verify_plugin_draft(input: PluginVerifyDraftInput) -> AppResult<PluginVer
         permission_errors,
         platform_errors,
         test_failures,
-        ui_preview: Some(PluginDiagnosticUiPreview {
-            screenshots: Vec::new(),
-        }),
+        ui_preview: Some(ui_preview),
         repair_hint: repair_hint_for(&checks),
         source_path: Some(source_path.to_string_lossy().into_owned()),
     };
@@ -687,22 +709,124 @@ pub fn verify_plugin_draft(input: PluginVerifyDraftInput) -> AppResult<PluginVer
             .map(PathBuf::from)
             .unwrap_or_else(|| source_path.clone());
         fs::create_dir_all(&output_dir)?;
+        if let Some(ui_preview) = report.diagnostics.ui_preview.as_mut() {
+            for snapshot in &mut ui_preview.dom_snapshots {
+                let file_name = format!("ui-preview.{}.dom.html", safe_file_segment(&snapshot.id));
+                let preview_path = output_dir.join(file_name);
+                fs::write(&preview_path, &snapshot.html)?;
+                snapshot.path = Some(preview_path.to_string_lossy().into_owned());
+                report
+                    .written_files
+                    .push(preview_path.to_string_lossy().into_owned());
+            }
+        }
         let diagnostics_path = output_dir.join("diagnostics.json");
         let verification_path = output_dir.join("verification.json");
-        fs::write(
-            &diagnostics_path,
-            serde_json::to_string_pretty(&report.diagnostics)?,
-        )?;
-        fs::write(&verification_path, serde_json::to_string_pretty(&report)?)?;
         report
             .written_files
             .push(diagnostics_path.to_string_lossy().into_owned());
         report
             .written_files
             .push(verification_path.to_string_lossy().into_owned());
+        fs::write(
+            &diagnostics_path,
+            serde_json::to_string_pretty(&report.diagnostics)?,
+        )?;
+        fs::write(&verification_path, serde_json::to_string_pretty(&report)?)?;
     }
 
     Ok(report)
+}
+
+fn build_ui_preview(formula: &PluginFormula) -> PluginDiagnosticUiPreview {
+    let mut html = String::new();
+    html.push_str("<section data-aio-plugin-preview=\"true\"");
+    html.push_str(&format!(
+        " data-plugin-id=\"{}\" data-plugin-kind=\"{}\">",
+        escape_html_attr(&formula.id),
+        escape_html_attr(&formula.kind),
+    ));
+    html.push_str(&format!(
+        "<header><h1>{}</h1><p>{}</p></header>",
+        escape_html_text(&formula.display_name),
+        escape_html_text(&formula.intent),
+    ));
+
+    if formula.contributes.views.is_empty() {
+        html.push_str(
+            "<section data-empty=\"views\"><p>No declarative views contributed.</p></section>",
+        );
+    } else {
+        html.push_str("<main data-preview-region=\"views\">");
+        for view in &formula.contributes.views {
+            html.push_str(&format!(
+                "<article data-view-id=\"{}\" data-view-schema=\"{}\" data-view-slot=\"{}\" data-view-path=\"{}\" data-view-when=\"{}\">",
+                escape_html_attr(&view.id),
+                escape_html_attr(&view.schema),
+                escape_html_attr(&view.slot),
+                escape_html_attr(&view.path),
+                escape_html_attr(&view.when),
+            ));
+            html.push_str(&format!(
+                "<h2>{}</h2><dl><dt>schema</dt><dd>{}</dd><dt>slot</dt><dd>{}</dd><dt>path</dt><dd>{}</dd><dt>contract</dt><dd>{}</dd></dl>",
+                escape_html_text(&view.id),
+                escape_html_text(&view.schema),
+                escape_html_text(&view.slot),
+                escape_html_text(&view.path),
+                escape_html_text(&view.contract),
+            ));
+            html.push_str("</article>");
+        }
+        html.push_str("</main>");
+    }
+
+    if !formula.contributes.commands.is_empty() {
+        html.push_str("<nav data-preview-region=\"commands\"><ul>");
+        for command in &formula.contributes.commands {
+            html.push_str(&format!(
+                "<li data-command-id=\"{}\" data-command-when=\"{}\">{}</li>",
+                escape_html_attr(&command.id),
+                escape_html_attr(&command.when),
+                escape_html_text(&command.title),
+            ));
+        }
+        html.push_str("</ul></nav>");
+    }
+
+    html.push_str("</section>");
+    PluginDiagnosticUiPreview {
+        screenshots: Vec::new(),
+        dom_snapshots: vec![PluginDiagnosticDomSnapshot {
+            id: "formula-view-preview".to_string(),
+            html,
+            path: None,
+        }],
+    }
+}
+
+fn safe_file_segment(value: &str) -> String {
+    let safe = value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>();
+    safe.trim_matches('-').to_string()
+}
+
+fn escape_html_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+fn escape_html_attr(value: &str) -> String {
+    escape_html_text(value).replace('"', "&quot;")
 }
 
 fn normalize_prompt(prompt: &str) -> AppResult<&str> {
@@ -1581,7 +1705,7 @@ fn source_stub(draft: &PluginDraft) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        "export interface PluginContext {{\n  log?: (message: string) => void;\n}}\n\nexport const pluginId = {plugin_id};\nexport const displayName = {display_name};\nexport const commands = [{commands}];\n\nexport async function activate(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} activated`);\n  return {{ pluginId, commands }};\n}}\n\nexport async function deactivate(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} deactivated`);\n}}\n\nexport async function dispose(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} disposed`);\n}}\n"
+        "export interface PluginApiSnapshot {{\n  action: string;\n  entryPath: string;\n  hostKind: string;\n  pluginId: string;\n  schemaVersion: 'extension-host-api/v1';\n  sourcePath: string;\n  supportedCapabilities: string[];\n}}\n\nexport interface PluginApi {{\n  schemaVersion: 'extension-host-api/v1';\n  capabilities: {{\n    invoke(capability: string, input?: unknown): {{\n      capability: string;\n      hostKind: string;\n      input: unknown;\n      pluginId: string;\n      reason: string;\n      status: 'unsupported' | string;\n    }};\n  }};\n  events: {{\n    publish(eventType: string, payload?: unknown): {{\n      eventType: string;\n      hostKind: string;\n      payload: unknown;\n      pluginId: string;\n      status: 'recorded' | string;\n    }};\n    request(eventType: string, payload?: unknown): {{\n      eventType: string;\n      hostKind: string;\n      payload: unknown;\n      pluginId: string;\n      status: 'recorded' | string;\n    }};\n    stream(eventType: string, payload?: unknown, sequence?: number, done?: boolean): {{\n      eventType: string;\n      hostKind: string;\n      payload: unknown;\n      pluginId: string;\n      sequence?: number;\n      status: 'recorded' | string;\n    }};\n  }};\n  host: {{\n    describe(): PluginApiSnapshot;\n    snapshot(): PluginApiSnapshot;\n  }};\n}}\n\nexport interface PluginContext {{\n  api?: PluginApi;\n  hostKind?: string;\n  log?: (message: string) => void;\n  pluginId?: string;\n}}\n\nexport const pluginId = {plugin_id};\nexport const displayName = {display_name};\nexport const commands = [{commands}];\n\nexport async function activate(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} activated`);\n  context.api?.host.describe();\n  return {{ pluginId, commands }};\n}}\n\nexport async function deactivate(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} deactivated`);\n}}\n\nexport async function dispose(context: PluginContext = {{}}) {{\n  context.log?.(`${{displayName}} disposed`);\n}}\n"
     )
 }
 
@@ -1796,6 +1920,25 @@ mod tests {
             .checks
             .iter()
             .any(|check| check.id == "permission.plan" && check.status == "passed"));
+        assert!(report
+            .checks
+            .iter()
+            .any(|check| check.id == "ui.preview" && check.status == "passed"));
+        let preview = report.diagnostics.ui_preview.as_ref().expect("ui preview");
+        let dom_snapshot = preview
+            .dom_snapshots
+            .iter()
+            .find(|snapshot| snapshot.id == "formula-view-preview")
+            .expect("dom snapshot");
+        assert!(dom_snapshot.html.contains("data-aio-plugin-preview"));
+        assert!(dom_snapshot
+            .path
+            .as_deref()
+            .is_some_and(|path| path.ends_with("ui-preview.formula-view-preview.dom.html")));
+        assert!(source_dir
+            .path()
+            .join("ui-preview.formula-view-preview.dom.html")
+            .is_file());
         assert!(source_dir.path().join("diagnostics.json").is_file());
         assert!(source_dir.path().join("verification.json").is_file());
     }

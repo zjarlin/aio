@@ -1,6 +1,6 @@
 {
   "project": "plugin-platform",
-  "currentPhase": "04-permission-core-runtime",
+  "currentPhase": "12-acceptance",
   "items": [
     {
       "id": "phase1.schema.pluginFormula",
@@ -64,6 +64,74 @@
       ]
     },
     {
+      "id": "phase2.settingsResourcesRegistry",
+      "title": "Compile settings, routes and resources contributions into registry snapshots and UI tables",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/plugin_registry.rs",
+        "src-tauri/src/bin/aio-plugin.rs",
+        "src-tauri/src/web_bridge.rs",
+        "packages/types/src/plugin-platform.ts",
+        "plugins/git-suite/formula.json",
+        "schemas/settings/git-suite.settings.v1.json",
+        "plugins/platform-samples/web-fallback/formula.json",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::settings_and_resources_contributions_are_registered",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck",
+        "Browser smoke: http://127.0.0.1:5292/system/plugins with bridge http://127.0.0.1:18788/__aio/command shows settings=1, routes=2, git-suite.route, platform-samples.web-fallback.route and console errors=0"
+      ]
+    },
+    {
+      "id": "phase1.formulaMigrate",
+      "title": "Add formula and system capsule manifest migration CLI",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/plugin_migration.rs",
+        "src-tauri/src/bin/aio-plugin.rs",
+        "src-tauri/src/lib.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_migration::tests",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- migrate --source-path /private/tmp/aio-migrate-smoke --write",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase0.architectureDoc",
+      "title": "Add docs/architecture.md synchronized with the implemented plugin platform architecture",
+      "status": "done",
+      "evidence": [
+        "docs/architecture.md",
+        "docs/plugin-platform.md",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase2.appRuntimeLifecycle",
+      "title": "Track app runtime lifecycle, workspace and session state through a first-class runtime capsule",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/app_runtime.rs",
+        "src-tauri/src/state.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "system-capsules/platform.runtime/system-capsule.json",
+        "schemas/runtime/app-runtime.v1.schema.json",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/api/local/system.ts",
+        "apps/web-ele/src/api/local/client.ts",
+        "apps/web-ele/src/api/core/app-runtime.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck",
+        "Browser smoke: http://127.0.0.1:5289/system/plugins shows App Runtime status/workspace/session, schema columns and 0 console errors"
+      ]
+    },
+    {
       "id": "phase2.permissionCore",
       "title": "Centralize registry diagnostics in Permission Core helpers",
       "status": "done",
@@ -114,6 +182,56 @@
         "cargo test --manifest-path src-tauri/Cargo.toml --lib",
         "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
         "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase3.eventSchemaValidation",
+      "title": "Attach and validate schema metadata for declared and runtime platform events",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/event_bus.rs",
+        "src-tauri/src/plugin_registry.rs",
+        "src-tauri/src/plugin_factory.rs",
+        "schemas/plugin-formula.v1.schema.json",
+        "schemas/system-capsule.v1.schema.json",
+        "schemas/events/platform-event-envelope.v1.schema.json",
+        "schemas/events/platform-runtime-lifecycle.v1.schema.json",
+        "schemas/events/registry-reloaded.v1.schema.json",
+        "system-capsules/platform.runtime/system-capsule.json",
+        "plugins/asset-suite/formula.json",
+        "plugins/git-suite/formula.json",
+        "plugins/git-suite/children/github-provider/formula.json",
+        "plugins/governance/audit-file-sink/formula.json",
+        "plugins/governance/approval-workbench/formula.json",
+        "plugins/governance/high-risk-deny-policy/formula.json",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib event_bus::tests",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::filesystem_discovery_loads_registry_contract_files",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck",
+        "Browser smoke: http://127.0.0.1:18790/__aio/command registry.reloaded payload includes routes=2, settings=1, tools=2, resources=3 and views=19",
+        "Browser smoke: http://127.0.0.1:5289/system/plugins shows platform.runtime.lifecycle and registry.reloaded schema values with 0 console errors"
+      ]
+    },
+    {
+      "id": "phase3.eventBusStream",
+      "title": "Implement correlated stream events for long-running platform workflows",
+      "status": "done",
+      "evidence": [
+        "system-capsules/platform.event-bus/system-capsule.json",
+        "src-tauri/src/event_bus.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "src-tauri/src/lib.rs",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/api/local/system.ts",
+        "apps/web-ele/src/api/core/event-bus.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib event_bus::tests",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck",
+        "Browser smoke: http://127.0.0.1:5284/system/plugins -> http://127.0.0.1:18781/__aio/command eventBusStreamApi returned kind=stream sequence=1 done=true"
       ]
     },
     {
@@ -232,6 +350,19 @@
       ]
     },
     {
+      "id": "phase6.pluginApiInjection",
+      "title": "Inject stable Plugin API context into Node, Worker and Remote Extension Host lifecycles",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/extension_host.rs",
+        "src-tauri/src/plugin_factory.rs",
+        "packages/types/src/plugin-platform.ts",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib extension_host::tests::generated_typescript_stub_should_execute_node_lifecycle_hooks",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib extension_host::tests::worker_lifecycle_cycle_should_execute_worker_hooks",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib extension_host::tests::remote_lifecycle_cycle_should_call_remote_hooks"
+      ]
+    },
+    {
       "id": "phase5.capabilityBroker.nativeProviders",
       "title": "Implement audited clipboard and notification capability broker providers",
       "status": "done",
@@ -267,16 +398,67 @@
       ]
     },
     {
+      "id": "phase5.capabilityProviderRegistry",
+      "title": "Register capability providers as first-class contributions with trust-level diagnostics",
+      "status": "done",
+      "evidence": [
+        "schemas/plugin-formula.v1.schema.json",
+        "schemas/system-capsule.v1.schema.json",
+        "system-capsules/platform.capability-broker/system-capsule.json",
+        "plugins/platform-samples/macos-clipboard/formula.json",
+        "plugins/platform-samples/windows-notification/formula.json",
+        "plugins/platform-samples/macos-automation/formula.json",
+        "plugins/platform-samples/windows-registry/formula.json",
+        "src-tauri/src/plugin_registry.rs",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::capability_provider_registry_should_enforce_trust_level",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::filesystem_discovery_loads_registry_contract_files",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
       "id": "phase9.nativeCapabilityExamples",
-      "title": "Add macOS-only clipboard and Windows-only notification sample plugins",
+      "title": "Add platform-specific native capability sample plugins",
       "status": "done",
       "evidence": [
         "plugins/platform-samples/macos-clipboard/formula.json",
         "plugins/platform-samples/windows-notification/formula.json",
+        "plugins/platform-samples/macos-automation/formula.json",
+        "plugins/platform-samples/windows-registry/formula.json",
         "src-tauri/src/plugin_registry.rs",
         "cargo test --manifest-path src-tauri/Cargo.toml --lib",
         "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
         "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- inspect"
+      ]
+    },
+    {
+      "id": "phase9.crossPlatformProviderCoverage",
+      "title": "Cover Linux/Web clipboard and Windows notification provider paths",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/capability_broker.rs",
+        "system-capsules/platform.capability-broker/system-capsule.json",
+        "apps/web-ele/src/api/local/client.ts",
+        "src-tauri/src/plugin_registry.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib capability_broker::tests",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::filesystem_discovery_loads_registry_contract_files",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck",
+        "Browser smoke: http://127.0.0.1:5288/system/plugins with bridge http://127.0.0.1:18785/__aio/command shows Provider: 13, web clipboard provider rows, web notification provider row and console errors=0"
+      ]
+    },
+    {
+      "id": "phase9.webFallbackExample",
+      "title": "Add a read-only Web fallback sample plugin for native-provider-unavailable hosts",
+      "status": "done",
+      "evidence": [
+        "plugins/platform-samples/web-fallback/formula.json",
+        "plugins/platform-samples/web-fallback/src/index.ts",
+        "plugins/platform-samples/web-fallback/README.md",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
       ]
     },
     {
@@ -291,6 +473,28 @@
         "plugins/git-suite/children/github-provider/formula.json",
         "packages/types/src/plugin-platform.ts",
         "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase7.childCapabilityApproval",
+      "title": "Persist and apply approvals for child plugin capability escalations",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/plugin_store.rs",
+        "src-tauri/src/plugin_registry.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "src-tauri/src/lib.rs",
+        "system-capsules/platform.system-management/system-capsule.json",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/api/local/system.ts",
+        "apps/web-ele/src/api/core/plugin-registry.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::child_capability_approval_turns_escalation_into_effective_capability",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_store::tests::child_capability_approvals_can_be_approved_and_revoked",
         "cargo test --manifest-path src-tauri/Cargo.toml --lib",
         "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
         "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
@@ -329,6 +533,17 @@
         "packages/effects/plugins/package.json",
         "packages/effects/plugins/src/view-renderer/index.test.ts",
         "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase8.uiPreviewDomSnapshot",
+      "title": "Write deterministic DOM snapshot output for plugin verification UI previews",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/plugin_factory.rs",
+        "schemas/plugin-diagnostics.v1.schema.json",
+        "packages/types/src/plugin-platform.ts",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_factory::tests::verify_plugin_draft_should_write_diagnostics_and_verification_report"
       ]
     },
     {
@@ -441,6 +656,74 @@
       ]
     },
     {
+      "id": "phase4.permissionConsentUi",
+      "title": "Expose permission consent list, grant and revoke operations in the registry UI",
+      "status": "done",
+      "evidence": [
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "apps/web-ele/src/api/local/system.ts",
+        "apps/web-ele/src/api/core/capability-broker.ts",
+        "packages/types/src/plugin-platform.ts",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase4.permissionApprovalFlow",
+      "title": "Create runtime permission approval requests and expose approve or deny operations in the registry UI",
+      "status": "done",
+      "evidence": [
+        "src-tauri/migrations/202605250002_permission_approvals.sql",
+        "src-tauri/src/permission_approval.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "src-tauri/src/lib.rs",
+        "system-capsules/platform.permission-core/system-capsule.json",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/api/local/system.ts",
+        "apps/web-ele/src/api/core/capability-broker.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "plugins/governance/approval-workbench/formula.json",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib permission_",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase4.permissionPolicyRuntime",
+      "title": "Compile and apply manifest-declared Permission Core policy plugins at runtime",
+      "status": "done",
+      "evidence": [
+        "schemas/plugin-formula.v1.schema.json",
+        "schemas/system-capsule.v1.schema.json",
+        "plugins/governance/high-risk-deny-policy/formula.json",
+        "plugins/governance/high-risk-deny-policy/README.md",
+        "src-tauri/src/permission_core.rs",
+        "src-tauri/src/plugin_registry.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "src-tauri/src/bin/aio-plugin.rs",
+        "packages/types/src/plugin-platform.ts",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib permission_",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib policy_child_plugin_compiles_policy_records",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate",
+        "npx pnpm@9.15.1 -F @vben/web-ele run typecheck"
+      ]
+    },
+    {
+      "id": "phase7.localRegistryParentChildLifecycle",
+      "title": "Enforce installed parent and child plugin enable lifecycle in the local registry",
+      "status": "done",
+      "evidence": [
+        "src-tauri/src/plugin_store.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_store::tests::disabling_parent_plugin_disables_installed_child_subtree",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
       "id": "phase12.auditSinkExample",
       "title": "Add a permission audit sink child plugin mounted under platform.permission-core",
       "status": "done",
@@ -450,6 +733,81 @@
         "plugins/governance/audit-file-sink/README.md",
         "src-tauri/src/plugin_registry.rs",
         "cargo test --manifest-path src-tauri/Cargo.toml --lib",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase12.approvalUiExample",
+      "title": "Add a permission approval UI child plugin mounted under platform.permission-core",
+      "status": "done",
+      "evidence": [
+        "plugins/governance/approval-workbench/formula.json",
+        "plugins/governance/approval-workbench/README.md",
+        "system-capsules/platform.permission-core/system-capsule.json",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    }
+    ,
+    {
+      "id": "phase12.aiWorkflowExample",
+      "title": "Add an AI workflow child plugin mounted under asset-suite",
+      "status": "done",
+      "evidence": [
+        "plugins/asset-suite/children/openai-assistant/formula.json",
+        "src-tauri/src/plugin_registry.rs",
+        "src-tauri/src/commands.rs",
+        "src-tauri/src/web_bridge.rs",
+        "src-tauri/src/lib.rs",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase12.macosAutomationExample",
+      "title": "Add a macOSOnly automation sample plugin",
+      "status": "done",
+      "evidence": [
+        "plugins/platform-samples/macos-automation/formula.json",
+        "plugins/platform-samples/macos-automation/src/index.ts",
+        "plugins/platform-samples/macos-automation/README.md",
+        "src-tauri/src/plugin_registry.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::filesystem_discovery_loads_registry_contract_files",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase12.windowsRegistryExample",
+      "title": "Add a winOnly Registry sample plugin",
+      "status": "done",
+      "evidence": [
+        "plugins/platform-samples/windows-registry/formula.json",
+        "plugins/platform-samples/windows-registry/src/index.ts",
+        "plugins/platform-samples/windows-registry/README.md",
+        "src-tauri/src/plugin_registry.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::filesystem_discovery_loads_registry_contract_files",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase1.sampleToolRegistry",
+      "title": "Register non-empty sample tool contributions alongside commands and views",
+      "status": "done",
+      "evidence": [
+        "plugins/git-suite/formula.json",
+        "plugins/asset-suite/children/openai-assistant/formula.json",
+        "apps/web-ele/src/views/system/plugins/index.vue",
+        "src-tauri/src/plugin_registry.rs",
+        "cargo test --manifest-path src-tauri/Cargo.toml --lib plugin_registry::tests::builtin_registry_compiles_current_asset_tree",
+        "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
+      ]
+    },
+    {
+      "id": "phase12.permissionStrategyExample",
+      "title": "Add a permission strategy child plugin mounted under platform.permission-core",
+      "status": "done",
+      "evidence": [
+        "plugins/governance/high-risk-deny-policy/formula.json",
+        "plugins/governance/high-risk-deny-policy/README.md",
+        "src-tauri/src/plugin_registry.rs",
         "cargo run --manifest-path src-tauri/Cargo.toml --bin aio-plugin -- validate"
       ]
     }

@@ -25,6 +25,11 @@
       "id": "event.request",
       "scope": "platform-events",
       "reason": "Coordinate request/reply platform events with timeout and cancellation."
+    },
+    {
+      "id": "event.stream",
+      "scope": "platform-events",
+      "reason": "Publish correlated stream chunks for long-running plugin, AI and log workflows."
     }
   ],
   "contributes": {
@@ -40,6 +45,12 @@
         "title": "Event Bus Snapshot",
         "category": "event-bus",
         "capabilities": ["event.subscribe"]
+      },
+      {
+        "id": "event_bus_stream",
+        "title": "Stream Platform Event",
+        "category": "event-bus",
+        "capabilities": ["event.stream"]
       }
     ]
   },

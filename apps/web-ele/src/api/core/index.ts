@@ -1,3 +1,4 @@
+export * from './app-runtime';
 export * from './auth';
 export * from './capability-broker';
 export * from './event-bus';

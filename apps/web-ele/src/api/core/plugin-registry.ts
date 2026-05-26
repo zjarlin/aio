@@ -1,4 +1,6 @@
 export {
+  pluginChildCapabilityApproveApi,
+  pluginChildCapabilityRevokeApi,
   pluginRegistryDisableApi,
   pluginRegistryEnableApi,
   pluginRegistryInstallApi,
