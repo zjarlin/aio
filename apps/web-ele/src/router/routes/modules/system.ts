@@ -50,6 +50,15 @@ const routes: RouteRecordRaw[] = [
           title: $t('page.system.dictionaries'),
         },
       },
+      {
+        name: 'SystemOpenAISettings',
+        path: '/system/openai-settings',
+        component: () => import('#/views/system/openai-settings/index.vue'),
+        meta: {
+          icon: 'lucide:key-round',
+          title: 'OpenAI 设置',
+        },
+      },
     ],
   },
 ];

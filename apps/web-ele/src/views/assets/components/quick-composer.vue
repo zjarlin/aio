@@ -16,19 +16,25 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  submit: [content: string];
+  submit: [content: string, done: (success?: boolean) => void];
 }>();
 
 const content = ref('');
+const submitting = ref(false);
 const canSubmit = computed(() => content.value.trim().length > 0);
 
 async function submit() {
   const value = content.value.trim();
-  if (!value) {
+  if (!value || submitting.value) {
     return;
   }
-  emit('submit', value);
-  content.value = '';
+  submitting.value = true;
+  emit('submit', value, (success = true) => {
+    submitting.value = false;
+    if (success) {
+      content.value = '';
+    }
+  });
 }
 </script>
 
@@ -48,7 +54,8 @@ async function submit() {
 
     <div class="border-border flex items-center justify-end border-t px-3 py-2">
       <ElButton
-        :disabled="!canSubmit"
+        :disabled="!canSubmit || submitting"
+        :loading="submitting"
         class="quick-composer__send"
         @click="submit"
       >

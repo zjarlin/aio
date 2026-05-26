@@ -6,7 +6,7 @@ export const LOGIN_PATH = '/auth/login';
 /**
  * @zh_CN 默认首页地址
  */
-export const DEFAULT_HOME_PATH = '/analytics';
+export const DEFAULT_HOME_PATH = '/assets/notes';
 
 /**
  * @zh_CN 普通用户默认首页地址

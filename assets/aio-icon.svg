@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="AIO app icon">
+  <defs>
+    <linearGradient id="surface" x1="160" y1="128" x2="864" y2="896" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18243a" />
+      <stop offset="1" stop-color="#07111f" />
+    </linearGradient>
+    <linearGradient id="cyan" x1="168" y1="290" x2="462" y2="734" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#35d7d0" />
+      <stop offset="1" stop-color="#1aa7c7" />
+    </linearGradient>
+    <linearGradient id="amber" x1="644" y1="290" x2="940" y2="734" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd166" />
+      <stop offset="1" stop-color="#ff9f1c" />
+    </linearGradient>
+    <linearGradient id="white" x1="512" y1="300" x2="512" y2="724" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#c7d2fe" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="26" stdDeviation="30" flood-color="#000814" flood-opacity="0.42" />
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" fill="url(#surface)" />
+  <g filter="url(#shadow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M178 716 316 308 454 716" stroke="url(#cyan)" stroke-width="90" />
+    <path d="M244 568h144" stroke="url(#cyan)" stroke-width="78" />
+    <path d="M524 330v372" stroke="url(#white)" stroke-width="70" />
+    <path d="M486 330h76M486 702h76" stroke="url(#white)" stroke-width="58" />
+    <circle cx="774" cy="512" r="160" stroke="url(#amber)" stroke-width="94" />
+  </g>
+</svg>

@@ -30,7 +30,8 @@ pub struct PermissionNode {
 pub struct RouteMenu {
     pub name: String,
     pub path: String,
-    pub component: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component: Option<String>,
     pub meta: RouteMeta,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redirect: Option<String>,
@@ -621,7 +622,11 @@ fn build_routes(nodes: Vec<PermissionNode>) -> Vec<RouteMenu> {
         RouteMenu {
             name: route_name(&node.code),
             path: node.path,
-            component: node.component,
+            component: if node.component.is_empty() {
+                None
+            } else {
+                Some(node.component)
+            },
             meta: RouteMeta {
                 title: node.name,
                 icon: node.icon,
@@ -803,5 +808,54 @@ mod tests {
         assert_eq!(routes.len(), 1);
         assert_eq!(routes[0].children.len(), 1);
         assert_eq!(routes[0].redirect.as_deref(), Some("/system/users"));
+        assert_eq!(routes[0].component.as_deref(), Some("BasicLayout"));
+    }
+
+    #[test]
+    fn route_groups_omit_empty_component() {
+        let routes = build_routes(vec![
+            PermissionNode {
+                id: "root".to_string(),
+                parent_id: None,
+                code: "assets".to_string(),
+                name: "资产".to_string(),
+                permission_type: "menu".to_string(),
+                path: "/assets".to_string(),
+                component: "BasicLayout".to_string(),
+                icon: "i".to_string(),
+                sort_order: 1,
+                status: "enabled".to_string(),
+            },
+            PermissionNode {
+                id: "group".to_string(),
+                parent_id: Some("root".to_string()),
+                code: "assets:agents".to_string(),
+                name: "智能体".to_string(),
+                permission_type: "menu".to_string(),
+                path: "/assets/agents".to_string(),
+                component: String::new(),
+                icon: "i".to_string(),
+                sort_order: 2,
+                status: "enabled".to_string(),
+            },
+            PermissionNode {
+                id: "child".to_string(),
+                parent_id: Some("group".to_string()),
+                code: "assets:agents:preferences".to_string(),
+                name: "AGENTS.md 管理".to_string(),
+                permission_type: "menu".to_string(),
+                path: "/assets/agent-preferences".to_string(),
+                component: "/assets/agent-preferences/index".to_string(),
+                icon: "i".to_string(),
+                sort_order: 3,
+                status: "enabled".to_string(),
+            },
+        ]);
+
+        let agents = &routes[0].children[0];
+        assert_eq!(agents.path, "/assets/agents");
+        assert!(agents.component.is_none());
+        assert_eq!(agents.children.len(), 1);
+        assert_eq!(agents.redirect.as_deref(), Some("/assets/agent-preferences"));
     }
 }

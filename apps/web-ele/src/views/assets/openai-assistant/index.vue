@@ -7,6 +7,8 @@ import { IconifyIcon } from '@vben/icons';
 import { ElButton, ElInput, ElTabPane, ElTabs, ElTag } from 'element-plus';
 
 import {
+  knowledgeSearchApi,
+  type KnowledgeSearchResult,
   openAIAssistantChatApi,
   type OpenAIAssistantChatResponse,
   type OpenAIAssistantPageContextInput,
@@ -21,9 +23,11 @@ type ContextMode = 'html' | 'text' | 'url';
 const contextMode = ref<ContextMode>('url');
 const previewLoading = ref(false);
 const sending = ref(false);
+const knowledgeLoading = ref(false);
 const question = ref('');
 const conversation = ref<OpenAIAssistantTurn[]>([]);
 const contextPreview = ref<null | OpenAIAssistantPageContextPreview>(null);
+const knowledgeHits = ref<KnowledgeSearchResult[]>([]);
 const context = reactive({
   html: '',
   selection: '',
@@ -102,8 +106,13 @@ async function sendQuestion() {
   pushTurn('user', value);
   question.value = '';
   sending.value = true;
+  knowledgeLoading.value = true;
 
   try {
+    knowledgeHits.value = await knowledgeSearchApi({
+      limit: 6,
+      query: value,
+    });
     const result: OpenAIAssistantChatResponse = await openAIAssistantChatApi({
       context: buildContextInput(),
       history,
@@ -117,6 +126,7 @@ async function sendQuestion() {
     throw error;
   } finally {
     sending.value = false;
+    knowledgeLoading.value = false;
   }
 }
 </script>
@@ -234,6 +244,45 @@ async function sendQuestion() {
         </div>
 
         <div class="min-h-0 flex-1 space-y-3 overflow-auto p-4">
+          <section
+            class="border-border bg-muted/20 space-y-2 rounded-md border p-3"
+          >
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-medium">知识库命中</div>
+              <ElTag size="small" type="info">
+                {{ knowledgeLoading ? '检索中' : `${knowledgeHits.length} 条` }}
+              </ElTag>
+            </div>
+            <div
+              v-if="knowledgeHits.length === 0"
+              class="text-muted-foreground text-xs"
+            >
+              暂无命中，发送问题时会自动从笔记知识库检索。
+            </div>
+            <article
+              v-for="item in knowledgeHits"
+              :key="item.chunk.id"
+              class="bg-background space-y-1 rounded border p-2"
+            >
+              <div class="flex items-center gap-2 text-xs">
+                <span class="font-medium">{{ item.document.title }}</span>
+                <ElTag size="small">
+                  {{ item.document.category || '未分类' }}
+                </ElTag>
+                <ElTag
+                  :type="item.document.isPublic ? 'success' : 'warning'"
+                  size="small"
+                >
+                  {{ item.document.isPublic ? '公开' : '私有' }}
+                </ElTag>
+                <ElTag size="small" type="info">相关度 {{ item.score }}</ElTag>
+              </div>
+              <p class="text-muted-foreground line-clamp-4 text-xs leading-5">
+                {{ item.chunk.content }}
+              </p>
+            </article>
+          </section>
+
           <article
             v-for="(item, index) in conversation"
             :key="`${item.role}-${index}`"

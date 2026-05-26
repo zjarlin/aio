@@ -9,6 +9,8 @@ interface CommandError {
   message: string;
 }
 
+const BRIDGE_RETRY_DELAYS_MS = [150, 350, 800];
+
 function getToken() {
   const accessStore = useAccessStore();
   return accessStore.accessToken ?? '';
@@ -44,6 +46,20 @@ function normalizeError(error: unknown): CommandError {
   };
 }
 
+function isRetryableBridgeError(error: unknown) {
+  if (error instanceof TypeError) {
+    return true;
+  }
+  if (error instanceof Error) {
+    return /Failed to fetch|NetworkError|Load failed/i.test(error.message);
+  }
+  return false;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export async function callCommand<T>(
   command: string,
   payload: Record<string, unknown> = {},
@@ -53,22 +69,36 @@ export async function callCommand<T>(
       return await invoke<T>(command, payload);
     }
     if (commandBridgeUrl) {
-      const response = await fetch(commandBridgeUrl, {
-        body: JSON.stringify({
-          command,
-          payload,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-      });
+      let lastError: unknown;
+      for (const delay of [0, ...BRIDGE_RETRY_DELAYS_MS]) {
+        if (delay > 0) {
+          await sleep(delay);
+        }
+        try {
+          const response = await fetch(commandBridgeUrl, {
+            body: JSON.stringify({
+              command,
+              payload,
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
+          });
 
-      if (!response.ok) {
-        throw await response.json();
+          if (!response.ok) {
+            throw await response.json();
+          }
+
+          return (await response.json()) as T;
+        } catch (error) {
+          lastError = error;
+          if (!isRetryableBridgeError(error)) {
+            throw error;
+          }
+        }
       }
-
-      return (await response.json()) as T;
+      throw lastError;
     }
     throw new Error('当前浏览器环境未启用 AIO 本地命令桥，请使用桌面端');
   } catch (error) {

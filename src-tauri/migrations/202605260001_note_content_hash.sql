@@ -1,0 +1,1 @@
+ALTER TABLE notes ADD COLUMN content_hash TEXT NOT NULL DEFAULT '';

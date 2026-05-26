@@ -25,22 +25,34 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        name: 'AssetSkills',
-        path: '/assets/skills',
-        component: () => import('#/views/assets/skills/index.vue'),
-        meta: {
-          icon: 'lucide:sparkles',
-          title: $t('page.assets.skills'),
-        },
-      },
-      {
-        name: 'AssetAgentPreferences',
-        path: '/assets/agent-preferences',
-        component: () => import('#/views/assets/agent-preferences/index.vue'),
+        name: 'AssetAgents',
+        path: '/assets/agents',
+        redirect: '/assets/skills',
         meta: {
           icon: 'lucide:bot',
-          title: $t('page.assets.agentPreferences'),
+          title: '智能体',
         },
+        children: [
+          {
+            name: 'AssetSkills',
+            path: '/assets/skills',
+            component: () => import('#/views/assets/skills/index.vue'),
+            meta: {
+              icon: 'lucide:sparkles',
+              title: $t('page.assets.skills'),
+            },
+          },
+          {
+            name: 'AssetAgentPreferences',
+            path: '/assets/agent-preferences',
+            component: () =>
+              import('#/views/assets/agent-preferences/index.vue'),
+            meta: {
+              icon: 'lucide:bot',
+              title: $t('page.assets.agentPreferences'),
+            },
+          },
+        ],
       },
       {
         name: 'AssetOpenAIAssistant',

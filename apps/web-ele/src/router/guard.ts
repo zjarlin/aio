@@ -2,13 +2,33 @@ import type { Router } from 'vue-router';
 
 import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@vben/constants';
 import { preferences } from '@vben/preferences';
-import { useAccessStore, useUserStore } from '@vben/stores';
+import { resetAllStores, useAccessStore, useUserStore } from '@vben/stores';
 import { startProgress, stopProgress } from '@vben/utils';
 
 import { accessRoutes, coreRouteNames } from '#/router/routes';
 import { useAuthStore } from '#/store';
 
 import { generateAccess } from './access';
+
+function isUnauthorizedError(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: number }).code === 401
+  );
+}
+
+function loginRedirect(to: { fullPath: string }) {
+  return {
+    path: LOGIN_PATH,
+    query:
+      to.fullPath === DEFAULT_HOME_PATH
+        ? {}
+        : { redirect: encodeURIComponent(to.fullPath) },
+    replace: true,
+  };
+}
 
 /**
  * 通用守卫配置
@@ -34,6 +54,12 @@ function setupCommonGuard(router: Router) {
     loadedPaths.add(to.path);
 
     // 关闭页面加载进度条
+    if (preferences.transition.progress) {
+      stopProgress();
+    }
+  });
+
+  router.onError(() => {
     if (preferences.transition.progress) {
       stopProgress();
     }
@@ -71,16 +97,7 @@ function setupAccessGuard(router: Router) {
 
       // 没有访问权限，跳转登录页面
       if (to.fullPath !== LOGIN_PATH) {
-        return {
-          path: LOGIN_PATH,
-          // 如不需要，直接删除 query
-          query:
-            to.fullPath === DEFAULT_HOME_PATH
-              ? {}
-              : { redirect: encodeURIComponent(to.fullPath) },
-          // 携带当前跳转的页面，登录后重新跳转该页面
-          replace: true,
-        };
+        return loginRedirect(to);
       }
       return to;
     }
@@ -92,7 +109,18 @@ function setupAccessGuard(router: Router) {
 
     // 生成路由表
     // 当前登录用户拥有的角色标识列表
-    const userInfo = userStore.userInfo || (await authStore.fetchUserInfo());
+    let userInfo = userStore.userInfo;
+    if (!userInfo) {
+      try {
+        userInfo = await authStore.fetchUserInfo();
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          resetAllStores();
+          return loginRedirect(to);
+        }
+        throw error;
+      }
+    }
     const userRoles = userInfo.roles ?? [];
 
     // 生成菜单和路由

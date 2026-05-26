@@ -1,10 +1,11 @@
-use async_openai::{types::responses::Response, Client};
+use async_openai::{config::OpenAIConfig, types::responses::Response, Client};
 use serde_json::json;
 
 use crate::{
     context::preview_page_context,
     error::{AssistantError, AssistantResult},
-    AssistantAnswer, AssistantChatRequest, AssistantTurn, AssistantTurnRole, PageContextPreview,
+    AssistantAnswer, AssistantChatRequest, AssistantKnowledgeContext, AssistantOpenAIConfig,
+    AssistantTurn, AssistantTurnRole, PageContextPreview,
 };
 
 const DEFAULT_MODEL: &str = "gpt-5.5";
@@ -16,18 +17,22 @@ If the context does not contain enough evidence, say what is missing instead of 
 Answer in Simplified Chinese by default unless the user asks for another language.
 Keep responses concise, concrete, and action-oriented."#;
 
-pub async fn ask_assistant(request: AssistantChatRequest) -> AssistantResult<AssistantAnswer> {
+pub async fn ask_assistant(
+    request: AssistantChatRequest,
+    knowledge: Option<AssistantKnowledgeContext>,
+    config: Option<AssistantOpenAIConfig>,
+) -> AssistantResult<AssistantAnswer> {
     let question = request.question.trim();
     if question.is_empty() {
         return Err(AssistantError::EmptyQuestion);
     }
-    ensure_api_key()?;
+    let resolved = resolve_openai_config(config)?;
 
     let context = preview_page_context(&request.context).await?;
-    let model = resolve_model(request.model.as_deref());
-    let prompt = build_prompt(&context, &request.history, question);
+    let model = resolve_model(request.model.as_deref(), resolved.model.as_deref());
+    let prompt = build_prompt(&context, knowledge.as_ref(), &request.history, question);
 
-    let response: Response = Client::new()
+    let response: Response = Client::with_config(resolved.client_config)
         .responses()
         .create_byot(json!({
             "model": model,
@@ -52,10 +57,24 @@ pub async fn ask_assistant(request: AssistantChatRequest) -> AssistantResult<Ass
     })
 }
 
-fn build_prompt(context: &PageContextPreview, history: &[AssistantTurn], question: &str) -> String {
+fn build_prompt(
+    context: &PageContextPreview,
+    knowledge: Option<&AssistantKnowledgeContext>,
+    history: &[AssistantTurn],
+    question: &str,
+) -> String {
     let mut prompt = String::new();
     prompt.push_str("Page context:\n");
     prompt.push_str(&context.content);
+
+    if let Some(summary) = knowledge
+        .and_then(|value| value.summary.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        prompt.push_str("\n\nKnowledge base context:\n");
+        prompt.push_str(summary);
+    }
 
     let retained_history = history
         .iter()
@@ -80,7 +99,7 @@ fn build_prompt(context: &PageContextPreview, history: &[AssistantTurn], questio
     prompt
 }
 
-fn resolve_model(input: Option<&str>) -> String {
+fn resolve_model(input: Option<&str>, configured: Option<&str>) -> String {
     input
         .and_then(|value| {
             let trimmed = value.trim();
@@ -90,17 +109,43 @@ fn resolve_model(input: Option<&str>) -> String {
                 Some(trimmed.to_string())
             }
         })
+        .or_else(|| configured.map(ToOwned::to_owned))
         .or_else(|| std::env::var("OPENAI_MODEL").ok())
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_MODEL.to_string())
 }
 
-fn ensure_api_key() -> AssistantResult<()> {
-    let key = std::env::var("OPENAI_API_KEY").or_else(|_| std::env::var("OPENAI_ADMIN_KEY"));
-    match key {
-        Ok(value) if !value.trim().is_empty() => Ok(()),
-        _ => Err(AssistantError::MissingApiKey),
+fn resolve_openai_config(
+    input: Option<AssistantOpenAIConfig>,
+) -> AssistantResult<ResolvedOpenAIConfig> {
+    let input = input.unwrap_or_default();
+    let api_key = input
+        .api_key
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .or_else(|| std::env::var("OPENAI_ADMIN_KEY").ok())
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    if api_key.is_empty() {
+        return Err(AssistantError::MissingApiKey);
     }
+
+    let mut client_config = OpenAIConfig::new().with_api_key(api_key);
+    if let Some(base_url) = input
+        .base_url
+        .map(|value| value.trim().trim_end_matches('/').to_string())
+        .filter(|value| !value.is_empty())
+    {
+        client_config = client_config.with_api_base(base_url);
+    }
+
+    Ok(ResolvedOpenAIConfig {
+        client_config,
+        model: input
+            .model
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty()),
+    })
 }
 
 fn truncate_to_chars(value: &str, max_chars: usize) -> String {
@@ -122,7 +167,7 @@ fn truncate_to_chars(value: &str, max_chars: usize) -> String {
 mod tests {
     use crate::{
         openai::{build_prompt, resolve_model},
-        AssistantTurn, AssistantTurnRole, PageContextPreview,
+        AssistantKnowledgeContext, AssistantTurn, AssistantTurnRole, PageContextPreview,
     };
 
     #[test]
@@ -141,15 +186,28 @@ mod tests {
             content: "What changed?".to_string(),
         }];
 
-        let prompt = build_prompt(&context, &history, "What should I do next?");
+        let prompt = build_prompt(
+            &context,
+            Some(&AssistantKnowledgeContext {
+                summary: Some("Knowledge base excerpts:\nAIO".to_string()),
+            }),
+            &history,
+            "What should I do next?",
+        );
 
         assert!(prompt.contains("All systems healthy"));
+        assert!(prompt.contains("Knowledge base excerpts"));
         assert!(prompt.contains("User: What changed?"));
         assert!(prompt.contains("What should I do next?"));
     }
 
     #[test]
     fn model_override_is_preserved() {
-        assert_eq!(resolve_model(Some("gpt-5.4")), "gpt-5.4");
+        assert_eq!(resolve_model(Some("gpt-5.4"), None), "gpt-5.4");
     }
+}
+
+struct ResolvedOpenAIConfig {
+    client_config: OpenAIConfig,
+    model: Option<String>,
 }

@@ -70,7 +70,6 @@ pnpm tauri build
 ```
 .
 ├── apps/
-│   ├── backend-mock/     # 模拟后端服务
 │   └── web-ele/          # Web 应用前端代码
 ├── internal/             # 内部工具和配置
 ├── packages/             # 核心包和组件库

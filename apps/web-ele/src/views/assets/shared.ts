@@ -16,9 +16,34 @@ export function nextAssetUsageText(status: string) {
 }
 
 export function normalizeTags(values: string[]) {
-  return [...new Set(values.map((tag) => tag.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      values
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .filter((tag) => !isSourceTag(tag)),
+    ),
+  ];
 }
 
 export function displayTags(category: string, tags: string[]) {
   return normalizeTags([category, ...tags]);
+}
+
+function isSourceTag(tag: string) {
+  return [
+    'addzero.site',
+    'agent',
+    'agents',
+    'codex',
+    'local',
+    'openai-bundled',
+    'openai-primary-runtime',
+    'raw.addzero.site',
+    'remote',
+    'skill',
+    'ssh',
+    '本机',
+    '远程',
+  ].includes(tag.trim().toLowerCase());
 }

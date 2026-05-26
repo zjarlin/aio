@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AssistantError {
-    #[error("OPENAI_API_KEY 或 OPENAI_ADMIN_KEY 环境变量未配置")]
+    #[error("OpenAI API Key 未配置")]
     MissingApiKey,
     #[error("页面 URL 无效：{0}")]
     InvalidUrl(String),

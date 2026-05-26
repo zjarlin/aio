@@ -154,7 +154,7 @@ onMounted(async () => {
 
 <template>
   <Page description="维护本地基础编码、选项和值集" title="字典管理">
-    <div class="grid grid-cols-[360px_1fr] gap-4">
+    <div class="grid grid-cols-[460px_minmax(0,1fr)] gap-4">
       <section class="border-border space-y-3 rounded border p-3">
         <div class="flex items-center justify-between">
           <span class="font-medium">字典类型</span>
@@ -164,13 +164,14 @@ onMounted(async () => {
         </div>
         <ElTable
           :data="types"
+          border
           highlight-current-row
           size="small"
           @row-click="(row) => (selectedTypeId = row.id)"
         >
           <ElTableColumn label="名称" min-width="120" prop="name" />
           <ElTableColumn label="编码" min-width="140" prop="code" />
-          <ElTableColumn label="操作" width="110">
+          <ElTableColumn fixed="right" label="操作" width="120">
             <template #default="{ row }">
               <ElButton link type="primary" @click.stop="openTypeEdit(row)">
                 编辑

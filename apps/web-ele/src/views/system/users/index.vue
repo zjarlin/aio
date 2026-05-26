@@ -55,6 +55,7 @@ const title = computed(() => (editingId.value ? '编辑用户' : '新增用户')
 
 const ORDINARY_USER_ROLE_CODE = 'ordinary_user';
 const SUPER_ADMIN_ROLE_CODE = 'super_admin';
+const LEGACY_HOME_PATHS = new Set(['/analytics', '/workspace']);
 
 async function loadRoles() {
   const result = await rolePageApi({ o: 0, s: 100 });
@@ -164,6 +165,7 @@ function isOrdinaryUser(roleCodes: string[]) {
 function isDefaultHomePath(homePath: string) {
   return (
     !homePath ||
+    LEGACY_HOME_PATHS.has(homePath) ||
     homePath === DEFAULT_HOME_PATH ||
     homePath === ORDINARY_USER_HOME_PATH
   );

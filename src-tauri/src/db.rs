@@ -25,6 +25,10 @@ pub async fn migrate_and_seed(pool: &SqlitePool) -> AppResult<()> {
     seed_defaults(pool).await?;
     ensure_builtin_roles(pool).await?;
     ensure_default_permissions(pool).await?;
+    crate::notes::ensure_content_hashes(pool).await?;
+    crate::knowledge::rebuild_notes(pool).await?;
+    crate::skills::ensure_content_hashes(pool).await?;
+    crate::dotfiles::ensure_dotfiles_seed(pool).await?;
     crate::asset_items::backfill_file_variables(pool).await?;
     crate::asset_items::refresh_page_global_variables(pool).await?;
     Ok(())
@@ -367,6 +371,17 @@ fn default_permissions() -> Vec<SeedPermission> {
             sort_order: 40,
         },
         SeedPermission {
+            id: "perm-system-openai-settings",
+            parent_id: Some("perm-system"),
+            code: "system:openai_settings",
+            name: "OpenAI 设置",
+            permission_type: "menu",
+            path: "/system/openai-settings",
+            component: "/system/openai-settings/index",
+            icon: "lucide:key-round",
+            sort_order: 50,
+        },
+        SeedPermission {
             id: "perm-notes",
             parent_id: None,
             code: "assets",
@@ -389,8 +404,19 @@ fn default_permissions() -> Vec<SeedPermission> {
             sort_order: 10,
         },
         SeedPermission {
-            id: "perm-system-skill",
+            id: "perm-assets-agents",
             parent_id: Some("perm-notes"),
+            code: "assets:agents",
+            name: "智能体",
+            permission_type: "menu",
+            path: "/assets/agents",
+            component: "",
+            icon: "lucide:bot",
+            sort_order: 20,
+        },
+        SeedPermission {
+            id: "perm-system-skill",
+            parent_id: Some("perm-assets-agents"),
             code: "assets:skill",
             name: "技能管理",
             permission_type: "menu",
@@ -401,7 +427,7 @@ fn default_permissions() -> Vec<SeedPermission> {
         },
         SeedPermission {
             id: "perm-assets-agent-preferences",
-            parent_id: Some("perm-notes"),
+            parent_id: Some("perm-assets-agents"),
             code: "assets:agent_preferences",
             name: "AGENTS.md 管理",
             permission_type: "menu",
@@ -519,6 +545,7 @@ fn ordinary_user_permission_codes() -> &'static [&'static str] {
         "dashboard:workspace",
         "assets",
         "assets:notes",
+        "assets:agents",
         "assets:skill",
         "assets:agent_preferences",
         "assets:openai_assistant",
@@ -527,6 +554,7 @@ fn ordinary_user_permission_codes() -> &'static [&'static str] {
         "assets:env_vars",
         "assets:bash_functions",
         "assets:dotfiles",
+        "system:openai_settings",
     ]
 }
 
@@ -546,7 +574,8 @@ mod tests {
         dictionary::{self, DictItemInput, DictItemPageRequest, DictTypeInput},
         error::AppError,
         home_paths::ORDINARY_USER_HOME_PATH,
-        notes::{self, NoteInput, NotePageRequest},
+        knowledge::{self, KnowledgeSearchRequest},
+        notes::{self, NoteInput, NotePageRequest, NoteUpdateInput},
         rbac::{self, PageRequest, UserInput},
         skills::{self, SkillInput, SkillPageRequest, SkillToggleInput, SkillUpdateInput},
     };
@@ -675,11 +704,16 @@ mod tests {
                 .children
                 .iter()
                 .any(|child| child.path == "/assets/notes"));
-            assert!(assets
+            let agents = assets
+                .children
+                .iter()
+                .find(|child| child.path == "/assets/agents")
+                .unwrap();
+            assert!(agents
                 .children
                 .iter()
                 .any(|child| child.path == "/assets/skills"));
-            assert!(assets
+            assert!(agents
                 .children
                 .iter()
                 .any(|child| child.path == "/assets/agent-preferences"));
@@ -711,7 +745,7 @@ mod tests {
                  WHERE roles.code = 'super_admin'
                    AND role_permissions.permission_id = 'perm-system-skill'
                    AND permissions.code = 'assets:skill'
-                   AND permissions.parent_id = 'perm-notes'",
+                   AND permissions.parent_id = 'perm-assets-agents'",
             )
             .fetch_one(&pool)
             .await?;
@@ -752,6 +786,13 @@ mod tests {
             .fetch_one(&pool)
             .await?;
             assert_eq!(assistant_grants, 1);
+
+            let agents_component: String = sqlx::query_scalar(
+                "SELECT component FROM permissions WHERE code = 'assets:agents'",
+            )
+            .fetch_one(&pool)
+            .await?;
+            assert!(agents_component.is_empty());
             Ok(())
         })
     }
@@ -1015,6 +1056,97 @@ mod tests {
             assert_eq!(disabled_page.t, 1);
 
             skills::delete(&pool, token, skill.id).await?;
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn skills_import_documents_dedupe_by_content_and_sources() -> Result<(), Box<dyn Error>> {
+        with_seeded_pool(|pool| async move {
+            let local_source = skills::SkillSourceRef {
+                kind: "local".to_string(),
+                host: "local".to_string(),
+                root: "codex".to_string(),
+                path: "/Users/zjarlin/.codex/skills/sample/SKILL.md".to_string(),
+            };
+            let remote_source = skills::SkillSourceRef {
+                kind: "ssh".to_string(),
+                host: "raw.addzero.site".to_string(),
+                root: "codex".to_string(),
+                path: "/Users/zjarlin/.codex/skills/sample/SKILL.md".to_string(),
+            };
+            let content = r#"---
+name: sample-skill
+displayName: Sample Skill
+description: Sample skill for import tests
+keywords:
+  - rust
+  - skill
+---
+
+# Sample Skill
+Use this to verify import deduplication.
+"#
+            .to_string();
+
+            let first = skills::import_documents(
+                &pool,
+                vec![
+                    skills::SkillImportDocument {
+                        source: local_source.clone(),
+                        content: content.clone(),
+                    },
+                    skills::SkillImportDocument {
+                        source: remote_source.clone(),
+                        content: content.clone(),
+                    },
+                ],
+            )
+            .await?;
+            assert_eq!(first.imported, 1);
+            assert_eq!(first.deduplicated, 1);
+
+            let second = skills::import_documents(
+                &pool,
+                vec![skills::SkillImportDocument {
+                    source: local_source,
+                    content,
+                }],
+            )
+            .await?;
+            assert_eq!(second.unchanged, 1);
+
+            let skill_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM skills")
+                .fetch_one(&pool)
+                .await?;
+            assert_eq!(skill_count, 1);
+
+            let source_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM skill_sources")
+                .fetch_one(&pool)
+                .await?;
+            assert_eq!(source_count, 2);
+
+            let content_hash: String =
+                sqlx::query_scalar("SELECT content_hash FROM skills LIMIT 1")
+                    .fetch_one(&pool)
+                    .await?;
+            assert_eq!(content_hash.len(), 64);
+
+            let tags_json: String = sqlx::query_scalar("SELECT tags_json FROM skills LIMIT 1")
+                .fetch_one(&pool)
+                .await?;
+            let tags = serde_json::from_str::<Vec<String>>(&tags_json)?;
+            assert!(tags.contains(&"rust".to_string()));
+            assert!(tags.contains(&"编程".to_string()));
+            assert!(!tags.contains(&"skill".to_string()));
+            assert!(!tags.contains(&"codex".to_string()));
+            assert!(!tags.contains(&"ssh".to_string()));
+            assert!(!tags.contains(&"raw.addzero.site".to_string()));
+
+            let category: String = sqlx::query_scalar("SELECT category FROM skills LIMIT 1")
+                .fetch_one(&pool)
+                .await?;
+            assert_eq!(category, "rust");
             Ok(())
         })
     }
@@ -1366,6 +1498,7 @@ services:
                     title: "管理员笔记".to_string(),
                     content: Some("admin only".to_string()),
                     category: Some("work".to_string()),
+                    is_public: Some(false),
                     tags: Some(vec!["private".to_string()]),
                 },
             )
@@ -1413,6 +1546,7 @@ services:
                     title: "用户笔记".to_string(),
                     content: Some("user only".to_string()),
                     category: Some("work".to_string()),
+                    is_public: Some(false),
                     tags: None,
                 },
             )
@@ -1460,6 +1594,197 @@ services:
     }
 
     #[test]
+    fn notes_create_is_idempotent_by_normalized_content() -> Result<(), Box<dyn Error>> {
+        with_seeded_pool(|pool| async move {
+            let token = login_admin(&pool).await?;
+            let first = notes::create(
+                &pool,
+                token.clone(),
+                NoteInput {
+                    title: "第一次标题".to_string(),
+                    content: Some("  同一条笔记\r\n第二行  ".to_string()),
+                    category: Some("quick".to_string()),
+                    is_public: Some(false),
+                    tags: Some(vec!["inbox".to_string()]),
+                },
+            )
+            .await?;
+
+            let duplicate = notes::create(
+                &pool,
+                token.clone(),
+                NoteInput {
+                    title: "重复标题".to_string(),
+                    content: Some("同一条笔记\n第二行".to_string()),
+                    category: Some("other".to_string()),
+                    is_public: Some(true),
+                    tags: Some(vec!["duplicate".to_string()]),
+                },
+            )
+            .await?;
+
+            assert_eq!(duplicate.id, first.id);
+            assert_eq!(duplicate.title, "第一次标题");
+            assert_eq!(duplicate.category, "quick");
+            assert_eq!(duplicate.tags, vec!["inbox".to_string()]);
+
+            let page = notes::page(
+                &pool,
+                token,
+                NotePageRequest {
+                    o: Some(0),
+                    s: Some(20),
+                    keyword: Some("同一条笔记".to_string()),
+                    category: None,
+                    archived: Some(false),
+                },
+            )
+            .await?;
+            assert_eq!(page.t, 1);
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn notes_update_rejects_duplicate_content() -> Result<(), Box<dyn Error>> {
+        with_seeded_pool(|pool| async move {
+            let token = login_admin(&pool).await?;
+            let first = notes::create(
+                &pool,
+                token.clone(),
+                NoteInput {
+                    title: "第一条".to_string(),
+                    content: Some("不可重复内容".to_string()),
+                    category: None,
+                    is_public: Some(false),
+                    tags: None,
+                },
+            )
+            .await?;
+            let second = notes::create(
+                &pool,
+                token.clone(),
+                NoteInput {
+                    title: "第二条".to_string(),
+                    content: Some("另一个内容".to_string()),
+                    category: None,
+                    is_public: Some(false),
+                    tags: None,
+                },
+            )
+            .await?;
+
+            let duplicate = notes::update(
+                &pool,
+                token,
+                NoteUpdateInput {
+                    id: second.id,
+                    title: "第二条更新".to_string(),
+                    content: Some(first.content),
+                    category: None,
+                    is_public: Some(false),
+                    tags: None,
+                },
+            )
+            .await
+            .unwrap_err();
+
+            assert!(matches!(duplicate, AppError::Conflict(_)));
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn public_notes_are_visible_to_other_users() -> Result<(), Box<dyn Error>> {
+        with_seeded_pool(|pool| async move {
+            let admin_token = login_admin(&pool).await?;
+            let public_note = notes::create(
+                &pool,
+                admin_token.clone(),
+                NoteInput {
+                    title: "公开笔记".to_string(),
+                    content: Some("everyone can read".to_string()),
+                    category: Some("share".to_string()),
+                    is_public: Some(true),
+                    tags: Some(vec!["shared".to_string()]),
+                },
+            )
+            .await?;
+            let private_note = notes::create(
+                &pool,
+                admin_token.clone(),
+                NoteInput {
+                    title: "私有笔记".to_string(),
+                    content: Some("admin only".to_string()),
+                    category: Some("share".to_string()),
+                    is_public: Some(false),
+                    tags: None,
+                },
+            )
+            .await?;
+
+            let roles = rbac::role_page(
+                &pool,
+                admin_token.clone(),
+                PageRequest {
+                    o: Some(0),
+                    s: Some(1),
+                    keyword: Some("super_admin".to_string()),
+                },
+            )
+            .await?;
+            let role_id = roles.d[0].id.clone();
+            rbac::create_user(
+                &pool,
+                admin_token,
+                UserInput {
+                    username: "public_note_user".to_string(),
+                    password: "user123456".to_string(),
+                    real_name: "公开笔记用户".to_string(),
+                    avatar: None,
+                    home_path: None,
+                    status: None,
+                    role_ids: vec![role_id],
+                },
+            )
+            .await?;
+
+            let user_token = auth::login(
+                &pool,
+                LoginRequest {
+                    username: "public_note_user".to_string(),
+                    password: "user123456".to_string(),
+                },
+            )
+            .await?
+            .access_token;
+
+            let page = notes::page(
+                &pool,
+                user_token,
+                NotePageRequest {
+                    o: Some(0),
+                    s: Some(20),
+                    keyword: None,
+                    category: Some("share".to_string()),
+                    archived: Some(false),
+                },
+            )
+            .await?;
+
+            assert!(page.d.iter().any(|note| note.id == public_note.id));
+            assert!(page.d.iter().all(|note| note.id != private_note.id));
+            assert!(
+                page.d
+                    .iter()
+                    .find(|note| note.id == public_note.id)
+                    .is_some_and(|note| note.is_public)
+            );
+            Ok(())
+        })
+    }
+
+    #[test]
     fn dictionary_item_page_can_filter_by_type() -> Result<(), Box<dyn Error>> {
         with_seeded_pool(|pool| async move {
             let token = login_admin(&pool).await?;
@@ -1477,6 +1802,78 @@ services:
 
             assert!(page.t >= 1);
             assert!(page.d.iter().any(|item| item.value == "enabled"));
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn knowledge_search_respects_note_visibility() -> Result<(), Box<dyn Error>> {
+        with_seeded_pool(|pool| async move {
+            let admin_token = login_admin(&pool).await?;
+            let ordinary = rbac::create_user(
+                &pool,
+                admin_token.clone(),
+                UserInput {
+                    username: "viewer".to_string(),
+                    password: "admin123456".to_string(),
+                    real_name: "浏览用户".to_string(),
+                    avatar: None,
+                    home_path: Some(ORDINARY_USER_HOME_PATH.to_string()),
+                    role_ids: Vec::new(),
+                    status: Some("enabled".to_string()),
+                },
+            )
+            .await?;
+
+            let ordinary_login = auth::login(
+                &pool,
+                LoginRequest {
+                    username: ordinary.username.clone(),
+                    password: "admin123456".to_string(),
+                },
+            )
+            .await?;
+
+            notes::create(
+                &pool,
+                admin_token.clone(),
+                NoteInput {
+                    title: "公开知识".to_string(),
+                    content: Some("AIO 知识库支持公开检索".to_string()),
+                    category: Some("AI".to_string()),
+                    is_public: Some(true),
+                    tags: Some(vec!["knowledge".to_string()]),
+                },
+            )
+            .await?;
+
+            notes::create(
+                &pool,
+                admin_token.clone(),
+                NoteInput {
+                    title: "私有知识".to_string(),
+                    content: Some("AIO 私有知识片段".to_string()),
+                    category: Some("AI".to_string()),
+                    is_public: Some(false),
+                    tags: Some(vec!["private".to_string()]),
+                },
+            )
+            .await?;
+
+            let page = knowledge::search(
+                &pool,
+                ordinary_login.access_token,
+                KnowledgeSearchRequest {
+                    query: "AIO 知识".to_string(),
+                    limit: Some(10),
+                },
+            )
+            .await?;
+
+            assert_eq!(page.len(), 1);
+            assert_eq!(page[0].document.title, "公开知识");
+            assert!(page[0].document.is_public);
+
             Ok(())
         })
     }

@@ -143,21 +143,26 @@ function openCreate() {
   editorVisible.value = true;
 }
 
-async function quickCreate(content: string) {
+async function quickCreate(content: string, done: (success?: boolean) => void) {
   const name = inferTitle(content);
   const tags = parseTags(content);
-  await assetItemCreateApi({
-    category: tags[0] || '',
-    code: slugify(name),
-    content,
-    description: content.split('\n').slice(1, 3).join(' ').slice(0, 120),
-    kind: props.kind,
-    name,
-    sortOrder: 0,
-    status: 'disabled',
-    tags,
-  });
-  await loadItems();
+  try {
+    await assetItemCreateApi({
+      category: tags[0] || '',
+      code: slugify(name),
+      content,
+      description: content.split('\n').slice(1, 3).join(' ').slice(0, 120),
+      kind: props.kind,
+      name,
+      sortOrder: 0,
+      status: 'disabled',
+      tags,
+    });
+    await loadItems();
+    done(true);
+  } catch {
+    done(false);
+  }
 }
 
 function openEdit(row: AssetItemRecord) {

@@ -41,6 +41,20 @@ pub struct AssistantChatRequest {
     pub model: Option<String>,
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantKnowledgeContext {
+    pub summary: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantOpenAIConfig {
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub model: Option<String>,
+}
+
 impl Default for AssistantChatRequest {
     fn default() -> Self {
         Self {

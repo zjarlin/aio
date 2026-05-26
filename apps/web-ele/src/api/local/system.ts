@@ -60,28 +60,101 @@ export interface DictItemRecord {
 export interface NoteRecord {
   category: string;
   content: string;
+  contentHash: string;
   createdAt: number;
   id: string;
   isArchived: boolean;
   isFavorite: boolean;
+  isPublic: boolean;
   ownerId: string;
   tags: string[];
   title: string;
   updatedAt: number;
 }
 
+export interface KnowledgeDocumentRecord {
+  category: string;
+  contentHash: string;
+  createdAt: number;
+  id: string;
+  isArchived: boolean;
+  isPublic: boolean;
+  ownerId: string;
+  sourceId: string;
+  sourceType: string;
+  sourceUpdatedAt: number;
+  tags: string[];
+  title: string;
+  updatedAt: number;
+}
+
+export interface KnowledgeChunkRecord {
+  charCount: number;
+  content: string;
+  createdAt: number;
+  documentId: string;
+  id: string;
+  ordinal: number;
+  searchableText: string;
+  updatedAt: number;
+}
+
+export interface KnowledgeSearchResult {
+  chunk: KnowledgeChunkRecord;
+  document: KnowledgeDocumentRecord;
+  score: number;
+}
+
+export interface KnowledgeSearchRequest {
+  limit?: number;
+  query: string;
+}
+
+export interface OpenAISettingsRecord {
+  apiKeyConfigured: boolean;
+  apiKeyPreview: string;
+  baseUrl: string;
+  model: string;
+}
+
+export interface OpenAISettingsInput {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+}
+
+export interface SkillSourceRef {
+  host: string;
+  kind: string;
+  path: string;
+  root: string;
+}
+
 export interface SkillRecord {
   category: string;
   code: string;
+  contentHash: string;
   createdAt: number;
   description: string;
   id: string;
+  lastSyncedAt: number;
   name: string;
   prompt: string;
   sortOrder: number;
   status: string;
+  sources: SkillSourceRef[];
   tags: string[];
   updatedAt: number;
+}
+
+export interface SkillSyncResult {
+  deduplicated: number;
+  errors: string[];
+  imported: number;
+  scanned: number;
+  skipped: number;
+  unchanged: number;
+  updated: number;
 }
 
 export type AgentPreferenceSection =
@@ -256,6 +329,84 @@ export interface AssetVariableInput {
   valueKind?: string;
 }
 
+export interface ComputerRecord {
+  arch: string;
+  createdAt: number;
+  host: string;
+  id: string;
+  kind: string;
+  lastScannedAt: number;
+  name: string;
+  os: string;
+  ownerId: string;
+  site: string;
+  status: string;
+  updatedAt: number;
+  username: string;
+}
+
+export interface ComputerInput {
+  arch?: string;
+  host?: string;
+  id?: string;
+  kind?: string;
+  name: string;
+  os?: string;
+  site?: string;
+  status?: string;
+  username?: string;
+}
+
+export interface DotfileSnapshotRecord {
+  computerId: string;
+  contentHash: string;
+  createdAt: number;
+  entryId?: null | string;
+  existsFlag: number;
+  id: string;
+  itemType: string;
+  mtime: number;
+  ownerId: string;
+  path: string;
+  preview: string;
+  relativePath: string;
+  scannedAt: number;
+  size: number;
+  status: string;
+  updatedAt: number;
+}
+
+export interface DotfileSnapshotPageRequest extends PageRequest {
+  computerId?: string;
+  status?: string;
+}
+
+export interface DotfileScanResult {
+  computerId: string;
+  deleted: number;
+  errors: string[];
+  inserted: number;
+  scanned: number;
+  unchanged: number;
+  updated: number;
+}
+
+export interface DotfilesMetadataImportResult {
+  dotfiles: number;
+  envVars: number;
+  env_vars?: number;
+  errors: string[];
+}
+
+export interface DotfileFusionRecord {
+  computerCount: number;
+  deployTarget: string;
+  description: string;
+  latestScannedAt: number;
+  missingCount: number;
+  variantCount: number;
+}
+
 export async function userPageApi(request: PageRequest) {
   return await callAuthedCommand<PageResult<UserRecord>>('user_page', {
     request,
@@ -388,6 +539,12 @@ export async function noteFavoriteApi(id: string, value: boolean) {
   });
 }
 
+export async function knowledgeSearchApi(request: KnowledgeSearchRequest) {
+  return await callAuthedCommand<KnowledgeSearchResult[]>('knowledge_search', {
+    request,
+  });
+}
+
 export async function skillPageApi(
   request: {
     categories?: string[];
@@ -416,6 +573,10 @@ export async function skillToggleApi(id: string, status: string) {
   return await callAuthedCommand<SkillRecord>('skill_toggle', {
     input: { id, status },
   });
+}
+
+export async function skillSyncSourcesApi() {
+  return await callAuthedCommand<SkillSyncResult>('skill_sync_sources');
 }
 
 export async function agentPreferencePageApi(
@@ -559,6 +720,41 @@ export async function assetVariableDeleteApi(id: string) {
   return await callAuthedCommand<null>('asset_variable_delete', { id });
 }
 
+export async function dotfileComputerListApi() {
+  return await callAuthedCommand<ComputerRecord[]>('dotfile_computer_list');
+}
+
+export async function dotfileComputerUpsertApi(input: ComputerInput) {
+  return await callAuthedCommand<ComputerRecord>('dotfile_computer_upsert', {
+    input,
+  });
+}
+
+export async function dotfileMetadataImportApi() {
+  return await callAuthedCommand<DotfilesMetadataImportResult>(
+    'dotfile_metadata_import',
+  );
+}
+
+export async function dotfileScanComputerApi(computerId?: string) {
+  return await callAuthedCommand<DotfileScanResult>('dotfile_scan_computer', {
+    computerId,
+  });
+}
+
+export async function dotfileSnapshotPageApi(
+  request: DotfileSnapshotPageRequest,
+) {
+  return await callAuthedCommand<PageResult<DotfileSnapshotRecord>>(
+    'dotfile_snapshot_page',
+    { request },
+  );
+}
+
+export async function dotfileFusionListApi() {
+  return await callAuthedCommand<DotfileFusionRecord[]>('dotfile_fusion_list');
+}
+
 export async function assetVariableRefreshPageGlobalsApi() {
   return await callAuthedCommand<AssetVariableRefreshResult>(
     'asset_variable_refresh_page_globals',
@@ -620,6 +816,16 @@ export async function openAIAssistantChatApi(
     'openai_assistant_chat',
     { input },
   );
+}
+
+export async function openAISettingsGetApi() {
+  return await callAuthedCommand<OpenAISettingsRecord>('openai_settings_get');
+}
+
+export async function openAISettingsSaveApi(input: OpenAISettingsInput) {
+  return await callAuthedCommand<OpenAISettingsRecord>('openai_settings_save', {
+    input,
+  });
 }
 
 export async function openAppDataDirApi() {

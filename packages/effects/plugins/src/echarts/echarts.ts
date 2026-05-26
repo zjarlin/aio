@@ -57,3 +57,4 @@ echarts.use([
 ]);
 
 export default echarts;
+export const getInstanceByDom = echarts.getInstanceByDom;

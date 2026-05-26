@@ -1,4 +1,5 @@
 mod agent_preferences;
+mod app_settings;
 mod app_paths;
 mod asset_items;
 mod asset_variables;
@@ -6,8 +7,10 @@ mod auth;
 mod commands;
 mod db;
 mod dictionary;
+mod dotfiles;
 mod error;
 mod home_paths;
+mod knowledge;
 mod notes;
 mod rbac;
 mod skills;
@@ -22,12 +25,15 @@ use commands::{
     asset_variable_delete, asset_variable_page, asset_variable_refresh_page_globals,
     asset_variable_upsert, auth_access_codes, auth_current_user, auth_login, auth_logout,
     dict_item_create, dict_item_delete, dict_item_page, dict_item_update, dict_type_create,
-    dict_type_delete, dict_type_page, dict_type_update, menu_list, note_archive, note_create,
+    dict_type_delete, dict_type_page, dict_type_update, dotfile_computer_list,
+    dotfile_computer_upsert, dotfile_fusion_list, dotfile_metadata_import,
+    dotfile_scan_computer, dotfile_snapshot_page, menu_list, note_archive, note_create,
     note_delete, note_favorite, note_page, note_update, openai_assistant_chat,
-    openai_assistant_preview_context, permission_save, permission_tree, role_assign_permissions,
-    role_create, role_delete, role_page, role_permission_ids, role_update, skill_create,
-    skill_delete, skill_page, skill_toggle, skill_update, user_create, user_delete, user_disable,
-    user_page, user_reset_password, user_update,
+    openai_assistant_preview_context, openai_settings_get, openai_settings_save, permission_save,
+    permission_tree, role_assign_permissions, role_create, role_delete, role_page,
+    role_permission_ids, role_update, skill_create, skill_delete, skill_page,
+    skill_sync_sources, skill_toggle, skill_update, user_create, user_delete, user_disable,
+    user_page, user_reset_password, user_update, knowledge_search,
 };
 use state::AppState;
 use tauri::Manager;
@@ -59,6 +65,8 @@ pub fn run() {
             app_open_data_dir,
             openai_assistant_preview_context,
             openai_assistant_chat,
+            openai_settings_get,
+            openai_settings_save,
             agent_preference_page,
             agent_preference_create,
             agent_preference_update,
@@ -91,17 +99,25 @@ pub fn run() {
             dict_item_create,
             dict_item_update,
             dict_item_delete,
+            dotfile_computer_list,
+            dotfile_computer_upsert,
+            dotfile_metadata_import,
+            dotfile_scan_computer,
+            dotfile_snapshot_page,
+            dotfile_fusion_list,
             note_page,
             note_create,
             note_update,
             note_delete,
             note_archive,
             note_favorite,
+            knowledge_search,
             skill_page,
             skill_create,
             skill_update,
             skill_delete,
             skill_toggle,
+            skill_sync_sources,
             asset_item_page,
             asset_item_import_directory,
             asset_item_create,

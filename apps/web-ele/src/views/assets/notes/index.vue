@@ -1,15 +1,25 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import {
+  EchartsUI,
+  type EchartsUIType,
+  getInstanceByDom,
+  useEcharts,
+} from '@vben/plugins/echarts';
+import { useUserStore } from '@vben/stores';
 
 import {
   ElButton,
   ElDialog,
   ElInput,
+  ElMessage,
   ElMessageBox,
   ElOption,
+  ElSegmented,
   ElSelect,
+  ElSwitch,
   ElTag,
 } from 'element-plus';
 
@@ -26,18 +36,31 @@ import {
 import { formatTime } from '../../system/shared';
 import QuickComposer from '../components/quick-composer.vue';
 
+const userStore = useUserStore();
 const notes = ref<NoteRecord[]>([]);
 const keyword = ref('');
 const showArchived = ref(false);
+const viewMode = ref<'graph' | 'list'>('graph');
 const editorVisible = ref(false);
 const editingId = ref('');
+const previewVisible = ref(false);
+const previewNote = ref<NoteRecord | null>(null);
+const chartRef = ref<EchartsUIType>();
 const form = reactive({
   category: '',
   content: '',
+  isPublic: false,
   tagsText: '',
   title: '',
 });
 const title = computed(() => (editingId.value ? '编辑笔记' : '新增笔记'));
+const currentUserId = computed(() => userStore.userInfo?.userId ?? '');
+const { renderEcharts } = useEcharts(chartRef);
+type RenderEchartsOption = Parameters<typeof renderEcharts>[0];
+const viewOptions = [
+  { label: '知识图谱', value: 'graph' },
+  { label: '列表', value: 'list' },
+];
 
 function parseTags(content: string) {
   const matches = content.match(/#[\u4E00-\u9FA5\w-]+/g) ?? [];
@@ -60,27 +83,29 @@ async function loadNotes() {
     s: 100,
   });
   notes.value = result.d;
+  await renderGraph();
 }
 
-function openCreate() {
-  editingId.value = '';
-  Object.assign(form, {
-    category: '',
-    content: '',
-    tagsText: '',
-    title: '',
-  });
-  editorVisible.value = true;
+function explainSaveResult(saved: NoteRecord, expectedTitle: string) {
+  const reused = saved.title !== expectedTitle;
+  ElMessage.success(reused ? '内容已存在，已定位到原笔记' : '笔记已保存');
 }
 
-async function quickCreate(content: string) {
-  await noteCreateApi({
-    category: '快速记录',
-    content,
-    tags: parseTags(content),
-    title: inferTitle(content),
-  });
-  await loadNotes();
+async function quickCreate(content: string, done: (success?: boolean) => void) {
+  const title = inferTitle(content);
+  try {
+    const saved = await noteCreateApi({
+      category: '快速记录',
+      content,
+      tags: parseTags(content),
+      title,
+    });
+    explainSaveResult(saved, title);
+    await loadNotes();
+    done(true);
+  } catch {
+    done(false);
+  }
 }
 
 function openEdit(note: NoteRecord) {
@@ -88,25 +113,187 @@ function openEdit(note: NoteRecord) {
   Object.assign(form, {
     category: note.category,
     content: note.content,
+    isPublic: note.isPublic,
     tagsText: note.tags.join(', '),
     title: note.title,
   });
   editorVisible.value = true;
 }
 
+function openPreview(note: NoteRecord) {
+  previewNote.value = note;
+  previewVisible.value = true;
+}
+
+function canManage(note: NoteRecord) {
+  return note.ownerId === currentUserId.value;
+}
+
+function noteSummary(note: NoteRecord) {
+  const normalized = note.content.replaceAll(/\s+/g, ' ').trim();
+  return normalized.slice(0, 120) || '暂无内容';
+}
+
+async function renderGraph() {
+  await nextTick();
+
+  const categoryNodes = new Map<string, any>();
+  const tagNodes = new Map<string, any>();
+  const nodes: any[] = [];
+  const links: any[] = [];
+
+  for (const note of notes.value) {
+    const noteId = `note:${note.id}`;
+    nodes.push({
+      category: 0,
+      draggable: true,
+      id: noteId,
+      itemStyle: {
+        color: canManage(note) ? '#1d4ed8' : '#059669',
+      },
+      name: note.title,
+      noteId: note.id,
+      noteType: 'note',
+      symbolSize: Math.max(42, Math.min(72, 34 + note.tags.length * 4)),
+      value: noteSummary(note),
+    });
+
+    const categoryName = note.category.trim() || '未分类';
+    const categoryId = `category:${categoryName}`;
+    if (!categoryNodes.has(categoryId)) {
+      const categoryNode = {
+        category: 1,
+        id: categoryId,
+        itemStyle: { color: '#f59e0b' },
+        name: categoryName,
+        noteType: 'category',
+        symbolSize: 34,
+      };
+      categoryNodes.set(categoryId, categoryNode);
+      nodes.push(categoryNode);
+    }
+    links.push({
+      lineStyle: { color: '#94a3b8', width: 1.5 },
+      source: noteId,
+      target: categoryId,
+    });
+
+    for (const tag of note.tags) {
+      const normalizedTag = tag.trim();
+      if (!normalizedTag) {
+        continue;
+      }
+      const tagId = `tag:${normalizedTag}`;
+      if (!tagNodes.has(tagId)) {
+        const tagNode = {
+          category: 2,
+          id: tagId,
+          itemStyle: { color: '#7c3aed' },
+          name: `#${normalizedTag}`,
+          noteType: 'tag',
+          symbolSize: 26,
+        };
+        tagNodes.set(tagId, tagNode);
+        nodes.push(tagNode);
+      }
+      links.push({
+        lineStyle: { color: '#cbd5e1', width: 1 },
+        source: noteId,
+        target: tagId,
+      });
+    }
+  }
+
+  const option: RenderEchartsOption = {
+    animationDuration: 400,
+    legend: {
+      data: ['笔记', '分类', '标签'],
+      left: 0,
+      top: 0,
+    },
+    series: [
+      {
+        categories: [{ name: '笔记' }, { name: '分类' }, { name: '标签' }],
+        data: nodes,
+        edgeSymbol: ['none', 'none'],
+        emphasis: {
+          focus: 'series',
+          label: {
+            show: true,
+          },
+        },
+        force: {
+          edgeLength: [70, 150],
+          gravity: 0.08,
+          repulsion: 320,
+        },
+        label: {
+          color: '#334155',
+          formatter: '{b}',
+          position: 'right',
+          show: true,
+        },
+        layout: 'force',
+        lineStyle: {
+          opacity: 0.75,
+        },
+        links,
+        roam: true,
+        draggable: true,
+        symbolKeepAspect: true,
+        tooltip: {
+          formatter: (params: any) => {
+            const data = params.data ?? {};
+            if (data.noteType === 'note') {
+              return `${data.name}<br/>${data.value ?? ''}`;
+            }
+            return data.name ?? '';
+          },
+        },
+        type: 'graph',
+      } as any,
+    ],
+    tooltip: {},
+  };
+
+  await renderEcharts(option);
+
+  const chart = chartRef.value?.$el
+    ? getInstanceByDom(chartRef.value.$el)
+    : null;
+  chart?.off('click');
+  chart?.on('click', (params: any) => {
+    const noteId = params?.data?.noteId;
+    if (!noteId) {
+      return;
+    }
+    const note = notes.value.find((item) => item.id === noteId);
+    if (!note) {
+      return;
+    }
+    if (canManage(note)) {
+      openEdit(note);
+      return;
+    }
+    openPreview(note);
+  });
+}
+
 async function saveNote() {
   const input = {
     category: form.category,
     content: form.content,
+    isPublic: form.isPublic,
     tags: form.tagsText
       .split(',')
       .map((tag) => tag.trim())
       .filter(Boolean),
     title: form.title,
   };
-  await (editingId.value
+  const saved = await (editingId.value
     ? noteUpdateApi({ id: editingId.value, ...input })
     : noteCreateApi(input));
+  explainSaveResult(saved, input.title);
   editorVisible.value = false;
   await loadNotes();
 }
@@ -128,6 +315,12 @@ async function deleteNote(note: NoteRecord) {
 }
 
 onMounted(loadNotes);
+
+watch(viewMode, async (mode) => {
+  if (mode === 'graph') {
+    await renderGraph();
+  }
+});
 </script>
 
 <template>
@@ -154,10 +347,17 @@ onMounted(loadNotes);
           </ElSelect>
           <ElButton @click="loadNotes">查询</ElButton>
         </div>
-        <ElButton type="primary" @click="openCreate">新增笔记</ElButton>
+        <ElSegmented v-model="viewMode" :options="viewOptions" />
       </div>
 
-      <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+      <section
+        v-if="viewMode === 'graph'"
+        class="border-border bg-background rounded border p-3 shadow-sm"
+      >
+        <EchartsUI ref="chartRef" height="720px" />
+      </section>
+
+      <div v-else class="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <article
           v-for="note in notes"
           :key="note.id"
@@ -171,7 +371,10 @@ onMounted(loadNotes);
                 {{ formatTime(note.updatedAt) }}
               </div>
             </div>
-            <ElTag v-if="note.isFavorite" type="warning">收藏</ElTag>
+            <div class="flex items-center gap-2">
+              <ElTag v-if="note.isPublic" type="success">公开</ElTag>
+              <ElTag v-if="note.isFavorite" type="warning">收藏</ElTag>
+            </div>
           </div>
           <p
             class="text-muted-foreground mt-3 line-clamp-3 whitespace-pre-wrap text-sm"
@@ -184,18 +387,41 @@ onMounted(loadNotes);
             </ElTag>
           </div>
           <div class="mt-4 flex justify-end gap-2">
-            <ElButton link type="warning" @click="toggleFavorite(note)">
+            <ElButton
+              v-if="canManage(note)"
+              link
+              type="warning"
+              @click="toggleFavorite(note)"
+            >
               {{ note.isFavorite ? '取消收藏' : '收藏' }}
             </ElButton>
-            <ElButton link type="primary" @click="openEdit(note)">
+            <ElButton
+              v-if="canManage(note)"
+              link
+              type="primary"
+              @click="openEdit(note)"
+            >
               编辑
             </ElButton>
-            <ElButton link type="info" @click="toggleArchive(note)">
+            <ElButton
+              v-if="canManage(note)"
+              link
+              type="info"
+              @click="toggleArchive(note)"
+            >
               {{ note.isArchived ? '恢复' : '归档' }}
             </ElButton>
-            <ElButton link type="danger" @click="deleteNote(note)">
+            <ElButton
+              v-if="canManage(note)"
+              link
+              type="danger"
+              @click="deleteNote(note)"
+            >
               删除
             </ElButton>
+            <span v-if="!canManage(note)" class="text-muted-foreground text-xs">
+              公开笔记，仅可查看
+            </span>
           </div>
         </article>
       </div>
@@ -210,6 +436,17 @@ onMounted(loadNotes);
           class="col-span-2"
           placeholder="标签，逗号分隔"
         />
+        <div
+          class="col-span-2 flex items-center justify-between rounded border px-3 py-2"
+        >
+          <div>
+            <div class="text-sm font-medium">公开给其他用户</div>
+            <div class="text-muted-foreground text-xs">
+              默认私有。开启后，其他登录用户可以查看这条笔记。
+            </div>
+          </div>
+          <ElSwitch v-model="form.isPublic" />
+        </div>
         <ElInput
           v-model="form.content"
           :rows="14"
@@ -221,6 +458,33 @@ onMounted(loadNotes);
       <template #footer>
         <ElButton @click="editorVisible = false">取消</ElButton>
         <ElButton type="primary" @click="saveNote">保存</ElButton>
+      </template>
+    </ElDialog>
+
+    <ElDialog v-model="previewVisible" title="公开笔记" width="760px">
+      <template v-if="previewNote">
+        <div class="space-y-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold">{{ previewNote.title }}</h3>
+              <div class="text-muted-foreground mt-1 text-xs">
+                {{ previewNote.category || '未分类' }} ·
+                {{ formatTime(previewNote.updatedAt) }}
+              </div>
+            </div>
+            <ElTag v-if="previewNote.isPublic" type="success">公开</ElTag>
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <ElTag v-for="tag in previewNote.tags" :key="tag" size="small">
+              {{ tag }}
+            </ElTag>
+          </div>
+          <div
+            class="bg-muted/30 whitespace-pre-wrap rounded border p-3 text-sm leading-6"
+          >
+            {{ previewNote.content || '暂无内容' }}
+          </div>
+        </div>
       </template>
     </ElDialog>
   </Page>

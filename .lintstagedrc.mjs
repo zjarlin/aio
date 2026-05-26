@@ -14,7 +14,7 @@ export default {
     'stylelint --fix --allow-empty-input',
   ],
   '{!(package)*.json,*.code-snippets,.!(browserslist)*rc}': [
-    'prettier --cache --write--parser json',
+    'prettier --cache --write --parser json',
   ],
   'package.json': ['prettier --cache --write'],
 };

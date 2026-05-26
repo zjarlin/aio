@@ -2,11 +2,12 @@ use serde::Serialize;
 use tauri::State;
 
 use acp_openai_assistant::{
-    ask_assistant, preview_page_context, AssistantAnswer, AssistantChatRequest, PageContextInput,
-    PageContextPreview,
+    ask_assistant, preview_page_context, AssistantAnswer, AssistantChatRequest,
+    AssistantKnowledgeContext, AssistantOpenAIConfig, PageContextInput, PageContextPreview,
 };
 
 use crate::{
+    app_settings::{self, OpenAISettingsInput, OpenAISettingsRecord},
     agent_preferences::{
         self, AgentPreferenceInput, AgentPreferencePageRequest, AgentPreferenceRecord,
         AgentPreferenceToggleInput, AgentPreferenceUpdateInput,
@@ -23,14 +24,22 @@ use crate::{
         self, DictItemInput, DictItemPageRequest, DictItemRecord, DictItemUpdateInput,
         DictTypeInput, DictTypeRecord, DictTypeUpdateInput,
     },
+    dotfiles::{
+        self, ComputerInput, ComputerRecord, DotfileFusionRecord, DotfileScanResult,
+        DotfileSnapshotPageRequest, DotfileSnapshotRecord, DotfilesMetadataImportResult,
+    },
     error::{AppError, CommandError},
+    knowledge::{self, KnowledgeSearchRequest, KnowledgeSearchResult},
     notes::{self, NoteFlagInput, NoteInput, NotePageRequest, NoteRecord, NoteUpdateInput},
     rbac::{
         self, AssignPermissionsInput, PageRequest, PageResult, PermissionInput, PermissionNode,
         RoleInput, RoleRecord, RoleUpdateInput, RouteMenu, UserInput, UserPasswordInput,
         UserRecord, UserUpdateInput,
     },
-    skills::{self, SkillInput, SkillPageRequest, SkillRecord, SkillToggleInput, SkillUpdateInput},
+    skills::{
+        self, SkillInput, SkillPageRequest, SkillRecord, SkillSyncResult, SkillToggleInput,
+        SkillUpdateInput,
+    },
     state::AppState,
 };
 
@@ -63,13 +72,54 @@ pub async fn openai_assistant_chat(
     input: AssistantChatRequest,
 ) -> CommandResult<AssistantAnswer> {
     let result = async {
-        auth::current_user(&state.pool, token).await?;
-        ask_assistant(input)
+        let user = auth::current_user(&state.pool, token).await?;
+        let retrieved =
+            knowledge::retrieve_for_user(&state.pool, &user.user_id, &input.question, Some(6))
+                .await?;
+        let knowledge_context = AssistantKnowledgeContext {
+            summary: knowledge::format_retrieved_chunks(&retrieved),
+        };
+        let settings = app_settings::resolve_openai_settings(&state.pool).await?;
+        ask_assistant(
+            input,
+            Some(knowledge_context),
+            Some(AssistantOpenAIConfig {
+                api_key: Some(settings.api_key),
+                base_url: settings.base_url,
+                model: settings.model,
+            }),
+        )
             .await
             .map_err(|error| AppError::Assistant(error.to_string()))
     }
     .await;
     map_result(result)
+}
+
+#[tauri::command]
+pub async fn openai_settings_get(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<OpenAISettingsRecord> {
+    map_result(app_settings::get_openai_settings(&state.pool, token).await)
+}
+
+#[tauri::command]
+pub async fn openai_settings_save(
+    state: State<'_, AppState>,
+    token: String,
+    input: OpenAISettingsInput,
+) -> CommandResult<OpenAISettingsRecord> {
+    map_result(app_settings::save_openai_settings(&state.pool, token, input).await)
+}
+
+#[tauri::command]
+pub async fn knowledge_search(
+    state: State<'_, AppState>,
+    token: String,
+    request: KnowledgeSearchRequest,
+) -> CommandResult<Vec<KnowledgeSearchResult>> {
+    map_result(knowledge::search(&state.pool, token, request).await)
 }
 
 #[tauri::command]
@@ -458,6 +508,14 @@ pub async fn skill_toggle(
 }
 
 #[tauri::command]
+pub async fn skill_sync_sources(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<SkillSyncResult> {
+    map_result(skills::sync_sources(&state.pool, token).await)
+}
+
+#[tauri::command]
 pub async fn asset_item_page(
     state: State<'_, AppState>,
     token: String,
@@ -562,6 +620,57 @@ pub async fn asset_variable_refresh_page_globals(
     token: String,
 ) -> CommandResult<AssetVariableRefreshResult> {
     map_result(asset_items::refresh_page_global_variables_for_user(&state.pool, token).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_computer_list(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<Vec<ComputerRecord>> {
+    map_result(dotfiles::computer_list(&state.pool, token).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_computer_upsert(
+    state: State<'_, AppState>,
+    token: String,
+    input: ComputerInput,
+) -> CommandResult<ComputerRecord> {
+    map_result(dotfiles::computer_upsert(&state.pool, token, input).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_metadata_import(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<DotfilesMetadataImportResult> {
+    map_result(dotfiles::metadata_import(&state.pool, token).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_scan_computer(
+    state: State<'_, AppState>,
+    token: String,
+    computer_id: Option<String>,
+) -> CommandResult<DotfileScanResult> {
+    map_result(dotfiles::scan_computer(&state.pool, token, computer_id).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_snapshot_page(
+    state: State<'_, AppState>,
+    token: String,
+    request: DotfileSnapshotPageRequest,
+) -> CommandResult<PageResult<DotfileSnapshotRecord>> {
+    map_result(dotfiles::snapshot_page(&state.pool, token, request).await)
+}
+
+#[tauri::command]
+pub async fn dotfile_fusion_list(
+    state: State<'_, AppState>,
+    token: String,
+) -> CommandResult<Vec<DotfileFusionRecord>> {
+    map_result(dotfiles::fusion_list(&state.pool, token).await)
 }
 
 fn _assert_serializable<T: Serialize>() {}

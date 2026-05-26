@@ -13,10 +13,12 @@ use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
 use acp_openai_assistant::{
-    ask_assistant, preview_page_context, AssistantChatRequest, PageContextInput,
+    ask_assistant, preview_page_context, AssistantChatRequest, AssistantKnowledgeContext,
+    AssistantOpenAIConfig, PageContextInput,
 };
 
 use crate::{
+    app_settings::{self, OpenAISettingsInput},
     agent_preferences::{
         self, AgentPreferenceInput, AgentPreferencePageRequest, AgentPreferenceToggleInput,
         AgentPreferenceUpdateInput,
@@ -32,7 +34,9 @@ use crate::{
         self, DictItemInput, DictItemPageRequest, DictItemUpdateInput, DictTypeInput,
         DictTypeUpdateInput,
     },
+    dotfiles::{self, ComputerInput, DotfileSnapshotPageRequest},
     error::{AppError, AppResult},
+    knowledge::{self, KnowledgeSearchRequest},
     notes::{self, NoteFlagInput, NoteInput, NotePageRequest, NoteUpdateInput},
     rbac::{
         self, AssignPermissionsInput, PageRequest, PermissionInput, RoleInput, RoleUpdateInput,
@@ -146,13 +150,38 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             })
         }
         "openai_assistant_chat" => {
-            auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
+            let user = auth::current_user(pool, payload_field::<String>(&payload, "token")?).await?;
             boxed!(async {
-                ask_assistant(payload_field::<AssistantChatRequest>(&payload, "input")?)
+                let input = payload_field::<AssistantChatRequest>(&payload, "input")?;
+                let retrieved =
+                    knowledge::retrieve_for_user(pool, &user.user_id, &input.question, Some(6))
+                        .await?;
+                let knowledge_context = AssistantKnowledgeContext {
+                    summary: knowledge::format_retrieved_chunks(&retrieved),
+                };
+                let settings = app_settings::resolve_openai_settings(pool).await?;
+                ask_assistant(
+                    input,
+                    Some(knowledge_context),
+                    Some(AssistantOpenAIConfig {
+                        api_key: Some(settings.api_key),
+                        base_url: settings.base_url,
+                        model: settings.model,
+                    }),
+                )
                     .await
                     .map_err(|error| AppError::Assistant(error.to_string()))
             })
         }
+        "openai_settings_get" => boxed!(app_settings::get_openai_settings(
+            pool,
+            payload_field::<String>(&payload, "token")?
+        )),
+        "openai_settings_save" => boxed!(app_settings::save_openai_settings(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            payload_field::<OpenAISettingsInput>(&payload, "input")?
+        )),
         "auth_login" => boxed!(auth::login(
             pool,
             payload_field::<LoginRequest>(&payload, "request")?
@@ -312,6 +341,11 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             payload_field::<String>(&payload, "token")?,
             payload_field::<NoteFlagInput>(&payload, "input")?
         )),
+        "knowledge_search" => boxed!(knowledge::search(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            payload_field::<KnowledgeSearchRequest>(&payload, "request")?
+        )),
         "skill_page" => boxed!(skills::page(
             pool,
             payload_field::<String>(&payload, "token")?,
@@ -336,6 +370,10 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
             pool,
             payload_field::<String>(&payload, "token")?,
             payload_field::<SkillToggleInput>(&payload, "input")?
+        )),
+        "skill_sync_sources" => boxed!(skills::sync_sources(
+            pool,
+            payload_field::<String>(&payload, "token")?
         )),
         "asset_item_page" => boxed!(asset_items::page(
             pool,
@@ -398,7 +436,46 @@ async fn dispatch(state: &AppState, command: &str, payload: Value) -> AppResult<
                 payload_field::<String>(&payload, "token")?
             ))
         }
+        "dotfile_computer_list" => boxed!(dotfiles::computer_list(
+            pool,
+            payload_field::<String>(&payload, "token")?
+        )),
+        "dotfile_computer_upsert" => boxed!(dotfiles::computer_upsert(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            payload_field::<ComputerInput>(&payload, "input")?
+        )),
+        "dotfile_metadata_import" => boxed!(dotfiles::metadata_import(
+            pool,
+            payload_field::<String>(&payload, "token")?
+        )),
+        "dotfile_scan_computer" => boxed!(dotfiles::scan_computer(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            payload_optional_field::<String>(&payload, "computerId")?
+        )),
+        "dotfile_snapshot_page" => boxed!(dotfiles::snapshot_page(
+            pool,
+            payload_field::<String>(&payload, "token")?,
+            payload_field::<DotfileSnapshotPageRequest>(&payload, "request")?
+        )),
+        "dotfile_fusion_list" => boxed!(dotfiles::fusion_list(
+            pool,
+            payload_field::<String>(&payload, "token")?
+        )),
         other => Err(AppError::BadRequest(format!("不支持的命令：{other}"))),
+    }
+}
+
+fn payload_optional_field<T: DeserializeOwned>(
+    payload: &Value,
+    key: &str,
+) -> AppResult<Option<T>> {
+    match payload.get(key).cloned() {
+        Some(value) if !value.is_null() => {
+            serde_json::from_value(value).map(Some).map_err(|source| AppError::Json { source })
+        }
+        _ => Ok(None),
     }
 }
 

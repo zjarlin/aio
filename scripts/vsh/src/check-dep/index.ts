@@ -10,7 +10,6 @@ async function runDepcheck() {
     packages.map(async (pkg) => {
       if (
         [
-          '@vben/backend-mock',
           '@vben/commitlint-config',
           '@vben/eslint-config',
           '@vben/lint-staged-config',
