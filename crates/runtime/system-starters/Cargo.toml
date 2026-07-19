@@ -1,0 +1,19 @@
+[package]
+name = "az-system-starters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+az-admin-plugin-registry.workspace = true
+az-starter-audit.workspace = true
+az-starter-dictionary.workspace = true
+az-starter-identity.workspace = true
+az-starter-menu.workspace = true
+az-starter-organization.workspace = true
+
+automod.workspace = true
+[lints]
+workspace = true

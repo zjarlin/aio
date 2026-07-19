@@ -1,0 +1,23 @@
+[package]
+name = "az-onnx"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Shared local ONNX image inference helpers for the addzero ecosystem"
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+automod.workspace = true
+image.workspace = true
+imageproc.workspace = true
+ndarray.workspace = true
+ort = { workspace = true, features = ["half"] }
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "az-str"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "String and identifier utilities for the addzero ecosystem"
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+automod.workspace = true
+deunicode.workspace = true
+derive_more.workspace = true
+regex.workspace = true
+strum.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
