@@ -3324,6 +3324,57 @@ textarea.aio-input:disabled,
 }
 
 @media (max-width: 680px) {
+  .aio-shell-frame,
+  .aio-shell-frame[data-sidebar-collapsed="true"] {
+    --aio-sidebar-width: 56px;
+  }
+
+  .aio-sidebar-brand,
+  .aio-sidebar-footer-label,
+  .aio-sidebar-menu-label {
+    display: none;
+  }
+
+  .aio-sidebar .aio-sidebar-menu-children,
+  .aio-shell-frame[data-sidebar-collapsed="true"] .aio-sidebar-menu-children {
+    display: block;
+  }
+
+  .aio-sidebar-header-row,
+  .aio-sidebar-footer {
+    justify-content: center;
+  }
+
+  .aio-sidebar-scroll {
+    padding-inline: .375rem;
+  }
+
+  .aio-sidebar-menu-link {
+    justify-content: center;
+    padding-left: .5rem !important;
+    padding-right: .5rem !important;
+  }
+
+  .aio-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .375rem .5rem;
+    padding-inline: .75rem;
+  }
+
+  .aio-root-menu {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+
+  .aio-main-scroll {
+    padding: .75rem;
+  }
+
+  .lowcode-workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .dictionary-workbench-header-grid,
   .dictionary-item-header {
     flex-direction: column;

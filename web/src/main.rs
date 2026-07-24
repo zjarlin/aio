@@ -2,7 +2,7 @@
 
 use anyhow::{Context as _, Result};
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Query, State},
     middleware,
     response::Html,
@@ -13,19 +13,24 @@ use az_aio_platform::{
     plugin::host,
     system::{
         api_key_auth::{SystemApiKeyAuthState, optional_system_api_key_auth},
-        store::{SYSTEM_ADMIN_BOOTSTRAP_SQL, SystemAdminStore},
+        store::SystemAdminStore,
     },
 };
+use az_remote_ui::ComponentIndex;
 use rudi::Context;
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
 use tower_http::services::ServeDir;
 
+mod migration;
+mod remote_ui;
 mod shell;
 
 fn main() -> Result<()> {
     enable_plugin_providers();
 
     let mut di = Context::auto_register();
+    let remote_ui_components =
+        Arc::new(ComponentIndex::from_context(&mut di).context("收集 Remote UI 组件失败")?);
     let config = di.resolve::<az_aio_platform::core::config::ConfigCenterConfig>();
 
     let port = config.port();
@@ -34,20 +39,15 @@ fn main() -> Result<()> {
         .enable_all()
         .build()
         .context("创建 AIO web runtime 失败")?;
-    let bootstrap_sql = aio_bootstrap_sql();
     let toasty_models = db::collect_toasty_models(&mut di);
-    let shared_db = match runtime.block_on(db::install_shared_db_singleton(
-        &mut di,
-        database_url.as_deref(),
-        toasty_models,
-        &bootstrap_sql,
-    )) {
-        Ok(shared_db) => shared_db,
-        Err(error) => {
-            eprintln!("AIO shared Toasty startup degraded: {error:#}");
-            None
-        }
-    };
+    let shared_db = runtime
+        .block_on(async {
+            if let Some(database_url) = database_url.as_deref() {
+                migration::run(database_url).await?;
+            }
+            db::install_shared_db_singleton(&mut di, database_url.as_deref(), toasty_models).await
+        })
+        .context("初始化 AIO PostgreSQL 失败")?;
 
     let native_context = az_aio_platform::plugin::contract::NativePluginContext {
         api_base_url: String::new(),
@@ -59,7 +59,18 @@ fn main() -> Result<()> {
 
     let snapshot = host::load_native_snapshot(native_context, &mut di);
 
-    runtime.block_on(run_web_server(snapshot, port, database_url, shared_db))
+    let remote_ui_store = shared_db
+        .as_ref()
+        .map(|db| az_engine::EngineStore::from_shared_db(db.shared_handle()));
+    let remote_ui_runtime = remote_ui::RemoteUiRuntime::new(remote_ui_components, remote_ui_store);
+
+    runtime.block_on(run_web_server(
+        snapshot,
+        port,
+        database_url,
+        shared_db,
+        remote_ui_runtime,
+    ))
 }
 
 async fn run_web_server(
@@ -67,6 +78,7 @@ async fn run_web_server(
     port: u16,
     database_url: Option<String>,
     shared_db: Option<db::Db>,
+    remote_ui_runtime: remote_ui::RemoteUiRuntime,
 ) -> Result<()> {
     let api_key_auth_state = if database_url
         .as_ref()
@@ -90,11 +102,21 @@ async fn run_web_server(
     let page_router = Router::new()
         .route("/", get(root_page))
         .route("/gateway", get(root_page))
+        .route("/remote-ui", get(remote_ui::page))
         .route("/api/client/bootstrap", get(client_bootstrap))
+        .route(
+            "/api/remote-ui/pages/{page_key}/stream",
+            get(remote_ui::page_stream),
+        )
+        .route(
+            "/api/remote-ui/components",
+            get(remote_ui::component_catalog),
+        )
         .route("/health", get(health))
         .nest_service("/assets", ServeDir::new(&assets_dir))
         .nest_service("/client", ServeDir::new(&client_dist_dir))
         .nest_service("/wasm", ServeDir::new(client_dist_dir.join("wasm")))
+        .layer(Extension(remote_ui_runtime))
         .with_state(page_snapshot);
 
     let app = page_router.merge(native_router.with_state(()));
@@ -154,8 +176,8 @@ fn client_dist_dir() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     [
         manifest_dir.join("../client/dist"),
-        manifest_dir.join("../plugins/target/dx/az-aio-client/release/web/public"),
-        manifest_dir.join("../plugins/target/dx/az-aio-client/debug/web/public"),
+        manifest_dir.join("../target/dx/az-aio-client/release/web/public"),
+        manifest_dir.join("../target/dx/az-aio-client/debug/web/public"),
     ]
     .into_iter()
     .find(|path| path.join("wasm/az-aio-client.js").exists())
@@ -165,41 +187,6 @@ fn client_dist_dir() -> PathBuf {
 async fn health() -> &'static str {
     "ok"
 }
-
-fn aio_bootstrap_sql() -> Vec<&'static str> {
-    let mut statements = Vec::new();
-    statements.extend_from_slice(SYSTEM_ADMIN_BOOTSTRAP_SQL);
-    statements.extend_from_slice(CONFIG_CENTER_BOOTSTRAP_SQL);
-    statements.extend_from_slice(DRIVE_CENTER_BOOTSTRAP_SQL);
-    statements.extend_from_slice(ASSET_HUB_BOOTSTRAP_SQL);
-    statements.extend_from_slice(SOFTWARE_CENTER_BOOTSTRAP_SQL);
-    statements.extend_from_slice(edge_gateway::backend::store::EDGE_GATEWAY_BOOTSTRAP_SQL);
-    statements.extend_from_slice(az_engine::ENGINE_BOOTSTRAP_SQL);
-    statements
-        .extend_from_slice(az_aio_platform::system::dictionary_model::DICTIONARY_BOOTSTRAP_SQL);
-    statements
-}
-
-const CONFIG_CENTER_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS biz_config_center_config_entries (id TEXT PRIMARY KEY, namespace TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_config_center_config_entries_namespace_idx ON biz_config_center_config_entries (namespace)",
-    "CREATE INDEX IF NOT EXISTS biz_config_center_config_entries_key_idx ON biz_config_center_config_entries (key)",
-];
-
-const DRIVE_CENTER_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS biz_drive_center_drive_tasks (id TEXT PRIMARY KEY, drive_path TEXT NOT NULL, action TEXT NOT NULL, status TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_drive_center_drive_tasks_drive_path_idx ON biz_drive_center_drive_tasks (drive_path)",
-];
-
-const ASSET_HUB_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS biz_asset_hub_asset_records (id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_asset_hub_asset_records_kind_idx ON biz_asset_hub_asset_records (kind)",
-];
-
-const SOFTWARE_CENTER_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS biz_software_center_software_package_records (id TEXT PRIMARY KEY, name TEXT NOT NULL, source_path TEXT NOT NULL, platform TEXT NOT NULL, arch TEXT NOT NULL, status TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_software_center_software_package_records_name_idx ON biz_software_center_software_package_records (name)",
-];
 
 fn enable_plugin_providers() {
     az_aio_platform::enable();
@@ -212,6 +199,7 @@ fn enable_plugin_providers() {
     iot_center::enable();
     lowcode::enable();
     software_center::enable();
+    ssh_plugin::enable();
     az_linux::enable();
 }
 
@@ -247,6 +235,7 @@ mod tests {
                 "linux",
                 "lowcode",
                 "software-center",
+                "ssh",
                 "system",
             ]
         );
@@ -279,10 +268,16 @@ mod tests {
             .sections
             .iter()
             .find(|section| section.label == "管理后台");
+        let server_operations = snapshot
+            .admin_menu_tree
+            .sections
+            .iter()
+            .find(|section| section.label == "服务器运维");
 
         assert!(labels.contains(&"管理后台"));
         assert!(labels.contains(&"知识库"));
         assert!(labels.contains(&"智能网关"));
+        assert!(labels.contains(&"服务器运维"));
         assert_eq!(
             knowledge.map(|section| section.default_href.as_str()),
             Some("/assets")
@@ -307,6 +302,18 @@ mod tests {
         assert!(
             gateway
                 .map(|section| section.menus.iter().any(|node| node.label == "算法中心"))
+                .unwrap_or(false)
+        );
+        assert_eq!(
+            server_operations.map(|section| section.default_href.as_str()),
+            Some("/ssh?view=overview")
+        );
+        assert!(
+            server_operations
+                .map(|section| section
+                    .menus
+                    .iter()
+                    .any(|node| menu_node_contains_href(node, "/ssh")))
                 .unwrap_or(false)
         );
     }
@@ -339,6 +346,10 @@ mod tests {
                 "HookDefinition",
                 "MetaField",
                 "MetaModel",
+                "OperationDefinition",
+                "OperationRevision",
+                "OperationRun",
+                "PageRecord",
                 "SoftwarePackageRecord",
                 "SystemApiKeyRecord",
                 "SystemDataRecord",

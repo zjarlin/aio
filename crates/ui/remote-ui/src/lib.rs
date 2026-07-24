@@ -1,0 +1,23 @@
+#![forbid(unsafe_code)]
+#![doc = include_str!("../README.md")]
+
+mod compiler;
+mod component;
+mod component_index;
+mod components;
+mod contract;
+mod definition;
+mod parser;
+
+pub use compiler::PageCompiler;
+pub use component::{
+    ComponentBehavior, ComponentCatalogEntry, ComponentDefinition, ComponentEventSpec,
+    ComponentPropertyKind, ComponentPropertySpec, ComponentShape, ComponentSpec,
+};
+pub use component_index::{ComponentIndex, IndexedComponent};
+pub use contract::{UiNode, UiOp};
+pub use definition::{
+    ActionDefinition, ComponentNode, DataSourceDefinition, PAGE_SCHEMA_VERSION, PageDefinition,
+    PropertyValue,
+};
+pub use parser::UiParser;

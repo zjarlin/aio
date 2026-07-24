@@ -9,11 +9,20 @@ use az_aio_platform::plugin::contract::{
     PageContribution, PluginActivation, PluginDescriptor, PluginKind, UiContribution,
     UiContributionSlot,
 };
+use az_engine::operation::{
+    OP_OPERATIONS_CREATE, OP_OPERATIONS_INVOKE, OP_OPERATIONS_LIST, OP_OPERATIONS_PUBLISH,
+    OPERATION_INVOKE_PATH_TEMPLATE, OPERATION_PUBLISH_PATH_TEMPLATE, OPERATIONS_PATH,
+};
+use az_engine::page::{
+    OP_PAGES_CREATE, OP_PAGES_DELETE, OP_PAGES_GET, OP_PAGES_LIST, OP_PAGES_UPDATE,
+    PAGE_PATH_TEMPLATE, PAGES_PATH,
+};
 use az_engine::{
     FIELDS_PATH_TEMPLATE, HOOKS_PATH_TEMPLATE, MODELS_PATH, OP_FIELDS_CREATE, OP_FIELDS_LIST,
     OP_HOOKS_CREATE, OP_HOOKS_LIST, OP_MODELS_CREATE, OP_MODELS_LIST, OP_RECORDS_CREATE,
     OP_RECORDS_LIST, RECORDS_PATH_TEMPLATE,
 };
+use az_operation_agent::generation::OperationVibeAgent;
 use rudi::Singleton;
 
 use crate::{
@@ -46,6 +55,8 @@ impl NativePluginProvider for LowcodePlugin {
                 "dioxus-ui-contract-page".into(),
                 "engine-meta-model".into(),
                 "engine-record-pipeline".into(),
+                "engine-operation-runtime".into(),
+                "rig-operation-agent".into(),
             ],
             permissions: vec!["PostgreSQL engine_* 表读写".into()],
             kind: PluginKind::Native,
@@ -64,7 +75,7 @@ impl NativePluginProvider for LowcodePlugin {
             pages: vec![PageContribution {
                 route: ROUTE.into(),
                 title: "低代码引擎".into(),
-                subtitle: "模型、字段、钩子、记录统一管理".into(),
+                subtitle: "模型、字段、钩子、记录和动态接口统一管理".into(),
                 renderer_id: RENDERER_ID.into(),
                 placeholder_mark: "▣".into(),
                 order: 50,
@@ -118,7 +129,10 @@ impl NativePluginProvider for LowcodePlugin {
                 route: Some(ROUTE.into()),
                 render: LowcodePage,
             }],
-            router: engine_router(LowcodeApiState { store }),
+            router: engine_router(LowcodeApiState {
+                store,
+                operation_agent: OperationVibeAgent::from_env()?,
+            }),
             startup: None,
         })
     }
@@ -143,6 +157,13 @@ impl NativePluginProvider for LowcodePlugin {
                         admin_menu_node("engine.fields", "字段", "/lowcode?tab=fields", "▤", 10),
                         admin_menu_node("engine.hooks", "钩子", "/lowcode?tab=hooks", "⚑", 20),
                         admin_menu_node("engine.records", "记录", "/lowcode?tab=records", "▦", 30),
+                        admin_menu_node(
+                            "engine.operations",
+                            "接口",
+                            "/lowcode?tab=operations",
+                            "⌁",
+                            40,
+                        ),
                     ],
                 }],
             }],
@@ -155,6 +176,8 @@ impl NativePluginProvider for LowcodePlugin {
             engine_field_resource(),
             engine_hook_resource(),
             engine_record_resource(),
+            engine_operation_resource(),
+            engine_page_resource(),
         ]
     }
 
@@ -187,6 +210,27 @@ impl NativePluginProvider for LowcodePlugin {
                 "az engine record list",
                 "engine.records",
                 OP_RECORDS_LIST,
+            ),
+            cli(
+                "engine.cli.operations",
+                "列出动态接口",
+                "az engine operation list",
+                "engine.operations",
+                OP_OPERATIONS_LIST,
+            ),
+            cli(
+                "engine.cli.invoke",
+                "调用动态接口",
+                "az engine operation invoke",
+                "engine.operations",
+                OP_OPERATIONS_INVOKE,
+            ),
+            cli(
+                "engine.cli.pages",
+                "列出页面",
+                "az engine page list",
+                "engine.pages",
+                OP_PAGES_LIST,
             ),
         ]
     }
@@ -224,6 +268,45 @@ fn backend_api_contributions() -> Vec<BackendApiContribution> {
             RECORDS_PATH_TEMPLATE,
             "写入记录",
             80,
+        ),
+        api(
+            OP_OPERATIONS_LIST,
+            "GET",
+            OPERATIONS_PATH,
+            "动态接口列表",
+            90,
+        ),
+        api(
+            OP_OPERATIONS_CREATE,
+            "POST",
+            OPERATIONS_PATH,
+            "创建动态接口",
+            100,
+        ),
+        api(
+            OP_OPERATIONS_PUBLISH,
+            "POST",
+            OPERATION_PUBLISH_PATH_TEMPLATE,
+            "发布动态接口版本",
+            110,
+        ),
+        api(
+            OP_OPERATIONS_INVOKE,
+            "POST",
+            OPERATION_INVOKE_PATH_TEMPLATE,
+            "调用动态接口",
+            120,
+        ),
+        api(OP_PAGES_LIST, "GET", PAGES_PATH, "页面列表", 130),
+        api(OP_PAGES_CREATE, "POST", PAGES_PATH, "创建页面", 140),
+        api(OP_PAGES_GET, "GET", PAGE_PATH_TEMPLATE, "页面详情", 150),
+        api(OP_PAGES_UPDATE, "PUT", PAGE_PATH_TEMPLATE, "更新页面", 160),
+        api(
+            OP_PAGES_DELETE,
+            "DELETE",
+            PAGE_PATH_TEMPLATE,
+            "删除页面",
+            170,
         ),
     ]
 }
@@ -424,6 +507,113 @@ fn engine_record_resource() -> AdminResourceContract {
     }
 }
 
+fn engine_operation_resource() -> AdminResourceContract {
+    AdminResourceContract {
+        id: "engine.operations".to_string(),
+        label: "动态接口".to_string(),
+        description: "可版本化 operation 定义，Rhai 源码和契约正式持久化于 PostgreSQL。"
+            .to_string(),
+        route: "/lowcode?tab=operations".to_string(),
+        table_name: "engine_operation_definitions".to_string(),
+        permissions_any_of: vec!["engine:operation".to_string()],
+        fields: vec![
+            field(
+                "operation_key",
+                "Operation Key",
+                AdminFieldKind::Text,
+                true,
+                true,
+            ),
+            field("display_name", "显示名", AdminFieldKind::Text, true, true),
+            field("method", "方法", AdminFieldKind::Badge, true, true),
+            field("state", "状态", AdminFieldKind::Badge, true, true),
+            field(
+                "active_revision_id",
+                "活动版本",
+                AdminFieldKind::Relation,
+                false,
+                false,
+            ),
+        ],
+        operations: vec![
+            operation(
+                OP_OPERATIONS_LIST,
+                "查询动态接口",
+                "GET",
+                OPERATIONS_PATH,
+                "az engine operation list",
+                false,
+            ),
+            operation(
+                OP_OPERATIONS_CREATE,
+                "创建动态接口",
+                "POST",
+                OPERATIONS_PATH,
+                "az engine operation create",
+                true,
+            ),
+            operation(
+                OP_OPERATIONS_INVOKE,
+                "调用动态接口",
+                "POST",
+                OPERATION_INVOKE_PATH_TEMPLATE,
+                "az engine operation invoke",
+                false,
+            ),
+        ],
+    }
+}
+
+fn engine_page_resource() -> AdminResourceContract {
+    AdminResourceContract {
+        id: "engine.pages".to_string(),
+        label: "页面".to_string(),
+        description: "声明式页面定义，运行时由当前 Rudi 组件 catalog 编译。".to_string(),
+        route: "/remote-ui".to_string(),
+        table_name: "engine_page_definitions".to_string(),
+        permissions_any_of: vec!["engine:page".to_string()],
+        fields: vec![
+            field("page_key", "Page Key", AdminFieldKind::Text, true, true),
+            field("route", "路由", AdminFieldKind::Text, true, true),
+            field("state", "状态", AdminFieldKind::Badge, true, true),
+            field("definition", "页面定义", AdminFieldKind::Json, true, false),
+            field(
+                "updated_at_ms",
+                "更新时间",
+                AdminFieldKind::Time,
+                false,
+                false,
+            ),
+        ],
+        operations: vec![
+            operation(
+                OP_PAGES_LIST,
+                "查询页面",
+                "GET",
+                PAGES_PATH,
+                "az engine page list",
+                false,
+            ),
+            operation(
+                OP_PAGES_CREATE,
+                "创建页面",
+                "POST",
+                PAGES_PATH,
+                "az engine page create",
+                true,
+            ),
+            operation(
+                OP_PAGES_UPDATE,
+                "更新页面",
+                "PUT",
+                PAGE_PATH_TEMPLATE,
+                "az engine page update",
+                false,
+            ),
+        ],
+    }
+}
+
 fn field(
     name: &str,
     label: &str,
@@ -524,7 +714,7 @@ mod tests {
             Err(error) => panic!("菜单应可序列化: {error}"),
         };
 
-        // Admin 菜单只暴露低代码引擎四块，不再出现旧的页面类入口。
+        // Admin 菜单只暴露当前 engine 工作面，不再出现旧的页面类入口。
         let old_renderer = ["App", "Screen"].join("");
         let old_config = ["页面", "配置"].join("");
         let old_preview = ["发布", "预览"].join("");

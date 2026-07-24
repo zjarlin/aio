@@ -235,7 +235,7 @@ pub enum HookCommand {
 /// engine 持久化 store。
 #[derive(Clone)]
 pub struct EngineStore {
-    db: Arc<tokio::sync::Mutex<toasty::Db>>,
+    pub(crate) db: Arc<tokio::sync::Mutex<toasty::Db>>,
 }
 
 /// engine 执行器。
@@ -251,26 +251,26 @@ pub struct BatchComputedEvaluator {
 }
 
 impl EngineStore {
-    /// 连接 PostgreSQL 并迁移 engine schema。
+    /// 连接已完成 SQLx 迁移的 PostgreSQL 并验证 engine schema。
     pub async fn connect(database_url: &str) -> anyhow::Result<Self> {
         let database_url = verify_database_url(database_url)?;
         let db = toasty::Db::builder()
             .models(engine_models())
             .connect(database_url)
             .await
-            .with_context(|| format!("连接 engine 数据库失败: {database_url}"))?;
-        ensure_schema(&db).await?;
+            .context("连接 engine PostgreSQL 失败")?;
+        verify_existing_schema(&db).await?;
         Ok(Self::new(db))
     }
 
-    /// Wraps a fully configured Toasty database.
+    /// 包装已经完成配置的 Toasty 数据库。
     pub fn new(db: toasty::Db) -> Self {
         Self {
             db: Arc::new(tokio::sync::Mutex::new(db)),
         }
     }
 
-    /// Reuses the application-wide Toasty executor singleton.
+    /// 复用应用级 Toasty 执行器单例。
     pub fn from_shared_db(db: Arc<tokio::sync::Mutex<toasty::Db>>) -> Self {
         Self { db }
     }
@@ -840,7 +840,7 @@ impl EngineExecutor {
         let rows = raw
             .d
             .into_iter()
-            .zip(payloads.into_iter())
+            .zip(payloads)
             .map(|(record, payload)| DataRecordView {
                 id: record.id,
                 model_name: record.model_name,
@@ -1091,20 +1091,17 @@ pub fn timestamp_ms() -> i64 {
 
 /// Returns the lowcode engine Toasty model set.
 pub fn engine_models() -> toasty::ModelSet {
-    toasty::models!(MetaModel, MetaField, HookDefinition, DataRecord)
+    toasty::models!(
+        MetaModel,
+        MetaField,
+        HookDefinition,
+        DataRecord,
+        crate::operation::OperationDefinition,
+        crate::operation::OperationRevision,
+        crate::operation::OperationRun,
+        crate::page::PageRecord,
+    )
 }
-
-/// Bootstrap DDL used only when Toasty reports existing PostgreSQL relations during startup.
-pub const ENGINE_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS engine_meta_models (id TEXT PRIMARY KEY, name TEXT NOT NULL, display_name TEXT NOT NULL, created_at_ms BIGINT NOT NULL, updated_at_ms BIGINT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS engine_meta_models_name_idx ON engine_meta_models (name)",
-    "CREATE TABLE IF NOT EXISTS engine_meta_fields (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, name TEXT NOT NULL, display_name TEXT NOT NULL, field_type TEXT NOT NULL, is_required BOOLEAN NOT NULL, expression TEXT NULL, dependency_json TEXT NULL, order_index INTEGER NOT NULL, created_at_ms BIGINT NOT NULL, updated_at_ms BIGINT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS engine_meta_fields_model_name_idx ON engine_meta_fields (model_name)",
-    "CREATE TABLE IF NOT EXISTS engine_hook_definitions (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, trigger_event TEXT NOT NULL, script_content TEXT NOT NULL, is_active BOOLEAN NOT NULL, order_index INTEGER NOT NULL, created_at_ms BIGINT NOT NULL, updated_at_ms BIGINT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS engine_hook_definitions_model_name_idx ON engine_hook_definitions (model_name)",
-    "CREATE TABLE IF NOT EXISTS engine_data_records (id TEXT PRIMARY KEY, model_name TEXT NOT NULL, payload TEXT NOT NULL, created_at_ms BIGINT NOT NULL, updated_at_ms BIGINT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS engine_data_records_model_name_idx ON engine_data_records (model_name)",
-];
 
 /// 校验数据库连接串。
 pub fn verify_database_url(value: &str) -> anyhow::Result<&str> {
@@ -1118,21 +1115,7 @@ pub fn verify_database_url(value: &str) -> anyhow::Result<&str> {
         .map(|value| value.value())
 }
 
-/// 幂等确认 engine 的 Toasty schema 已经可用。
-async fn ensure_schema(db: &toasty::Db) -> anyhow::Result<()> {
-    match db.push_schema().await {
-        Ok(()) => Ok(()),
-        Err(error) if schema_already_exists(&error) => verify_existing_schema(db).await,
-        Err(error) => Err(error).context("迁移 engine schema 失败"),
-    }
-}
-
-/// Toasty PostgreSQL driver 当前会在表已存在时返回错误；这里只识别该幂等场景。
-fn schema_already_exists(error: &toasty::Error) -> bool {
-    format!("{error:?}").contains("already exists")
-}
-
-/// 表已存在时，通过真实 Toasty 查询确认四张核心表都可读。
+/// 通过真实 Toasty 查询确认四张核心表都可读。
 async fn verify_existing_schema(db: &toasty::Db) -> anyhow::Result<()> {
     let mut db = db.clone();
     let mut models = Query::<List<MetaModel>>::all();
@@ -1162,6 +1145,9 @@ async fn verify_existing_schema(db: &toasty::Db) -> anyhow::Result<()> {
         .exec(&mut db)
         .await
         .context("校验 engine_data_records 表失败")?;
+
+    crate::operation::verify_operation_schema(&mut db).await?;
+    crate::page::verify_page_schema(&mut db).await?;
     Ok(())
 }
 

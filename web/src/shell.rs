@@ -1,5 +1,5 @@
 use az_aio_platform::plugin::{
-    api::{
+    contract::{
         AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminResourceContract,
         NativeRenderContext, PageContribution,
     },
@@ -144,7 +144,7 @@ fn render_document(title: &str, bootstrap_json: Option<String>, body: Element) -
     let body = dioxus_ssr::render_element(body);
 
     format!(
-        r#"<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title><link rel="icon" href="{FAVICON_DATA_URI}"><link rel="stylesheet" href="/assets/app.css?v=dictionary-dialog-v2"></head><body>{bootstrap_script}<div id="aio-root">{body}</div><script>{SHELL_STATE_SCRIPT}</script></body></html>"#
+        r#"<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title><link rel="icon" href="{FAVICON_DATA_URI}"><link rel="stylesheet" href="/assets/app.css?v=operation-shell-v2"></head><body>{bootstrap_script}<div id="aio-root">{body}</div><script>{SHELL_STATE_SCRIPT}</script></body></html>"#
     )
 }
 
@@ -526,7 +526,7 @@ fn escape_script_json(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use az_aio_platform::plugin::{
-        api::{AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, PageContribution},
+        contract::{AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, PageContribution},
         host::HostSnapshot,
     };
 

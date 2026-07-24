@@ -1,0 +1,9 @@
+/target/
+**/target/
+/.env
+/.env.*
+!.env.example
+.DS_Store
+.dioxus/
+.dioxus-buddy/
+/client/dist/

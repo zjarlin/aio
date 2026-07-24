@@ -1,3 +1,9 @@
+use az_str::sanitize::{
+    ascii_alphanumeric, ascii_alphanumeric_or, sanitize_ascii_label, sanitize_ascii_label_or,
+    sanitize_file_name_with_extension, sanitize_file_stem, sanitize_file_stem_or,
+    sanitize_path_file_stem_or, sanitize_path_segment, title_case_slug, to_slash_path, to_slug,
+    to_slug_or,
+};
 use az_str::transformation::{
     FormatArg, KmpMatcher, MarkdownListMarkerMode, ParentPathExt, VariableType, add_prefix_if_not,
     add_suffix_if_not, clean_blank, clean_doc_comment, clean_markdown_plain_text,
@@ -12,12 +18,6 @@ use az_str::transformation::{
     to_pascal_case, to_simple_name, to_snake_case, to_underline_case, to_underline_lower_case,
     to_valid_variable_name, trim_non_blank, trim_non_blank_owned, truncate_chars,
     truncate_chars_with_ellipsis, unescape_basic_html_entities,
-};
-use az_str::sanitize::{
-    ascii_alphanumeric, ascii_alphanumeric_or, sanitize_ascii_label, sanitize_ascii_label_or,
-    sanitize_file_name_with_extension, sanitize_file_stem, sanitize_file_stem_or,
-    sanitize_path_file_stem_or, sanitize_path_segment, title_case_slug, to_slash_path, to_slug,
-    to_slug_or,
 };
 use std::f64::consts::PI;
 use std::path::Path;

@@ -3,6 +3,7 @@
 //! lowcode 插件的低代码引擎 Admin 页面。
 
 use az_aio_platform::plugin::contract::NativeRenderContext;
+use az_engine::operation::{OperationDefinition, OperationRevisionView};
 use az_engine::{DataRecordView, HookDefinition, MetaField, MetaModel, PageData, PageParams};
 use dioxus::prelude::*;
 use registry::ui::{
@@ -45,12 +46,16 @@ struct PageSnapshot {
     hooks: Vec<HookDefinition>,
     records: Vec<DataRecordView>,
     total_records: u64,
+    operations: Vec<OperationDefinition>,
+    revisions: Vec<OperationRevisionView>,
     selected_model: Option<String>,
+    selected_operation: Option<String>,
     tab: String,
     error: Option<String>,
+    result: Option<String>,
 }
 
-/// 渲染低代码引擎的模型、字段、钩子和记录工作台。
+/// 渲染低代码引擎的数据模型与动态接口工作台。
 pub fn LowcodePage(context: NativeRenderContext) -> Element {
     let snapshot = load_snapshot(&context.active_route);
 
@@ -59,7 +64,7 @@ pub fn LowcodePage(context: NativeRenderContext) -> Element {
             Card {
                 CardHeader {
                     CardTitle { "低代码引擎" }
-                    CardDescription { "模型、字段、钩子、记录统一管理；字段、钩子、记录入口统一放在左侧菜单。" }
+                    CardDescription { "数据模型、Rhai 钩子和可版本化动态接口统一管理。" }
                 }
             }
 
@@ -67,31 +72,35 @@ pub fn LowcodePage(context: NativeRenderContext) -> Element {
                 div { class: "rounded-xl border border-destructive bg-destructive/10 p-4 text-sm text-destructive", "{error}" }
             }
 
-            div { class: "lowcode-workbench-grid grid gap-4",
-                Card {
-                    CardHeader {
-                        CardTitle { "模型" }
-                        CardDescription { "当前 {snapshot.models.len()} 个模型" }
-                    }
-                    CardContent { class: "space-y-4",
-                        nav { class: "space-y-1",
-                            for model in snapshot.models.iter() {
-                                ModelLink {
-                                    model: model.clone(),
-                                    tab: snapshot.tab.clone(),
-                                    active: snapshot.selected_model.as_deref() == Some(model.name.as_str()),
+            if snapshot.tab == "operations" {
+                {render_operation_workbench(&snapshot)}
+            } else {
+                div { class: "lowcode-workbench-grid grid gap-4",
+                    Card {
+                        CardHeader {
+                            CardTitle { "模型" }
+                            CardDescription { "当前 {snapshot.models.len()} 个模型" }
+                        }
+                        CardContent { class: "space-y-4",
+                            nav { class: "space-y-1",
+                                for model in snapshot.models.iter() {
+                                    ModelLink {
+                                        model: model.clone(),
+                                        tab: snapshot.tab.clone(),
+                                        active: snapshot.selected_model.as_deref() == Some(model.name.as_str()),
+                                    }
                                 }
                             }
+                            {render_model_form()}
                         }
-                        {render_model_form()}
                     }
-                }
 
-                div { class: "min-w-0",
-                    if let Some(model_name) = snapshot.selected_model.as_deref() {
-                        {render_selected_model(&snapshot, model_name)}
-                    } else {
-                        {render_empty_model_state()}
+                    div { class: "min-w-0",
+                        if let Some(model_name) = snapshot.selected_model.as_deref() {
+                            {render_selected_model(&snapshot, model_name)}
+                        } else {
+                            {render_empty_model_state()}
+                        }
                     }
                 }
             }
@@ -143,28 +152,364 @@ fn ModelLink(model: MetaModel, tab: String, active: bool) -> Element {
     }
 }
 
+#[component]
+fn OperationLink(operation: OperationDefinition, active: bool) -> Element {
+    let class = if active {
+        "flex items-center justify-between gap-3 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+    } else {
+        "flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+    };
+    rsx! {
+        a { class, href: operation_href(&operation.operation_key),
+            span { class: "min-w-0 truncate", "{operation.display_name}" }
+            Badge { class: "shrink-0 font-mono", "{operation.state}" }
+        }
+    }
+}
+
+fn render_operation_workbench(snapshot: &PageSnapshot) -> Element {
+    rsx! {
+        div { class: "lowcode-workbench-grid grid gap-4",
+            Card {
+                CardHeader {
+                    CardTitle { "接口" }
+                    CardDescription { "当前 {snapshot.operations.len()} 个 operation" }
+                }
+                CardContent { class: "space-y-5",
+                    nav { class: "space-y-1",
+                        for operation in snapshot.operations.iter() {
+                            OperationLink {
+                                operation: operation.clone(),
+                                active: snapshot.selected_operation.as_deref() == Some(operation.operation_key.as_str()),
+                            }
+                        }
+                    }
+                    {render_vibe_operation_form()}
+                }
+            }
+
+            div { class: "min-w-0 space-y-4",
+                if let Some(operation_key) = snapshot.selected_operation.as_deref() {
+                    {render_selected_operation(snapshot, operation_key)}
+                } else {
+                    {render_empty_operation_state()}
+                }
+                {render_manual_operation_form()}
+            }
+        }
+    }
+}
+
+fn render_vibe_operation_form() -> Element {
+    rsx! {
+        ActionForm { method: "post", action: ACTION_ENDPOINT, class: "space-y-3",
+            HiddenInput { name: "action", value: "generate_operation" }
+            label { class: "space-y-1 text-sm",
+                span { class: "font-medium", "Vibe 创建" }
+                textarea {
+                    class: "aio-input min-h-28",
+                    name: "prompt",
+                    required: true,
+                    placeholder: "创建一个接收设备编号和时间范围、返回排期摘要的接口",
+                }
+            }
+            Button { button_type: "submit", "生成草稿" }
+        }
+    }
+}
+
+fn render_empty_operation_state() -> Element {
+    rsx! {
+        Card {
+            CardHeader {
+                CardTitle { "创建第一个接口" }
+                CardDescription { "使用 Vibe 创建或填写下方 Rhai operation。" }
+            }
+            CardContent {
+                Table {
+                    TableHeader {
+                        TableRow {
+                            TableHead { "operation_key" }
+                            TableHead { "状态" }
+                            TableHead { "活动版本" }
+                        }
+                    }
+                    TableBody {
+                        TableRow {
+                            TableCell { "—" }
+                            TableCell { Badge { "empty" } }
+                            TableCell { "—" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn render_selected_operation(snapshot: &PageSnapshot, operation_key: &str) -> Element {
+    let Some(operation) = snapshot
+        .operations
+        .iter()
+        .find(|operation| operation.operation_key == operation_key)
+    else {
+        return render_empty_operation_state();
+    };
+    let active_revision_id = operation.active_revision_id.as_deref();
+    let latest_revision = snapshot.revisions.first();
+
+    rsx! {
+        Card {
+            CardHeader {
+                div { class: "flex items-start justify-between gap-4",
+                    div {
+                        CardTitle { "{operation.display_name}" }
+                        CardDescription { "{operation.description}" }
+                    }
+                    div { class: "flex flex-wrap gap-2",
+                        Badge { "{operation.method}" }
+                        Badge { "{operation.state}" }
+                        Badge { class: "font-mono", "{operation.operation_key}" }
+                    }
+                }
+            }
+            CardContent { class: "space-y-4",
+                div { class: "flex flex-wrap gap-2",
+                    ActionForm { method: "post", action: ACTION_ENDPOINT,
+                        HiddenInput { name: "action", value: "disable_operation" }
+                        HiddenInput { name: "operation_key", value: operation.operation_key.clone() }
+                        Button { variant: ButtonVariant::Destructive, button_type: "submit", "禁用" }
+                    }
+                }
+
+                if let Some(result) = snapshot.result.as_deref() {
+                    pre { class: "overflow-auto rounded-md border bg-muted p-3 text-xs", "{result}" }
+                }
+            }
+        }
+
+        if let Some(revision) = latest_revision {
+            {render_operation_test_form(operation, revision)}
+        }
+
+        {render_operation_revision_form(operation, latest_revision)}
+
+        Card {
+            CardHeader {
+                CardTitle { "版本" }
+                CardDescription { "revision 不可变；发布只切换活动版本。" }
+            }
+            CardContent {
+                Table {
+                    TableHeader {
+                        TableRow {
+                            TableHead { "版本" }
+                            TableHead { "执行器" }
+                            TableHead { "来源" }
+                            TableHead { "脚本" }
+                            TableHead { "操作" }
+                        }
+                    }
+                    TableBody {
+                        for revision in snapshot.revisions.iter() {
+                            TableRow {
+                                TableCell {
+                                    div { class: "flex items-center gap-2",
+                                        span { "v{revision.revision}" }
+                                        if active_revision_id == Some(revision.id.as_str()) {
+                                            Badge { "active" }
+                                        }
+                                    }
+                                }
+                                TableCell { Badge { "{revision.executor_kind}" } }
+                                TableCell { "{revision_origin(revision)}" }
+                                TableCell { code { "{compact_script(&revision.source_text)}" } }
+                                TableCell {
+                                    ActionForm { method: "post", action: ACTION_ENDPOINT,
+                                        HiddenInput { name: "action", value: "publish_operation" }
+                                        HiddenInput { name: "operation_key", value: operation.operation_key.clone() }
+                                        HiddenInput { name: "revision_id", value: revision.id.clone() }
+                                        Button { button_type: "submit", "发布" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn render_operation_test_form(
+    operation: &OperationDefinition,
+    revision: &OperationRevisionView,
+) -> Element {
+    rsx! {
+        Card {
+            CardHeader {
+                CardTitle { "试运行 v{revision.revision}" }
+                CardDescription { "使用隔离请求上下文执行，不改变活动发布版本。" }
+            }
+            CardContent {
+                ActionForm { method: "post", action: ACTION_ENDPOINT, class: "grid gap-3 md:grid-cols-2",
+                    HiddenInput { name: "action", value: "test_operation" }
+                    HiddenInput { name: "operation_key", value: operation.operation_key.clone() }
+                    HiddenInput { name: "revision_id", value: revision.id.clone() }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Query JSON" }
+                        textarea { class: "aio-input min-h-24 font-mono", name: "query_json", "{{}}" }
+                    }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Body JSON" }
+                        textarea { class: "aio-input min-h-24 font-mono", name: "body_json", "{{}}" }
+                    }
+                    div { class: "md:col-span-2", Button { button_type: "submit", "运行" } }
+                }
+            }
+        }
+    }
+}
+
+fn render_operation_revision_form(
+    operation: &OperationDefinition,
+    latest_revision: Option<&OperationRevisionView>,
+) -> Element {
+    let (source_text, input_schema, output_schema, timeout_ms) = match latest_revision {
+        Some(revision) => (
+            revision.source_text.clone(),
+            json_text(&revision.input_schema),
+            json_text(&revision.output_schema),
+            revision.timeout_ms.to_string(),
+        ),
+        None => (
+            String::new(),
+            default_schema_text(),
+            default_schema_text(),
+            "3000".to_string(),
+        ),
+    };
+
+    rsx! {
+        Card {
+            CardHeader {
+                CardTitle { "新建 revision" }
+                CardDescription { "修改脚本会创建新版本，不覆盖历史内容。" }
+            }
+            CardContent {
+                ActionForm { method: "post", action: ACTION_ENDPOINT, class: "grid gap-3 md:grid-cols-2",
+                    HiddenInput { name: "action", value: "create_operation_revision" }
+                    HiddenInput { name: "operation_key", value: operation.operation_key.clone() }
+                    label { class: "space-y-1 text-sm md:col-span-2",
+                        span { class: "font-medium", "Rhai" }
+                        textarea { class: "aio-input min-h-40 font-mono", name: "source_text", required: true, "{source_text}" }
+                    }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Input Schema" }
+                        textarea { class: "aio-input min-h-28 font-mono", name: "input_schema", required: true, "{input_schema}" }
+                    }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Output Schema" }
+                        textarea { class: "aio-input min-h-28 font-mono", name: "output_schema", required: true, "{output_schema}" }
+                    }
+                    FieldBlock { label: "超时毫秒".to_string(), required: true,
+                        TextInput { input_type: "number", name: "timeout_ms", value: timeout_ms, required: true }
+                    }
+                    div { class: "flex items-end", Button { button_type: "submit", "保存新版本" } }
+                }
+            }
+        }
+    }
+}
+
+fn render_manual_operation_form() -> Element {
+    let example_source = r#"#{ ok: true, operation: operation_key, body: body }"#;
+    let input_schema = default_schema_text();
+    let output_schema = default_schema_text();
+    rsx! {
+        Card {
+            CardHeader {
+                CardTitle { "手写接口" }
+                CardDescription { "创建 operation 与首个不可变 revision。" }
+            }
+            CardContent {
+                ActionForm { method: "post", action: ACTION_ENDPOINT, class: "grid gap-3 md:grid-cols-2",
+                    HiddenInput { name: "action", value: "create_operation" }
+                    FieldBlock { label: "Operation Key".to_string(), required: true,
+                        TextInput { name: "operation_key", required: true, placeholder: "device.power" }
+                    }
+                    FieldBlock { label: "显示名".to_string(), required: true,
+                        TextInput { name: "display_name", required: true, placeholder: "设备电力" }
+                    }
+                    FieldBlock { label: "方法".to_string(), required: true,
+                        SelectInput { name: "method", required: true, options: method_options("POST") }
+                    }
+                    FieldBlock { label: "超时毫秒".to_string(), required: true,
+                        TextInput { input_type: "number", name: "timeout_ms", value: "3000", required: true }
+                    }
+                    label { class: "space-y-1 text-sm md:col-span-2",
+                        span { class: "font-medium", "描述" }
+                        textarea { class: "aio-input min-h-20", name: "description" }
+                    }
+                    label { class: "space-y-1 text-sm md:col-span-2",
+                        span { class: "font-medium", "Rhai" }
+                        textarea { class: "aio-input min-h-40 font-mono", name: "source_text", required: true, placeholder: example_source }
+                    }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Input Schema" }
+                        textarea { class: "aio-input min-h-28 font-mono", name: "input_schema", required: true, "{input_schema}" }
+                    }
+                    label { class: "space-y-1 text-sm",
+                        span { class: "font-medium", "Output Schema" }
+                        textarea { class: "aio-input min-h-28 font-mono", name: "output_schema", required: true, "{output_schema}" }
+                    }
+                    div { class: "md:col-span-2", Button { button_type: "submit", "创建草稿" } }
+                }
+            }
+        }
+    }
+}
+
 fn load_snapshot(route: &str) -> PageSnapshot {
     let selected_model = parse_query_param(route, "model");
+    let selected_operation = parse_query_param(route, "operation");
     let tab = parse_query_param(route, "tab").unwrap_or_else(|| "fields".to_string());
     let mut error = parse_query_param(route, "error");
+    let result = parse_query_param(route, "result");
     let mut models = Vec::new();
     let mut fields = Vec::new();
     let mut hooks = Vec::new();
     let mut records = Vec::new();
     let mut total_records = 0;
+    let mut operations = Vec::new();
+    let mut revisions = Vec::new();
 
     match store().and_then(|store| {
         run_engine_future(async move {
-            let page = store.list_models(PageParams { o: 0, s: 200 }).await?;
-            Ok((store, page.d))
+            let model_page = store.list_models(PageParams { o: 0, s: 200 }).await?;
+            let operation_page = store.list_operations(PageParams { o: 0, s: 200 }).await?;
+            Ok((store, model_page.d, operation_page.d))
         })
     }) {
-        Ok((engine_store, loaded_models)) => {
+        Ok((engine_store, loaded_models, loaded_operations)) => {
             models = loaded_models;
+            operations = loaded_operations;
             let model_name = selected_model
                 .clone()
                 .or_else(|| models.first().map(|model| model.name.clone()));
-            if let Some(model_name) = model_name.as_deref() {
+            let operation_key = selected_operation.clone().or_else(|| {
+                operations
+                    .first()
+                    .map(|operation| operation.operation_key.clone())
+            });
+            if tab == "operations" {
+                if let Some(operation_key) = operation_key.as_deref() {
+                    match run_engine_future(engine_store.list_operation_revisions(operation_key)) {
+                        Ok(loaded_revisions) => revisions = loaded_revisions,
+                        Err(load_error) => error = Some(load_error.to_string()),
+                    }
+                }
+            } else if let Some(model_name) = model_name.as_deref() {
                 let result = run_engine_future(async move {
                     let loaded_fields = engine_store.list_fields(model_name).await?;
                     let loaded_hooks = engine_store.list_hooks(model_name).await?;
@@ -190,9 +535,13 @@ fn load_snapshot(route: &str) -> PageSnapshot {
                 hooks,
                 records,
                 total_records,
+                operations,
+                revisions,
                 selected_model: model_name,
+                selected_operation: operation_key,
                 tab,
                 error,
+                result,
             }
         }
         Err(load_error) => PageSnapshot {
@@ -201,9 +550,13 @@ fn load_snapshot(route: &str) -> PageSnapshot {
             hooks,
             records,
             total_records,
+            operations,
+            revisions,
             selected_model,
+            selected_operation,
             tab,
             error: Some(load_error.to_string()),
+            result,
         },
     }
 }
@@ -670,6 +1023,13 @@ fn hook_event_options(selected: &str) -> Vec<SelectOption> {
     .collect()
 }
 
+fn method_options(selected: &str) -> Vec<SelectOption> {
+    ["GET", "POST"]
+        .into_iter()
+        .map(|method| SelectOption::new(method, method).selected(method == selected))
+        .collect()
+}
+
 fn tab_href(model_name: Option<&str>, tab: &str) -> String {
     let route = match model_name {
         Some(model_name) => format!(
@@ -678,6 +1038,14 @@ fn tab_href(model_name: Option<&str>, tab: &str) -> String {
         ),
         None => format!("/lowcode?tab={tab}"),
     };
+    format!("/?route={}", urlencoding::encode(&route))
+}
+
+fn operation_href(operation_key: &str) -> String {
+    let route = format!(
+        "/lowcode?tab=operations&operation={}",
+        urlencoding::encode(operation_key)
+    );
     format!("/?route={}", urlencoding::encode(&route))
 }
 
@@ -755,6 +1123,24 @@ fn compact_script(value: &str) -> String {
         .collect()
 }
 
+fn revision_origin(revision: &OperationRevisionView) -> String {
+    match &revision.generated_by_model {
+        Some(model) => model.clone(),
+        None => "manual".to_string(),
+    }
+}
+
+fn json_text(value: &Value) -> String {
+    match serde_json::to_string_pretty(value) {
+        Ok(text) => text,
+        Err(_) => "{}".to_string(),
+    }
+}
+
+fn default_schema_text() -> String {
+    "{\n  \"type\": \"object\"\n}".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -806,5 +1192,16 @@ mod tests {
         assert!(field_href.contains("tab%3Dfields"));
         assert!(hook_href.contains("tab%3Dhooks"));
         assert!(record_href.contains("tab%3Drecords"));
+    }
+
+    #[test]
+    fn operation_href_keeps_operation_context() {
+        let href = operation_href("device.power");
+
+        // 接口工作面必须同时保留 operations tab 和当前 operation key。
+        assert_eq!(
+            href,
+            "/?route=%2Flowcode%3Ftab%3Doperations%26operation%3Ddevice.power"
+        );
     }
 }

@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "key": "device-overview",
+  "title": "设备运行概览",
+  "root": {
+    "component": "az_remote_ui::components::section",
+    "children": [
+      {
+        "component": "az_remote_ui::components::h1",
+        "content": { "source": "literal", "value": "设备运行概览" }
+      },
+      {
+        "component": "az_remote_ui::components::p",
+        "content": { "source": "literal", "value": "页面来自可持久化 PageDefinition，由 Rudi 组件 catalog 校验并编译。" }
+      },
+      {
+        "component": "az_remote_ui::components::row",
+        "properties": {
+          "v": { "source": "literal", "value": "metrics" }
+        },
+        "children": [
+          {
+            "component": "az_remote_ui::components::card",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_header",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::card_description",
+                    "content": { "source": "literal", "value": "在线设备" }
+                  }
+                ]
+              },
+              {
+                "component": "az_remote_ui::components::card_content",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::h2",
+                    "content": { "source": "literal", "value": "128" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "component": "az_remote_ui::components::card",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_header",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::card_description",
+                    "content": { "source": "literal", "value": "今日告警" }
+                  }
+                ]
+              },
+              {
+                "component": "az_remote_ui::components::card_content",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::h2",
+                    "content": { "source": "literal", "value": "7" }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "component": "az_remote_ui::components::card",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_header",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::card_description",
+                    "content": { "source": "literal", "value": "任务成功率" }
+                  }
+                ]
+              },
+              {
+                "component": "az_remote_ui::components::card_content",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::h2",
+                    "content": { "source": "literal", "value": "98.6%" }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "component": "az_remote_ui::components::row",
+        "properties": {
+          "v": { "source": "literal", "value": "workbench" }
+        },
+        "children": [
+          {
+            "component": "az_remote_ui::components::card",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_header",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::card_title",
+                    "content": { "source": "literal", "value": "边缘同步" }
+                  },
+                  {
+                    "component": "az_remote_ui::components::card_description",
+                    "content": { "source": "literal", "value": "华北节点组" }
+                  }
+                ]
+              },
+              {
+                "component": "az_remote_ui::components::card_content",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::progress",
+                    "id": "sync-progress",
+                    "properties": {
+                      "label": { "source": "literal", "value": "同步进度" },
+                      "v": { "source": "literal", "value": 64 },
+                      "status": { "source": "literal", "value": "running" }
+                    }
+                  },
+                  {
+                    "component": "az_remote_ui::components::p",
+                    "content": { "source": "literal", "value": "最近一次心跳正常，正在同步设备影子。" }
+                  },
+                  {
+                    "component": "az_remote_ui::components::button",
+                    "properties": {
+                      "tx": { "source": "literal", "value": "刷新状态" },
+                      "v": { "source": "literal", "value": "outline" },
+                      "act": { "source": "literal", "value": "refresh-status" }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "component": "az_remote_ui::components::card",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_header",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::card_title",
+                    "content": { "source": "literal", "value": "创建记录" }
+                  },
+                  {
+                    "component": "az_remote_ui::components::card_description",
+                    "content": { "source": "literal", "value": "表单字段和动作均由组件 schema 约束。" }
+                  }
+                ]
+              },
+              {
+                "component": "az_remote_ui::components::card_content",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::input",
+                    "id": "device-name",
+                    "properties": {
+                      "label": { "source": "literal", "value": "设备名称" },
+                      "name": { "source": "literal", "value": "name" },
+                      "ph": { "source": "literal", "value": "输入设备名称" },
+                      "required": { "source": "literal", "value": true }
+                    }
+                  },
+                  {
+                    "component": "az_remote_ui::components::button",
+                    "properties": {
+                      "tx": { "source": "literal", "value": "创建记录" },
+                      "v": { "source": "literal", "value": "primary" },
+                      "act": { "source": "literal", "value": "create-record" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "component": "az_remote_ui::components::card",
+        "children": [
+          {
+            "component": "az_remote_ui::components::card_header",
+            "children": [
+              {
+                "component": "az_remote_ui::components::card_title",
+                "content": { "source": "literal", "value": "设备清单" }
+              },
+              {
+                "component": "az_remote_ui::components::card_description",
+                "content": { "source": "literal", "value": "CRUD 表格首版配置" }
+              }
+            ]
+          },
+          {
+            "component": "az_remote_ui::components::card_content",
+            "children": [
+              {
+                "component": "az_remote_ui::components::table",
+                "children": [
+                  {
+                    "component": "az_remote_ui::components::thead",
+                    "children": [
+                      {
+                        "component": "az_remote_ui::components::tr",
+                        "children": [
+                          { "component": "az_remote_ui::components::th", "content": { "source": "literal", "value": "设备" } },
+                          { "component": "az_remote_ui::components::th", "content": { "source": "literal", "value": "区域" } },
+                          { "component": "az_remote_ui::components::th", "content": { "source": "literal", "value": "状态" } },
+                          { "component": "az_remote_ui::components::th", "content": { "source": "literal", "value": "延迟" } }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "component": "az_remote_ui::components::tbody",
+                    "children": [
+                      {
+                        "component": "az_remote_ui::components::tr",
+                        "children": [
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "GW-TJ-01" } },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "天津" } },
+                          {
+                            "component": "az_remote_ui::components::td",
+                            "children": [
+                              {
+                                "component": "az_remote_ui::components::badge",
+                                "properties": {
+                                  "tx": { "source": "literal", "value": "在线" },
+                                  "v": { "source": "literal", "value": "success" }
+                                }
+                              }
+                            ]
+                          },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "18 ms" } }
+                        ]
+                      },
+                      {
+                        "component": "az_remote_ui::components::tr",
+                        "children": [
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "GW-BJ-07" } },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "北京" } },
+                          {
+                            "component": "az_remote_ui::components::td",
+                            "children": [
+                              {
+                                "component": "az_remote_ui::components::badge",
+                                "properties": {
+                                  "tx": { "source": "literal", "value": "维护" },
+                                  "v": { "source": "literal", "value": "warning" }
+                                }
+                              }
+                            ]
+                          },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "42 ms" } }
+                        ]
+                      },
+                      {
+                        "component": "az_remote_ui::components::tr",
+                        "children": [
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "GW-SH-03" } },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "上海" } },
+                          {
+                            "component": "az_remote_ui::components::td",
+                            "children": [
+                              {
+                                "component": "az_remote_ui::components::badge",
+                                "properties": {
+                                  "tx": { "source": "literal", "value": "离线" },
+                                  "v": { "source": "literal", "value": "danger" }
+                                }
+                              }
+                            ]
+                          },
+                          { "component": "az_remote_ui::components::td", "content": { "source": "literal", "value": "--" } }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "refresh-status",
+      "operation": "devices.refresh_status"
+    },
+    {
+      "id": "create-record",
+      "operation": "devices.create"
+    }
+  ]
+}

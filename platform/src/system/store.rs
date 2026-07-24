@@ -410,17 +410,6 @@ pub fn system_admin_models() -> toasty::ModelSet {
     )
 }
 
-pub const SYSTEM_ADMIN_BOOTSTRAP_SQL: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS biz_system_admin_system_page_records (id TEXT PRIMARY KEY, route TEXT NOT NULL, label TEXT NOT NULL, status TEXT NOT NULL, pg_tables TEXT NOT NULL, operations TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_system_admin_system_page_records_route_idx ON biz_system_admin_system_page_records (route)",
-    "CREATE TABLE IF NOT EXISTS biz_system_admin_system_operation_records (id TEXT PRIMARY KEY, operation_id TEXT NOT NULL, page_id TEXT NOT NULL, method TEXT NOT NULL, api_path TEXT NOT NULL, cli TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_system_admin_system_operation_records_operation_id_idx ON biz_system_admin_system_operation_records (operation_id)",
-    "CREATE TABLE IF NOT EXISTS biz_system_admin_system_data_records (id TEXT PRIMARY KEY, page_id TEXT NOT NULL, row_key TEXT NOT NULL, cells_json TEXT NOT NULL, updated_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_system_admin_system_data_records_page_id_idx ON biz_system_admin_system_data_records (page_id)",
-    "CREATE TABLE IF NOT EXISTS biz_system_admin_system_api_key_records (id TEXT PRIMARY KEY, key_hash TEXT NOT NULL, name TEXT NOT NULL, prefix TEXT NOT NULL, scope TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, last_used_at TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS biz_system_admin_system_api_key_records_key_hash_idx ON biz_system_admin_system_api_key_records (key_hash)",
-];
-
 fn normalized_api_key_name(name: &str) -> anyhow::Result<String> {
     let name = name.trim();
     if name.is_empty() {

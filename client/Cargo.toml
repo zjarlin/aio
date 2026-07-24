@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "AIO browser Dioxus client shell."
-workspace = "../plugins"
+workspace = ".."
 
 [dependencies]
 dioxus = { workspace = true, features = ["web", "router", "launch", "hooks", "document"] }
