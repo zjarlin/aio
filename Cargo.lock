@@ -436,11 +436,12 @@ dependencies = [
 [[package]]
 name = "az-admin-plugin-registry"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-automod",
  "az-str",
  "inventory",
- "strum 0.27.2",
+ "strum 0.28.0",
 ]
 
 [[package]]
@@ -584,6 +585,7 @@ dependencies = [
 [[package]]
 name = "az-algorithm"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -601,18 +603,17 @@ dependencies = [
  "rudi",
  "serde",
  "serde_json",
- "strum 0.27.2",
- "tempfile",
+ "strum 0.28.0",
 ]
 
 [[package]]
 name = "az-automod"
 version = "2026.6.15"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
- "tempfile",
 ]
 
 [[package]]
@@ -659,25 +660,25 @@ dependencies = [
 [[package]]
 name = "az-dict-macros"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-dict-spec",
- "derive_more",
  "proc-macro2",
  "quote",
  "serde_json",
  "syn 2.0.117",
- "trybuild",
 ]
 
 [[package]]
 name = "az-dict-spec"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
  "az-automod",
  "serde",
  "serde_json",
- "strum 0.27.2",
+ "strum 0.28.0",
 ]
 
 [[package]]
@@ -714,6 +715,7 @@ dependencies = [
 [[package]]
 name = "az-micro-dict"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
  "az-automod",
@@ -726,12 +728,12 @@ dependencies = [
  "serde",
  "serde_json",
  "syn 2.0.117",
- "tempfile",
 ]
 
 [[package]]
 name = "az-ocr"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
  "az-automod",
@@ -740,12 +742,12 @@ dependencies = [
  "rusty-tesseract",
  "serde",
  "serde_json",
- "tempfile",
 ]
 
 [[package]]
 name = "az-onnx"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
  "az-automod",
@@ -783,17 +785,18 @@ dependencies = [
 [[package]]
 name = "az-ssh"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
  "az-automod",
  "derive_more",
  "ssh2",
- "tempfile",
 ]
 
 [[package]]
 name = "az-starter-audit"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -802,6 +805,7 @@ dependencies = [
 [[package]]
 name = "az-starter-dictionary"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -810,6 +814,7 @@ dependencies = [
 [[package]]
 name = "az-starter-identity"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -818,6 +823,7 @@ dependencies = [
 [[package]]
 name = "az-starter-menu"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -826,6 +832,7 @@ dependencies = [
 [[package]]
 name = "az-starter-organization"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -834,18 +841,19 @@ dependencies = [
 [[package]]
 name = "az-str"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-automod",
  "derive_more",
  "deunicode",
  "regex",
- "strum 0.27.2",
- "tempfile",
+ "strum 0.28.0",
 ]
 
 [[package]]
 name = "az-system-starters"
 version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
  "az-automod",
@@ -5823,15 +5831,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_spanned"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
-dependencies = [
- "serde_core",
-]
-
-[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6476,12 +6475,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "target-triple"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3a6bfce3d99adfa72d24750a61f782f3036a81e7f86d8841ee1326deaebd171"
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6492,15 +6485,6 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]
@@ -6899,21 +6883,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml"
-version = "1.1.3+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53c96ecdfa941c8fc4fcaed14f99ada8ebed502eef533015095a07e3301d4c3c"
-dependencies = [
- "indexmap",
- "serde_core",
- "serde_spanned",
- "toml_datetime",
- "toml_parser",
- "toml_writer",
- "winnow 1.0.4",
-]
-
-[[package]]
 name = "toml_datetime"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6942,12 +6911,6 @@ checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
 dependencies = [
  "winnow 1.0.4",
 ]
-
-[[package]]
-name = "toml_writer"
-version = "1.1.2+spec-1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "tower"
@@ -7079,21 +7042,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "trybuild"
-version = "1.0.118"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06649c6f63d86604ba0c8950d5a1829fc9a17afd70fc6629f481d75b6a624c78"
-dependencies = [
- "glob",
- "serde",
- "serde_derive",
- "serde_json",
- "target-triple",
- "termcolor",
- "toml",
-]
 
 [[package]]
 name = "ttf-parser"

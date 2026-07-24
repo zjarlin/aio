@@ -11,6 +11,8 @@ AIO 是独立的 Rust 管理工作台仓库，使用 Axum、Dioxus、Rudi、Post
 - `crates/`：AIO 独占或紧密耦合的基础能力。
 - `migrations/`：PostgreSQL 正式迁移。
 
+通用 Rust crate 只在 [`addzero-lib-rust`](https://github.com/zjarlin/addzero-lib-rust) 维护；本仓库通过固定 Git 提交消费，不保留源码副本。
+
 ## 开发
 
 ```bash
