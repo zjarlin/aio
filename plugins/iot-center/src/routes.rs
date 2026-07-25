@@ -3,7 +3,7 @@
 use anyhow::{Context, Result, anyhow};
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Path, State},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
@@ -13,6 +13,7 @@ use serde::Deserialize;
 use crate::{
     contract::{
         APPLY_TEMPLATE_PATH, ApplyIotTemplateRequest, CreateIotDeviceRequest, DEVICES_PATH,
+        FIXTURE_TELEMETRY_PATH, FixtureTelemetryAccepted, FixtureTelemetryRequest,
         IotDashboardSnapshot, IotDeviceView, IotTemplateApplyResult, STATUS_PATH, UI_ACTION_PATH,
     },
     service::IotService,
@@ -37,8 +38,25 @@ pub fn iot_router(state: IotApiState) -> Router {
         .route(STATUS_PATH, get(status_handler))
         .route(APPLY_TEMPLATE_PATH, post(apply_template_handler))
         .route(DEVICES_PATH, post(create_device_handler))
+        .route(
+            FIXTURE_TELEMETRY_PATH,
+            post(ingest_fixture_telemetry_handler),
+        )
         .route(UI_ACTION_PATH, post(ui_action_handler))
         .with_state(state)
+}
+
+async fn ingest_fixture_telemetry_handler(
+    Path(device_code): Path<String>,
+    State(state): State<IotApiState>,
+    ApiJson(request): ApiJson<FixtureTelemetryRequest>,
+) -> Result<Json<ApiResponse<FixtureTelemetryAccepted>>, ApiError> {
+    state
+        .service
+        .ingest_fixture_telemetry(&device_code, request)
+        .await
+        .map(ok_json)
+        .map_err(ApiError::from)
 }
 
 async fn status_handler(

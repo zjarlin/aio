@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use az_aio_nature_generated::enums::{
+    AdminFieldKind, AdminMenuNodeKind, PluginActivation, PluginKind, UiContributionSlot,
+};
 use az_aio_platform::plugin::contract::{
-    AdminCliContribution, AdminFieldContract, AdminFieldKind, AdminMenuNode, AdminMenuNodeKind,
-    AdminMenuSection, AdminMenuTree, AdminOperationContract, AdminResourceContract,
-    BackendApiContribution, ContributionSet, DynAdminPluginProvider, NativePluginContext,
-    NativePluginProvider, NativePluginRuntime, NativeUiRenderer, NavItemContribution,
-    PageContribution, PluginActivation, PluginDescriptor, PluginKind, UiContribution,
-    UiContributionSlot,
+    AdminCliContribution, AdminFieldContract, AdminMenuNode, AdminMenuSection, AdminMenuTree,
+    AdminOperationContract, AdminResourceContract, BackendApiContribution, ContributionSet,
+    DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
+    NativeUiRenderer, NavItemContribution, PageContribution, PluginDescriptor, UiContribution,
 };
 use az_engine::operation::{
     OP_OPERATIONS_CREATE, OP_OPERATIONS_INVOKE, OP_OPERATIONS_LIST, OP_OPERATIONS_PUBLISH,
@@ -22,7 +23,6 @@ use az_engine::{
     OP_HOOKS_CREATE, OP_HOOKS_LIST, OP_MODELS_CREATE, OP_MODELS_LIST, OP_RECORDS_CREATE,
     OP_RECORDS_LIST, RECORDS_PATH_TEMPLATE,
 };
-use az_operation_agent::generation::OperationVibeAgent;
 use rudi::Singleton;
 
 use crate::{
@@ -56,7 +56,6 @@ impl NativePluginProvider for LowcodePlugin {
                 "engine-meta-model".into(),
                 "engine-record-pipeline".into(),
                 "engine-operation-runtime".into(),
-                "rig-operation-agent".into(),
             ],
             permissions: vec!["PostgreSQL engine_* 表读写".into()],
             kind: PluginKind::Native,
@@ -129,10 +128,7 @@ impl NativePluginProvider for LowcodePlugin {
                 route: Some(ROUTE.into()),
                 render: LowcodePage,
             }],
-            router: engine_router(LowcodeApiState {
-                store,
-                operation_agent: OperationVibeAgent::from_env()?,
-            }),
+            router: engine_router(LowcodeApiState { store }),
             startup: None,
         })
     }
@@ -399,6 +395,20 @@ fn engine_field_resource() -> AdminResourceContract {
             field(
                 "dependency_json",
                 "依赖",
+                AdminFieldKind::Json,
+                false,
+                false,
+            ),
+            field(
+                "domain_metadata_json",
+                "领域元数据",
+                AdminFieldKind::Json,
+                false,
+                false,
+            ),
+            field(
+                "validation_json",
+                "校验定义",
                 AdminFieldKind::Json,
                 false,
                 false,

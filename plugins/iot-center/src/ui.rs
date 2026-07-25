@@ -2,6 +2,7 @@
 
 //! 物联网中心 SSR 页面。
 
+use az_aio_nature_generated::enums::IotOnlineStatus;
 use az_aio_platform::plugin::contract::NativeRenderContext;
 use dioxus::prelude::*;
 use registry::ui::{
@@ -14,7 +15,7 @@ use registry::ui::{
 use crate::{
     contract::{
         ALARM_MODEL, DEVICE_MODEL, GATEWAY_MODEL, IotDashboardSnapshot, IotDeviceView,
-        IotOnlineStatus, PRODUCT_MODEL, TELEMETRY_MODEL, UI_ACTION_PATH,
+        PRODUCT_MODEL, TELEMETRY_MODEL, UI_ACTION_PATH,
     },
     state::{run_iot_future, service},
 };

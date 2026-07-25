@@ -3,29 +3,10 @@
 //! 这里先定义 AIO 客户端生成计划、脚本和 SSH 配置所需的数据模型；后续服务器版
 //! CLI 应复用这些字段语义，避免 REST、CLI 与 admin 页面各自维护一套漂移接口。
 
+use az_aio_nature_generated::enums::LinuxDistribution;
 use serde::{Deserialize, Serialize};
 
 pub const CONTRACT_VERSION: &str = "linux.client.v1";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LinuxDistribution {
-    Ubuntu,
-}
-
-impl LinuxDistribution {
-    pub fn id(self) -> &'static str {
-        match self {
-            Self::Ubuntu => "ubuntu",
-        }
-    }
-
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Ubuntu => "Ubuntu",
-        }
-    }
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

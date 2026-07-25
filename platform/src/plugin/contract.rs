@@ -1,32 +1,14 @@
 #![forbid(unsafe_code)]
 
 use anyhow::Context;
+use az_aio_nature_generated::enums::{
+    AdminFieldKind, AdminMenuNodeKind, CatalogItemKind, CatalogSource, CatalogTagGroup,
+    GeneratedFileStatus, PluginActivation, PluginKind, PluginState, ShellEntryKind,
+    UiContributionSlot,
+};
 use serde::{Deserialize, Serialize};
 
 pub type DynAdminPluginProvider = std::sync::Arc<dyn AdminPluginProvider>;
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PluginActivation {
-    Eager,
-    Lazy,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PluginKind {
-    Native,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PluginState {
-    Discovered,
-    Loaded,
-    Active,
-    Disabled,
-    Failed,
-}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PluginDependency {
@@ -114,13 +96,6 @@ pub struct AdminMenuNode {
     pub children: Vec<AdminMenuNode>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AdminMenuNodeKind {
-    Branch,
-    Page,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AdminResourceContract {
     pub id: String,
@@ -145,18 +120,6 @@ pub struct AdminFieldContract {
     pub searchable: bool,
     pub table_visible: bool,
     pub form_visible: bool,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AdminFieldKind {
-    Text,
-    Number,
-    Boolean,
-    Badge,
-    Time,
-    Json,
-    Relation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -323,32 +286,6 @@ pub struct UiContribution {
     pub order: i32,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum UiContributionSlot {
-    AppSidebar,
-    AppTopbar,
-    Content,
-    SettingsContent,
-    ProjectSidebar,
-    ProjectContent,
-    SandboxPanel,
-}
-
-impl UiContributionSlot {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::AppSidebar => "应用侧边栏",
-            Self::AppTopbar => "应用顶栏",
-            Self::Content => "内容区",
-            Self::SettingsContent => "设置内容区",
-            Self::ProjectSidebar => "项目侧边栏",
-            Self::ProjectContent => "项目内容区",
-            Self::SandboxPanel => "沙箱调试面板",
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BackendApiContribution {
     pub id: String,
@@ -401,60 +338,6 @@ pub struct CatalogTagContribution {
     pub group: CatalogTagGroup,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CatalogTagGroup {
-    Developer,
-    Design,
-}
-
-impl CatalogTagGroup {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Developer => "开发人员",
-            Self::Design => "设计",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CatalogItemKind {
-    Plugin,
-    Skill,
-}
-
-impl CatalogItemKind {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Plugin => "插件",
-            Self::Skill => "技能",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CatalogSource {
-    Bundled,
-    Community,
-    Local,
-    System,
-    User,
-}
-
-impl CatalogSource {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Bundled => "预置",
-            Self::Community => "社区",
-            Self::Local => "本地",
-            Self::System => "系统",
-            Self::User => "用户",
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SettingsSectionContribution {
     pub id: String,
@@ -485,30 +368,6 @@ pub struct ShellEntryContribution {
     pub deprecated_source: bool,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ShellEntryKind {
-    Alias,
-    Export,
-    Function,
-    ScriptSnippet,
-}
-
-impl ShellEntryKind {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Alias => "别名",
-            Self::Export => "环境变量",
-            Self::Function => "函数",
-            Self::ScriptSnippet => "脚本片段",
-        }
-    }
-
-    pub fn is_cli(self) -> bool {
-        matches!(self, Self::Alias | Self::Function | Self::ScriptSnippet)
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GeneratedFileContribution {
     pub id: String,
@@ -520,13 +379,6 @@ pub struct GeneratedFileContribution {
     pub backup_path: Option<String>,
     pub status: GeneratedFileStatus,
     pub message: String,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum GeneratedFileStatus {
-    Generated,
-    Failed,
 }
 
 pub type NativeRenderFn = fn(NativeRenderContext) -> dioxus::prelude::Element;

@@ -117,8 +117,9 @@ echo "[linux] pairing file: $PAIRING_FILE"
 #[cfg(test)]
 mod tests {
     use crate::backend::contract::{
-        BootstrapPlanRequest, ClientPairingSeed, EnvironmentSetupCommand, LinuxDistribution, LinuxTarget,
+        BootstrapPlanRequest, ClientPairingSeed, EnvironmentSetupCommand, LinuxTarget,
     };
+    use az_aio_nature_generated::enums::LinuxDistribution;
 
     use super::build_remote_bootstrap_script;
 

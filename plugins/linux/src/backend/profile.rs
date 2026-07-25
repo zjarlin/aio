@@ -4,12 +4,12 @@
 //! 脚本生成隔离出来，后续 Debian、CentOS 或服务器版 CLI 不需要改页面层。
 
 use anyhow::{Result, bail};
+use az_aio_nature_generated::enums::LinuxDistribution;
 
 use crate::backend::{
     contract::{
         BootstrapPlan, BootstrapPlanRequest, BootstrapStep, CONTRACT_VERSION,
-        EnvironmentSetupCatalog, EnvironmentSetupCommand, LinuxDistribution, LinuxProfileSummary,
-        SshConfigPreview,
+        EnvironmentSetupCatalog, EnvironmentSetupCommand, LinuxProfileSummary, SshConfigPreview,
     },
     env_notes::{catalog_command, load_environment_setup_catalog, setup_source_summary},
     script::build_remote_bootstrap_script,

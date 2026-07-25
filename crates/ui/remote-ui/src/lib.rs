@@ -9,10 +9,12 @@ mod contract;
 mod definition;
 mod parser;
 
+pub(crate) use az_aio_nature_generated::enums::{ComponentPropertyKind, ComponentShape};
+
 pub use compiler::PageCompiler;
 pub use component::{
-    ComponentBehavior, ComponentCatalogEntry, ComponentDefinition, ComponentEventSpec,
-    ComponentPropertyKind, ComponentPropertySpec, ComponentShape, ComponentSpec,
+    ComponentCatalogEntry, ComponentDefinition, ComponentEventSpec, ComponentPropertySpec,
+    ComponentSpec,
 };
 pub use component_index::{ComponentIndex, IndexedComponent};
 pub use contract::{UiNode, UiOp};

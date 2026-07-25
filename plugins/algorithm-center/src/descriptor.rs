@@ -1,7 +1,8 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ContributionSet, NavItemContribution, PageContribution,
-    PluginActivation, PluginDescriptor, PluginKind, UiContribution, UiContributionSlot,
+    PluginDescriptor, UiContribution,
 };
+use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
 const PLUGIN_ID: &str = "algorithm-center";
 pub const ROUTE: &str = "/algorithms";

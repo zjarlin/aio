@@ -161,6 +161,8 @@ impl SshService {
                     is_required: field.required,
                     expression: None,
                     dependency_json: None,
+                    domain_metadata_json: None,
+                    validation_json: None,
                     order_index: order_index as i32,
                 };
                 self.store.create_field(definition.name, input).await?;

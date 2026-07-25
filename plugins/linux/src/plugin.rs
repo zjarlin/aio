@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use az_aio_platform::plugin::contract::{
-    AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminMenuTree, ContributionSet,
+    AdminMenuNode, AdminMenuSection, AdminMenuTree, ContributionSet,
     DynAdminPluginProvider, NativePluginProvider, NativePluginContext, NativePluginRuntime,
     PluginDescriptor,
 };
+use az_aio_nature_generated::enums::AdminMenuNodeKind;
 use rudi::Singleton;
 
 use crate::{
@@ -68,7 +69,7 @@ pub fn linux_plugin() -> DynAdminPluginProvider {
 
 #[cfg(test)]
 mod tests {
-    use az_aio_platform::plugin::contract::PluginKind;
+    use az_aio_nature_generated::enums::PluginKind;
 
     use super::*;
 

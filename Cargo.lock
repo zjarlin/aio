@@ -53,10 +53,11 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
  "az-algorithm",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "md5",
  "rudi",
  "serde",
@@ -220,9 +221,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rudi",
  "serde",
  "toasty",
@@ -438,8 +440,8 @@ name = "az-admin-plugin-registry"
 version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "inventory",
  "strum 0.28.0",
 ]
@@ -463,19 +465,26 @@ name = "az-aio-codegen"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-str",
+ "az-dict-spec",
+ "az-micro-dict",
+ "convert_case 0.8.0",
  "dioxus",
- "prettyplease",
+ "nature-compiler",
  "registry",
+ "rig-core",
  "rudi",
+ "schemars",
  "serde",
  "serde_json",
- "syn 2.0.117",
  "tempfile",
+ "toasty",
  "tokio",
  "tower",
+ "tracing",
  "urlencoding",
 ]
 
@@ -485,12 +494,9 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-dict-macros",
- "az-dict-spec",
  "az-engine",
- "az-micro-dict",
- "derive_more",
  "dioxus",
  "registry",
  "rudi",
@@ -502,15 +508,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "az-aio-nature-generated"
+version = "2026.5.10"
+dependencies = [
+ "anyhow",
+ "az-dict-macros",
+ "az-dict-spec",
+ "derive_more",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "az-aio-platform"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
  "az-admin-plugin-registry",
- "az-automod",
+ "az-aio-nature-generated",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-config-center-client",
- "az-str",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-system-starters",
  "dioxus",
  "dioxus-ssr",
@@ -535,6 +554,7 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
  "az-engine",
  "az-ssh",
@@ -558,6 +578,7 @@ dependencies = [
  "axum",
  "az-aio-codegen",
  "az-aio-iot-center",
+ "az-aio-nature-generated",
  "az-aio-platform",
  "az-aio-ssh",
  "az-engine",
@@ -589,10 +610,10 @@ source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e7
 dependencies = [
  "ab_glyph",
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-ocr",
  "az-onnx",
- "az-str",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "base64",
  "half",
  "image",
@@ -604,6 +625,16 @@ dependencies = [
  "serde",
  "serde_json",
  "strum 0.28.0",
+]
+
+[[package]]
+name = "az-automod"
+version = "2026.6.15"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec#0209ab56aa57a4aa6102ce497cb5d82b6266e5ec"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -660,7 +691,7 @@ dependencies = [
 [[package]]
 name = "az-dict-macros"
 version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec#0209ab56aa57a4aa6102ce497cb5d82b6266e5ec"
 dependencies = [
  "az-dict-spec",
  "proc-macro2",
@@ -672,10 +703,10 @@ dependencies = [
 [[package]]
 name = "az-dict-spec"
 version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec#0209ab56aa57a4aa6102ce497cb5d82b6266e5ec"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec)",
  "serde",
  "serde_json",
  "strum 0.28.0",
@@ -686,7 +717,8 @@ name = "az-engine"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-aio-nature-generated",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-remote-ui",
  "evalexpr",
  "rhai",
@@ -704,8 +736,9 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rudi",
  "serde",
  "serde_json",
@@ -715,12 +748,12 @@ dependencies = [
 [[package]]
 name = "az-micro-dict"
 version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec#0209ab56aa57a4aa6102ce497cb5d82b6266e5ec"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec)",
  "az-dict-spec",
- "az-str",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec)",
  "convert_case 0.8.0",
  "prettyplease",
  "proc-macro2",
@@ -736,7 +769,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-onnx",
  "image",
  "rusty-tesseract",
@@ -750,7 +783,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "image",
  "imageproc",
  "ndarray",
@@ -764,7 +797,7 @@ name = "az-operation-agent"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rig-core",
  "schemars",
  "serde",
@@ -776,7 +809,8 @@ name = "az-remote-ui"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-aio-nature-generated",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rudi",
  "serde",
  "serde_json",
@@ -788,7 +822,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "anyhow",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "derive_more",
  "ssh2",
 ]
@@ -799,7 +833,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
 ]
 
 [[package]]
@@ -808,7 +842,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
 ]
 
 [[package]]
@@ -817,7 +851,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
 ]
 
 [[package]]
@@ -826,7 +860,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
 ]
 
 [[package]]
@@ -835,7 +869,19 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+]
+
+[[package]]
+name = "az-str"
+version = "2026.5.10"
+source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec#0209ab56aa57a4aa6102ce497cb5d82b6266e5ec"
+dependencies = [
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=0209ab56aa57a4aa6102ce497cb5d82b6266e5ec)",
+ "derive_more",
+ "deunicode",
+ "regex",
+ "strum 0.28.0",
 ]
 
 [[package]]
@@ -843,7 +889,7 @@ name = "az-str"
 version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "derive_more",
  "deunicode",
  "regex",
@@ -856,7 +902,7 @@ version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
 dependencies = [
  "az-admin-plugin-registry",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-starter-audit",
  "az-starter-dictionary",
  "az-starter-identity",
@@ -1182,9 +1228,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rudi",
  "serde",
  "serde_json",
@@ -2321,9 +2368,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "rudi",
  "serde",
  "toasty",
@@ -2348,9 +2396,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "handlebars",
  "reqwest 0.12.28",
  "rudi",
@@ -3773,10 +3822,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-engine",
- "az-operation-agent",
  "dioxus",
  "registry",
  "rudi",
@@ -4081,6 +4130,24 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "nature-compiler"
+version = "0.1.0"
+source = "git+https://github.com/zjarlin/nature-compiler.git?rev=f70d3fe4a250581efacce6b962c6998920f2bdb7#f70d3fe4a250581efacce6b962c6998920f2bdb7"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "convert_case 0.8.0",
+ "deunicode",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -6053,9 +6120,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-aio-nature-generated",
  "az-aio-platform",
- "az-automod",
- "az-str",
+ "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-str 2026.5.10 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "md5",
  "rudi",
  "serde",

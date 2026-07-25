@@ -3,12 +3,14 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use az_aio_nature_generated::enums::{
+    AdminMenuNodeKind, PluginActivation, PluginKind, UiContributionSlot,
+};
 use az_aio_platform::plugin::contract::{
-    AdminCliContribution, AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminMenuTree,
-    BackendApiContribution, ContributionSet, DynAdminPluginProvider, NativePluginContext,
-    NativePluginProvider, NativePluginRuntime, NativeUiRenderer, NavItemContribution,
-    PageContribution, PluginActivation, PluginDependency, PluginDescriptor, PluginKind,
-    UiContribution, UiContributionSlot,
+    AdminCliContribution, AdminMenuNode, AdminMenuSection, AdminMenuTree, BackendApiContribution,
+    ContributionSet, DynAdminPluginProvider, NativePluginContext, NativePluginProvider,
+    NativePluginRuntime, NativeUiRenderer, NavItemContribution, PageContribution, PluginDependency,
+    PluginDescriptor, UiContribution,
 };
 use az_engine::EngineStore;
 use rudi::Singleton;

@@ -1,9 +1,11 @@
 //! linux SSR 页面状态。
 
+use az_aio_nature_generated::enums::LinuxDistribution;
+
 use crate::backend::{
     contract::{
         BootstrapPlan, BootstrapPlanRequest, ClientPairingSeed, EnvironmentSetupCatalog,
-        LinuxClientStatusResponse, LinuxDistribution, LinuxTarget,
+        LinuxClientStatusResponse, LinuxTarget,
     },
     env_notes::{load_environment_setup_catalog, setup_source_summary},
     profile::{adapter_for, supported_profiles},

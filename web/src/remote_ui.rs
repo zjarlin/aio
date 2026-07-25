@@ -10,10 +10,8 @@ use axum::{
         sse::{Event, KeepAlive, Sse},
     },
 };
-use az_engine::{
-    EngineStore,
-    page::{PageInput, PageState},
-};
+use az_aio_nature_generated::enums::PageState;
+use az_engine::{EngineStore, page::PageInput};
 use az_remote_ui::{ComponentIndex, PageCompiler, PageDefinition, UiOp};
 use futures_util::{Stream, stream};
 use serde::Deserialize;

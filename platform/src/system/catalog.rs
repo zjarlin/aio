@@ -4,6 +4,7 @@
 //! 收敛为 admin 可以消费的双轴页面模型。这里不保存业务数据，
 //! 只声明正式 PostgreSQL 边界、页面结构和 API/CLI 可共享的操作语义。
 
+use az_aio_nature_generated::enums::{SystemFeatureStatus, SystemFieldKind};
 use serde::Serialize;
 
 pub const SYSTEM_DOMAIN_ID: &str = "system";
@@ -11,32 +12,6 @@ pub const SYSTEM_DOMAIN_LABEL: &str = "管理后台";
 pub const SYSTEM_DEFAULT_ROUTE: &str = "/system/identity/users";
 pub const SYSTEM_RENDERER_ID: &str = "system.admin.page";
 pub const SYSTEM_SIDEBAR_RENDERER_ID: &str = "system.admin.sidebar";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SystemFeatureStatus {
-    StarterBacked,
-    ReferenceOnly,
-}
-
-impl SystemFeatureStatus {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::StarterBacked => "已接入 starter",
-            Self::ReferenceOnly => "参考建模",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SystemFieldKind {
-    Text,
-    Badge,
-    Count,
-    Time,
-    Route,
-}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 pub struct SystemTableColumn {

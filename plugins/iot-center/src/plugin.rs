@@ -3,19 +3,22 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use az_aio_nature_generated::enums::{
+    AdminMenuNodeKind, PluginActivation, PluginKind, UiContributionSlot,
+};
 use az_aio_platform::plugin::contract::{
-    AdminCliContribution, AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminMenuTree,
-    BackendApiContribution, ContributionSet, DynAdminPluginProvider, NativePluginContext,
-    NativePluginProvider, NativePluginRuntime, NativeUiRenderer, NavItemContribution,
-    PageContribution, PluginActivation, PluginDependency, PluginDescriptor, PluginKind,
-    UiContribution, UiContributionSlot,
+    AdminCliContribution, AdminMenuNode, AdminMenuSection, AdminMenuTree, BackendApiContribution,
+    ContributionSet, DynAdminPluginProvider, NativePluginContext, NativePluginProvider,
+    NativePluginRuntime, NativeUiRenderer, NavItemContribution, PageContribution, PluginDependency,
+    PluginDescriptor, UiContribution,
 };
 use az_engine::EngineStore;
 use rudi::Singleton;
 
 use crate::{
     contract::{
-        APPLY_TEMPLATE_PATH, DEVICES_PATH, OP_DEVICES_CREATE, OP_TEMPLATE_APPLY, ROUTE, STATUS_PATH,
+        APPLY_TEMPLATE_PATH, DEVICES_PATH, FIXTURE_TELEMETRY_PATH, OP_DEVICES_CREATE,
+        OP_FIXTURE_TELEMETRY_INGEST, OP_TEMPLATE_APPLY, ROUTE, STATUS_PATH,
     },
     routes::{IotApiState, iot_router},
     service::IotService,
@@ -89,6 +92,13 @@ impl NativePluginProvider for IotCenterPlugin {
                     20,
                 ),
                 api(OP_DEVICES_CREATE, "POST", DEVICES_PATH, "新建设备", 30),
+                api(
+                    OP_FIXTURE_TELEMETRY_INGEST,
+                    "POST",
+                    FIXTURE_TELEMETRY_PATH,
+                    "接收模拟遥测",
+                    40,
+                ),
             ],
             ..ContributionSet::default()
         })

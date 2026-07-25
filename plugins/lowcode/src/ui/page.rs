@@ -184,7 +184,6 @@ fn render_operation_workbench(snapshot: &PageSnapshot) -> Element {
                             }
                         }
                     }
-                    {render_vibe_operation_form()}
                 }
             }
 
@@ -200,30 +199,12 @@ fn render_operation_workbench(snapshot: &PageSnapshot) -> Element {
     }
 }
 
-fn render_vibe_operation_form() -> Element {
-    rsx! {
-        ActionForm { method: "post", action: ACTION_ENDPOINT, class: "space-y-3",
-            HiddenInput { name: "action", value: "generate_operation" }
-            label { class: "space-y-1 text-sm",
-                span { class: "font-medium", "Vibe 创建" }
-                textarea {
-                    class: "aio-input min-h-28",
-                    name: "prompt",
-                    required: true,
-                    placeholder: "创建一个接收设备编号和时间范围、返回排期摘要的接口",
-                }
-            }
-            Button { button_type: "submit", "生成草稿" }
-        }
-    }
-}
-
 fn render_empty_operation_state() -> Element {
     rsx! {
         Card {
             CardHeader {
                 CardTitle { "创建第一个接口" }
-                CardDescription { "使用 Vibe 创建或填写下方 Rhai operation。" }
+                CardDescription { "填写下方结构化 operation。" }
             }
             CardContent {
                 Table {
@@ -1173,6 +1154,8 @@ mod tests {
             is_required: false,
             expression: None,
             dependency_json: None,
+            domain_metadata_json: None,
+            validation_json: None,
             order_index: 0,
             created_at_ms: 0,
             updated_at_ms: 0,

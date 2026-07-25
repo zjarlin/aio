@@ -1,26 +1,9 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+pub(crate) use az_aio_nature_generated::enums::{
+    ComponentBehavior, ComponentPropertyKind, ComponentShape,
+};
 use serde::{Deserialize, Serialize};
-
-/// 组件在 DSL 中接收子节点的方式。
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ComponentShape {
-    Leaf,
-    Container,
-    Dual,
-}
-
-/// 低代码编辑器可配置的属性类型。
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ComponentPropertyKind {
-    Text,
-    Boolean,
-    Number,
-    Choice,
-    Action,
-}
 
 /// 单个组件属性的编辑和校验约束。
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -37,24 +20,6 @@ pub struct ComponentPropertySpec {
 pub struct ComponentEventSpec {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub payload: BTreeMap<String, ComponentPropertyKind>,
-}
-
-/// 浏览器端采用的有限渲染行为。
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ComponentBehavior {
-    #[default]
-    Generic,
-    Button,
-    Input,
-    Progress,
-    Table,
-}
-
-impl ComponentBehavior {
-    fn is_generic(value: &Self) -> bool {
-        *value == Self::Generic
-    }
 }
 
 /// 浏览器渲染器使用的 HTML 和样式映射。

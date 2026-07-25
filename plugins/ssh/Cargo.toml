@@ -11,6 +11,7 @@ description = "Low-code SSH server operations plugin for AIO."
 anyhow.workspace = true
 axum.workspace = true
 az-aio-platform = { path = "../../platform" }
+az-aio-nature-generated.workspace = true
 az-engine.workspace = true
 az-ssh.workspace = true
 dioxus.workspace = true

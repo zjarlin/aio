@@ -1,0 +1,261 @@
+{
+  "sourceText": "需求：环境采集\n1. 采集温度和湿度\n2. 无效数据不能入库\n3. 有效数据到达后更新数据活性时间\n\n建模：环境遥测\n1. 温度：小数，摄氏度，范围 -40 到 125\n2. 湿度：小数，百分比，范围 0 到 100\n\n数据获取：\n1. 模拟采集提供温度原值和湿度原值\n2. 温度等于温度原值除以 10\n3. 湿度等于湿度原值除以 10",
+  "requirements": [
+    {
+      "descriptor": {
+        "nativeName": "环境采集",
+        "englishStem": "environment_collection",
+        "code": "environment_collection"
+      },
+      "text": "环境采集"
+    },
+    {
+      "descriptor": {
+        "nativeName": "采集温度和湿度",
+        "englishStem": "cai_ji_wen_du_he_shi_du",
+        "code": "cai_ji_wen_du_he_shi_du"
+      },
+      "text": "采集温度和湿度"
+    },
+    {
+      "descriptor": {
+        "nativeName": "无效数据不能入库",
+        "englishStem": "wu_xiao_shu_ju_bu_neng_ru_ku",
+        "code": "wu_xiao_shu_ju_bu_neng_ru_ku"
+      },
+      "text": "无效数据不能入库"
+    },
+    {
+      "descriptor": {
+        "nativeName": "有效数据到达后更新数据活性时间",
+        "englishStem": "you_xiao_shu_ju_dao_da_hou_geng_xin_shu_ju_huo_xing_shi_jian",
+        "code": "you_xiao_shu_ju_dao_da_hou_geng_xin_shu_ju_huo_xing_shi_jian"
+      },
+      "text": "有效数据到达后更新数据活性时间"
+    }
+  ],
+  "structs": [
+    {
+      "descriptor": {
+        "nativeName": "环境遥测",
+        "englishStem": "environment_telemetry",
+        "code": "environment_telemetry"
+      },
+      "fields": [
+        {
+          "descriptor": {
+            "nativeName": "温度",
+            "englishStem": "temperature",
+            "code": "temperature"
+          },
+          "fieldType": "decimal",
+          "required": true,
+          "unit": "摄氏度",
+          "validations": [
+            "required",
+            {
+              "numberRange": {
+                "minimum": -40.0,
+                "maximum": 125.0
+              }
+            }
+          ],
+          "domainMetadata": [
+            {
+              "namespace": "measurement",
+              "name": "单位",
+              "value": "摄氏度"
+            }
+          ]
+        },
+        {
+          "descriptor": {
+            "nativeName": "湿度",
+            "englishStem": "humidity",
+            "code": "humidity"
+          },
+          "fieldType": "decimal",
+          "required": true,
+          "unit": "百分比",
+          "validations": [
+            "required",
+            {
+              "numberRange": {
+                "minimum": 0.0,
+                "maximum": 100.0
+              }
+            }
+          ],
+          "domainMetadata": [
+            {
+              "namespace": "measurement",
+              "name": "单位",
+              "value": "百分比"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "enums": [],
+  "functions": [
+    {
+      "descriptor": {
+        "nativeName": "获取并校验环境遥测",
+        "englishStem": "process_telemetry",
+        "code": "process_telemetry"
+      },
+      "inputModel": {
+        "nativeName": "原始数据",
+        "englishStem": "source_values",
+        "code": "source_values"
+      },
+      "outputModel": {
+        "nativeName": "环境遥测",
+        "englishStem": "environment_telemetry",
+        "code": "environment_telemetry"
+      },
+      "steps": [
+        "readSourceMap",
+        "decodeBindings",
+        "validateFields",
+        "returnAcceptedValue"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "descriptor": {
+        "nativeName": "模拟采集",
+        "englishStem": "fixture_map",
+        "code": "fixture_map"
+      },
+      "sourcePhrase": "模拟采集提供温度原值和湿度原值"
+    }
+  ],
+  "bindings": [
+    {
+      "owner": {
+        "nativeName": "环境遥测",
+        "englishStem": "environment_telemetry",
+        "code": "environment_telemetry"
+      },
+      "field": {
+        "nativeName": "温度",
+        "englishStem": "temperature",
+        "code": "temperature"
+      },
+      "source": {
+        "nativeName": "温度原值",
+        "englishStem": "temp_x10",
+        "code": "temp_x10"
+      },
+      "transform": {
+        "divide": {
+          "divisor": 10.0
+        }
+      }
+    },
+    {
+      "owner": {
+        "nativeName": "环境遥测",
+        "englishStem": "environment_telemetry",
+        "code": "environment_telemetry"
+      },
+      "field": {
+        "nativeName": "湿度",
+        "englishStem": "humidity",
+        "code": "humidity"
+      },
+      "source": {
+        "nativeName": "湿度原值",
+        "englishStem": "humidity_x10",
+        "code": "humidity_x10"
+      },
+      "transform": {
+        "divide": {
+          "divisor": 10.0
+        }
+      }
+    }
+  ],
+  "inferenceDecisions": [
+    {
+      "subject": "环境遥测",
+      "decision": "推导英文语义 environment_telemetry，编码为 environment_telemetry",
+      "reused": false
+    },
+    {
+      "subject": "温度",
+      "decision": "推导英文语义 temperature，编码为 temperature",
+      "reused": false
+    },
+    {
+      "subject": "湿度",
+      "decision": "推导英文语义 humidity，编码为 humidity",
+      "reused": false
+    },
+    {
+      "subject": "环境采集",
+      "decision": "推导英文语义 environment_collection，编码为 environment_collection",
+      "reused": false
+    },
+    {
+      "subject": "采集温度和湿度",
+      "decision": "推导英文语义 cai_ji_wen_du_he_shi_du，编码为 cai_ji_wen_du_he_shi_du",
+      "reused": false
+    },
+    {
+      "subject": "无效数据不能入库",
+      "decision": "推导英文语义 wu_xiao_shu_ju_bu_neng_ru_ku，编码为 wu_xiao_shu_ju_bu_neng_ru_ku",
+      "reused": false
+    },
+    {
+      "subject": "有效数据到达后更新数据活性时间",
+      "decision": "推导英文语义 you_xiao_shu_ju_dao_da_hou_geng_xin_shu_ju_huo_xing_shi_jian，编码为 you_xiao_shu_ju_dao_da_hou_geng_xin_shu_ju_huo_xing_shi_jian",
+      "reused": false
+    },
+    {
+      "subject": "模拟采集",
+      "decision": "推导英文语义 fixture_map，编码为 fixture_map",
+      "reused": false
+    },
+    {
+      "subject": "温度原值",
+      "decision": "推导英文语义 temp_x10，编码为 temp_x10",
+      "reused": false
+    },
+    {
+      "subject": "湿度原值",
+      "decision": "推导英文语义 humidity_x10，编码为 humidity_x10",
+      "reused": false
+    },
+    {
+      "subject": "获取并校验环境遥测",
+      "decision": "推导英文语义 process_telemetry，编码为 process_telemetry",
+      "reused": false
+    },
+    {
+      "subject": "原始数据",
+      "decision": "推导英文语义 source_values，编码为 source_values",
+      "reused": false
+    }
+  ],
+  "defaults": [
+    {
+      "subject": "温度",
+      "value": "必填",
+      "reason": "无效数据不能入库，因此首版字段采用必填安全默认"
+    },
+    {
+      "subject": "湿度",
+      "value": "必填",
+      "reason": "无效数据不能入库，因此首版字段采用必填安全默认"
+    },
+    {
+      "subject": "模拟采集",
+      "value": "严格键匹配",
+      "reason": "缺字段必须失败，不能以零值伪造有效遥测"
+    }
+  ]
+}

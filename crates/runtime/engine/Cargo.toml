@@ -10,6 +10,7 @@ description = "AZ low-code metadata engine with JSON payload records and batched
 [dependencies]
 anyhow.workspace = true
 automod.workspace = true
+az-aio-nature-generated.workspace = true
 az-remote-ui = { path = "../../ui/remote-ui" }
 evalexpr.workspace = true
 rhai.workspace = true

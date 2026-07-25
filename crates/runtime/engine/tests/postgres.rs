@@ -38,6 +38,8 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
                 is_required: true,
                 expression: None,
                 dependency_json: None,
+                domain_metadata_json: None,
+                validation_json: None,
                 order_index: 1,
             },
         )
@@ -52,6 +54,8 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
                 is_required: true,
                 expression: None,
                 dependency_json: None,
+                domain_metadata_json: None,
+                validation_json: None,
                 order_index: 1,
             },
         )
@@ -66,6 +70,8 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
                 is_required: true,
                 expression: None,
                 dependency_json: None,
+                domain_metadata_json: None,
+                validation_json: None,
                 order_index: 2,
             },
         )
@@ -85,6 +91,8 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
                     local_field: "user_id".to_string(),
                     source_payload_field: "vip_level".to_string(),
                 }])?),
+                domain_metadata_json: None,
+                validation_json: None,
                 order_index: 3,
             },
         )

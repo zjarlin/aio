@@ -1,4 +1,5 @@
 use anyhow::{bail, Context};
+use az_aio_nature_generated::enums::WeatherProvider;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -39,14 +40,6 @@ pub struct WeatherCurrentRequest {
     pub timezone: Option<String>,
     #[serde(default)]
     pub provider: WeatherProvider,
-}
-
-/// Weather provider selector.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum WeatherProvider {
-    #[default]
-    OpenMeteo,
 }
 
 /// Normalized current weather response.
@@ -278,7 +271,11 @@ impl OpenMeteoGeocodingItem {
 mod tests {
     use reqwest::Client;
 
-    use super::{resolve_location, weather_current_asset, WeatherCurrentRequest, WeatherProvider, WEATHER_CURRENT_ROUTE};
+    use az_aio_nature_generated::enums::WeatherProvider;
+
+    use super::{
+        WEATHER_CURRENT_ROUTE, WeatherCurrentRequest, resolve_location, weather_current_asset,
+    };
 
     #[tokio::test]
     async fn resolve_location_accepts_coordinate_pair_without_network() {

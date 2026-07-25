@@ -57,7 +57,10 @@ fn main() -> Result<()> {
         shared_db: shared_db.clone(),
     };
 
-    let snapshot = host::load_native_snapshot(native_context, &mut di);
+    let snapshot = {
+        let _runtime_guard = runtime.enter();
+        host::load_native_snapshot(native_context, &mut di)
+    };
 
     let remote_ui_store = shared_db
         .as_ref()
@@ -227,13 +230,13 @@ mod tests {
                 "admin-scenes",
                 "algorithm-center",
                 "asset-hub",
-                "codegen",
                 "config-center",
                 "drive-center",
                 "edge-gateway",
                 "iot-center",
                 "linux",
                 "lowcode",
+                "nature-compiler",
                 "software-center",
                 "ssh",
                 "system",
@@ -341,11 +344,15 @@ mod tests {
                 "DriveTask",
                 "EdgeApiTokenRecord",
                 "EdgeUsageRecordRow",
+                "EngineFieldBindingRecord",
                 "GatewayFlow",
                 "GatewayRouteDefinition",
                 "HookDefinition",
                 "MetaField",
                 "MetaModel",
+                "NatureGenerationRunRecord",
+                "NatureProjectRecord",
+                "NatureRevisionRecord",
                 "OperationDefinition",
                 "OperationRevision",
                 "OperationRun",

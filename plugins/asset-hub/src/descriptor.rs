@@ -1,8 +1,8 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ClientPageContribution, ContributionSet, NavItemContribution,
-    PageContribution, PluginActivation, PluginDescriptor, PluginKind, ToolbarActionContribution,
-    UiContribution, UiContributionSlot,
+    PageContribution, PluginDescriptor, ToolbarActionContribution, UiContribution,
 };
+use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
 pub const PLUGIN_ID: &str = "asset-hub";
 pub const ROUTE: &str = "/assets";

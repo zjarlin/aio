@@ -1,15 +1,35 @@
 //! 物联网中心共享契约。
 
-pub use crate::dictionary::IotOnlineStatus;
+use std::collections::BTreeMap;
+
+use az_aio_nature_generated::enums::IotOnlineStatus;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub const ROUTE: &str = "/iot";
 pub const STATUS_PATH: &str = "/api/iot/status";
 pub const APPLY_TEMPLATE_PATH: &str = "/api/iot/templates/default/apply";
 pub const DEVICES_PATH: &str = "/api/iot/devices";
+pub const FIXTURE_TELEMETRY_PATH: &str = "/api/iot/devices/{device_code}/fixture-telemetry";
 pub const UI_ACTION_PATH: &str = "/api/iot/ui-action";
 pub const OP_TEMPLATE_APPLY: &str = "iot.templates.default.apply";
 pub const OP_DEVICES_CREATE: &str = "iot.devices.create";
+pub const OP_FIXTURE_TELEMETRY_INGEST: &str = "iot.fixture-telemetry.ingest";
+
+/// 模拟 Map 数据源的原始输入。
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FixtureTelemetryRequest {
+    pub values: BTreeMap<String, Value>,
+}
+
+/// 通过校验并完成入库的遥测结果。
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FixtureTelemetryAccepted {
+    pub telemetry: az_aio_nature_generated::structs::EnvironmentTelemetry,
+    pub last_data_at_ms: i64,
+}
 
 pub const PRODUCT_MODEL: &str = "iot_product";
 pub const GATEWAY_MODEL: &str = "iot_gateway";

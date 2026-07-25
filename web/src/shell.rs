@@ -1,7 +1,8 @@
+use az_aio_nature_generated::enums::AdminMenuNodeKind;
 use az_aio_platform::plugin::{
     contract::{
-        AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminResourceContract,
-        NativeRenderContext, PageContribution,
+        AdminMenuNode, AdminMenuSection, AdminResourceContract, NativeRenderContext,
+        PageContribution,
     },
     host::{self, HostSnapshot},
 };
@@ -526,7 +527,7 @@ fn escape_script_json(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use az_aio_platform::plugin::{
-        contract::{AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, PageContribution},
+        contract::{AdminMenuNode, AdminMenuSection, PageContribution},
         host::HostSnapshot,
     };
 

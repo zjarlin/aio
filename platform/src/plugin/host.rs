@@ -5,15 +5,19 @@ use std::{
     thread,
 };
 
+use az_aio_nature_generated::enums::{
+    CatalogItemKind, CatalogSource, PluginActivation, PluginKind, PluginState,
+};
+
 use crate::{
     core::api_error::with_global_api_error_layer,
     plugin::contract::{
         AdminCliContribution, AdminMenuTree, AdminResourceContract, BackendApiContribution,
-        CatalogItemContribution, CatalogItemKind, CatalogSource, ClientBootstrapPayload,
-        ClientPageContribution, ClientPluginRecord, ContributionSet, DynAdminPluginProvider,
+        CatalogItemContribution, ClientBootstrapPayload, ClientPageContribution, ClientPluginRecord,
+        ContributionSet, DynAdminPluginProvider,
         GeneratedFileContribution, NativePluginContext, NativeRenderFn, NativeUiRenderer,
-        NavItemContribution, PageContribution, PluginActivation, PluginDescriptor, PluginKind,
-        PluginState, SettingsSectionContribution, ShellEntryContribution,
+        NavItemContribution, PageContribution, PluginDescriptor, SettingsSectionContribution,
+        ShellEntryContribution,
         ToolbarActionContribution, UiContribution, merge_menu_tree,
     },
 };
@@ -284,7 +288,7 @@ pub fn client_bootstrap_payload(
             .filter(|record| matches!(record.state, PluginState::Active | PluginState::Loaded))
             .map(|record| ClientPluginRecord {
                 descriptor: record.descriptor.clone(),
-                state: record.state.clone(),
+                state: record.state,
             })
             .collect(),
         default_route: default_route.into(),
@@ -559,10 +563,11 @@ fn write_plugin_enablement_store(path: &Path, store: &PluginEnablementStore) -> 
 mod tests {
     use std::sync::Arc;
 
+    use az_aio_nature_generated::enums::{AdminMenuNodeKind, UiContributionSlot};
+
     use crate::plugin::contract::{
-        AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminPluginContribution,
-        AdminPluginProvider, BackendApiContribution, ClientPageContribution, NativePluginRuntime,
-        PageContribution, UiContributionSlot,
+        AdminMenuNode, AdminMenuSection, AdminPluginContribution, AdminPluginProvider,
+        BackendApiContribution, ClientPageContribution, NativePluginRuntime, PageContribution,
     };
 
     use super::*;

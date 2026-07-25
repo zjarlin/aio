@@ -1,8 +1,9 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ContributionSet, NavItemContribution, PageContribution,
-    PluginActivation, PluginDescriptor, PluginKind, SettingsDefaultContribution,
-    SettingsSectionContribution, ToolbarActionContribution, UiContribution, UiContributionSlot,
+    PluginDescriptor, SettingsDefaultContribution, SettingsSectionContribution,
+    ToolbarActionContribution, UiContribution,
 };
+use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
 pub const PLUGIN_ID: &str = "config-center";
 pub const ROUTE: &str = "/config";

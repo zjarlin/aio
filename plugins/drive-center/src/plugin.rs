@@ -3,11 +3,12 @@ use std::sync::Arc;
 use az_aio_platform::{
     admin_scenes::{KNOWLEDGE_BASE_DOMAIN_ID, KNOWLEDGE_BASE_DOMAIN_LABEL},
     plugin::contract::{
-        AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminMenuTree, ContributionSet,
+        AdminMenuNode, AdminMenuSection, AdminMenuTree, ContributionSet,
         DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
         PluginDescriptor,
     },
 };
+use az_aio_nature_generated::enums::AdminMenuNodeKind;
 use rudi::Singleton;
 
 use crate::{
@@ -76,7 +77,7 @@ pub fn drive_center_plugin() -> DynAdminPluginProvider {
 
 #[cfg(test)]
 mod tests {
-    use az_aio_platform::plugin::contract::PluginKind;
+    use az_aio_nature_generated::enums::PluginKind;
 
     use super::*;
 

@@ -5,25 +5,32 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "AIO client-side Rust enum and struct generator."
+description = "AIO host for nature-compiler revisions and deterministic Rust generation."
 
 [dependencies]
 anyhow.workspace = true
+async-trait.workspace = true
 axum.workspace = true
 az-aio-platform = { path = "../../platform" }
-az-str.workspace = true
+az-aio-nature-generated.workspace = true
+az-dict-spec.workspace = true
+az-micro-dict.workspace = true
+convert_case.workspace = true
 dioxus.workspace = true
-prettyplease.workspace = true
+nature-compiler.workspace = true
 rudi.workspace = true
+rig-core = "0.36.0"
 registry.workspace = true
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-syn.workspace = true
+tempfile.workspace = true
 tokio.workspace = true
+toasty.workspace = true
+tracing.workspace = true
 urlencoding.workspace = true
 
 [dev-dependencies]
-tempfile = "3.23.0"
 tower.workspace = true
 
 [lints.rust]

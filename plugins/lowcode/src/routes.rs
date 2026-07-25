@@ -17,14 +17,11 @@ use az_engine::operation::{
 };
 use az_engine::page::PageInput;
 use az_engine::{EngineStore, FieldInput, HookInput, ModelInput, PageParams};
-use az_operation_agent::generation::{OperationVibeAgent, OperationVibeResult};
-use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
 #[derive(Clone)]
 pub struct LowcodeApiState {
     pub store: EngineStore,
-    pub operation_agent: Option<OperationVibeAgent>,
 }
 
 /// 构建 lowcode 插件的新 engine API 路由。
@@ -68,7 +65,6 @@ pub fn engine_router(state: LowcodeApiState) -> Router {
             "/api/engine/pages/{page_key}",
             get(get_page).put(update_page).delete(delete_page),
         )
-        .route("/api/engine/operations/vibe", post(vibe_operation))
         .route("/api/engine/operations/{operation_key}", get(get_operation))
         .route(
             "/api/engine/operations/{operation_key}/revisions",
@@ -140,11 +136,6 @@ async fn delete_page(
     )
 }
 
-#[derive(Clone, Debug, Deserialize)]
-struct OperationVibeRequest {
-    prompt: String,
-}
-
 async fn list_operations(
     State(state): State<LowcodeApiState>,
     RawQuery(raw_query): RawQuery,
@@ -161,29 +152,6 @@ async fn create_operation(
     ApiJson(input): ApiJson<OperationDraft>,
 ) -> Response {
     into_bad_request_response(state.store.create_operation(input).await)
-}
-
-async fn vibe_operation(
-    State(state): State<LowcodeApiState>,
-    ApiJson(input): ApiJson<OperationVibeRequest>,
-) -> Response {
-    if input.prompt.trim().is_empty() {
-        return ApiError::bad_request("operation Vibe prompt 不能为空").into_response();
-    }
-    let Some(agent) = state.operation_agent else {
-        return ApiError::service_unavailable(
-            "operation Agent 未配置，请设置 OPENAI_API_KEY 和 AZ_AIO_OPERATION_AGENT_MODEL",
-        )
-        .into_response();
-    };
-    let generated = match agent.generate(&input.prompt).await {
-        Ok(generated) => generated,
-        Err(error) => {
-            return ApiError::new(StatusCode::BAD_GATEWAY, error.to_string()).into_response();
-        }
-    };
-    let draft = operation_draft_from_generated(generated);
-    into_bad_request_response(state.store.create_operation(draft).await)
 }
 
 async fn get_operation(
@@ -657,20 +625,6 @@ async fn apply_ui_action(
                 .await?;
             Ok(lowcode_route(Some(&model_name), "records"))
         }
-        Some("generate_operation") => {
-            let agent = state.operation_agent.as_ref().ok_or_else(|| {
-                anyhow!(
-                    "operation Agent 未配置，请设置 OPENAI_API_KEY 和 AZ_AIO_OPERATION_AGENT_MODEL"
-                )
-            })?;
-            let generated = agent
-                .generate(&required_form_value(&form, "prompt")?)
-                .await?;
-            let operation = store
-                .create_operation(operation_draft_from_generated(generated))
-                .await?;
-            Ok(operation_route(Some(&operation.definition.operation_key)))
-        }
         Some("create_operation") => {
             let operation = store
                 .create_operation(operation_draft_from_form(&form)?)
@@ -712,22 +666,6 @@ async fn apply_ui_action(
         }
         Some(other) => Err(anyhow!("未知 engine UI action: {other}")),
         None => Err(anyhow!("缺少 engine UI action")),
-    }
-}
-
-fn operation_draft_from_generated(generated: OperationVibeResult) -> OperationDraft {
-    OperationDraft {
-        operation_key: generated.draft.operation_key,
-        display_name: generated.draft.display_name,
-        description: generated.draft.description,
-        method: generated.draft.method,
-        executor_kind: "rhai".to_string(),
-        source_text: generated.draft.source_text,
-        input_schema: generated.draft.input_schema,
-        output_schema: generated.draft.output_schema,
-        capability_policy: json!({ "allow": [] }),
-        timeout_ms: 3_000,
-        generated_by_model: Some(generated.model),
     }
 }
 
@@ -827,6 +765,8 @@ fn field_input_from_form(form: &BTreeMap<String, String>) -> anyhow::Result<Fiel
         is_required: form_bool(form, "is_required"),
         expression: form_value(form, "expression"),
         dependency_json: form_value(form, "dependency_json"),
+        domain_metadata_json: form_value(form, "domain_metadata_json"),
+        validation_json: form_value(form, "validation_json"),
         order_index: form_i32(form, "order_index")?,
     })
 }

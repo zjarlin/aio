@@ -6,9 +6,10 @@
 use az_admin_plugin_registry::navigation::{
     AdminNavigationKind, RegisteredAdminNode, registered_domains, section_for_path,
 };
+use az_aio_nature_generated::enums::AdminMenuNodeKind;
 
 use crate::{
-    plugin::contract::{AdminMenuNode, AdminMenuNodeKind, AdminMenuSection},
+    plugin::contract::{AdminMenuNode, AdminMenuSection},
     system::catalog::{
         SYSTEM_DEFAULT_ROUTE, SYSTEM_DOMAIN_ID, SYSTEM_DOMAIN_LABEL, SystemPage, system_pages,
     },

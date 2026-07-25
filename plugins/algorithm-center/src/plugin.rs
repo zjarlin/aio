@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use az_aio_platform::plugin::contract::{
-    AdminMenuNode, AdminMenuNodeKind, AdminMenuSection, AdminMenuTree, ContributionSet,
+    AdminMenuNode, AdminMenuSection, AdminMenuTree, ContributionSet,
     DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
     PluginDescriptor,
 };
+use az_aio_nature_generated::enums::AdminMenuNodeKind;
 use az_algorithm::di::{create_algorithm_context, resolve_algorithm_catalog};
 use rudi::Singleton;
 
@@ -65,7 +66,7 @@ pub fn algorithm_center_plugin() -> DynAdminPluginProvider {
 
 #[cfg(test)]
 mod tests {
-    use az_aio_platform::plugin::contract::PluginKind;
+    use az_aio_nature_generated::enums::PluginKind;
 
     use super::*;
 

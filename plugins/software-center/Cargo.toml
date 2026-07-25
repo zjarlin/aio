@@ -11,6 +11,7 @@ authors.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 az-aio-platform = { path = "../../platform" }
+az-aio-nature-generated.workspace = true
 automod.workspace = true
 az-str.workspace = true
 md5.workspace = true

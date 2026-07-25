@@ -5,12 +5,13 @@
 use std::sync::Arc;
 
 use axum::Router;
+use az_aio_nature_generated::enums::{PluginActivation, PluginKind};
 use rudi::Singleton;
 
 use crate::plugin::contract::{
     AdminMenuSection, AdminMenuTree, AdminPluginContribution, AdminPluginProvider,
     ContributionSet, DynAdminPluginProvider, NativePluginContext, NativePluginRuntime,
-    PluginActivation, PluginDescriptor, PluginKind,
+    PluginDescriptor,
 };
 
 pub const KNOWLEDGE_BASE_DOMAIN_ID: &str = "knowledge-base";

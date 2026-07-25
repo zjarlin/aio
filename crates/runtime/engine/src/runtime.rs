@@ -95,6 +95,8 @@ pub struct MetaField {
     pub is_required: bool,
     pub expression: Option<String>,
     pub dependency_json: Option<String>,
+    pub domain_metadata_json: Option<String>,
+    pub validation_json: Option<String>,
     pub order_index: i32,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
@@ -200,6 +202,10 @@ pub struct FieldInput {
     pub expression: Option<String>,
     #[serde(default)]
     pub dependency_json: Option<String>,
+    #[serde(default)]
+    pub domain_metadata_json: Option<String>,
+    #[serde(default)]
+    pub validation_json: Option<String>,
     #[serde(default)]
     pub order_index: i32,
 }
@@ -400,6 +406,8 @@ impl EngineStore {
         validate_identifier(&input.name, "字段名")?;
         validate_field_type(&input.field_type)?;
         validate_dependency_json(input.dependency_json.as_deref())?;
+        validate_optional_json(input.domain_metadata_json.as_deref(), "领域元数据")?;
+        validate_optional_json(input.validation_json.as_deref(), "校验定义")?;
         let now = timestamp_ms();
         let field = MetaField {
             id: uuid::Uuid::new_v4().to_string(),
@@ -410,6 +418,8 @@ impl EngineStore {
             is_required: input.is_required,
             expression: empty_to_none(input.expression),
             dependency_json: empty_to_none(input.dependency_json),
+            domain_metadata_json: empty_to_none(input.domain_metadata_json),
+            validation_json: empty_to_none(input.validation_json),
             order_index: input.order_index,
             created_at_ms: now,
             updated_at_ms: now,
@@ -424,6 +434,8 @@ impl EngineStore {
             .is_required(field.is_required)
             .expression(&field.expression)
             .dependency_json(&field.dependency_json)
+            .domain_metadata_json(&field.domain_metadata_json)
+            .validation_json(&field.validation_json)
             .order_index(field.order_index)
             .created_at_ms(field.created_at_ms)
             .updated_at_ms(field.updated_at_ms)
@@ -468,9 +480,13 @@ impl EngineStore {
         validate_identifier(&input.name, "字段名")?;
         validate_field_type(&input.field_type)?;
         validate_dependency_json(input.dependency_json.as_deref())?;
+        validate_optional_json(input.domain_metadata_json.as_deref(), "领域元数据")?;
+        validate_optional_json(input.validation_json.as_deref(), "校验定义")?;
         let now = timestamp_ms();
         let expression = empty_to_none(input.expression);
         let dependency_json = empty_to_none(input.dependency_json);
+        let domain_metadata_json = empty_to_none(input.domain_metadata_json);
+        let validation_json = empty_to_none(input.validation_json);
         {
             let mut db = self.db.lock().await;
             MetaField::filter(MetaField::fields().id().eq(field_id))
@@ -481,6 +497,8 @@ impl EngineStore {
                 .is_required(input.is_required)
                 .expression(&expression)
                 .dependency_json(&dependency_json)
+                .domain_metadata_json(&domain_metadata_json)
+                .validation_json(&validation_json)
                 .order_index(input.order_index)
                 .updated_at_ms(now)
                 .exec(&mut *db)
@@ -1208,6 +1226,14 @@ fn validate_dependency_json(value: Option<&str>) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn validate_optional_json(value: Option<&str>, label: &str) -> anyhow::Result<()> {
+    let Some(value) = value.map(str::trim).filter(|item| !item.is_empty()) else {
+        return Ok(());
+    };
+    serde_json::from_str::<Value>(value).with_context(|| format!("解析{label}失败"))?;
+    Ok(())
+}
+
 fn parse_dependencies(value: Option<&str>) -> anyhow::Result<Vec<ComputedDependency>> {
     let Some(value) = value.map(str::trim).filter(|item| !item.is_empty()) else {
         return Ok(Vec::new());
@@ -1229,7 +1255,35 @@ fn validate_payload(
         }
         if let Some(value) = payload.get(&field.name) {
             validate_json_type(field, value)?;
+            validate_field_constraints(field, value)?;
         }
+    }
+    Ok(())
+}
+
+fn validate_field_constraints(field: &MetaField, value: &Value) -> anyhow::Result<()> {
+    let Some(definition) = field
+        .validation_json
+        .as_deref()
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+    else {
+        return Ok(());
+    };
+    let definition = serde_json::from_str::<Value>(definition)
+        .with_context(|| format!("解析字段 {} 的校验定义失败", field.name))?;
+    let Some(number) = value.as_f64() else {
+        return Ok(());
+    };
+    if let Some(minimum) = definition.get("minimum").and_then(Value::as_f64)
+        && number < minimum
+    {
+        bail!("字段 {} 小于最小值 {minimum}", field.name);
+    }
+    if let Some(maximum) = definition.get("maximum").and_then(Value::as_f64)
+        && number > maximum
+    {
+        bail!("字段 {} 大于最大值 {maximum}", field.name);
     }
     Ok(())
 }
@@ -1402,6 +1456,8 @@ mod tests {
             is_required: false,
             expression: Some(expression.to_string()),
             dependency_json: None,
+            domain_metadata_json: None,
+            validation_json: None,
             order_index: 0,
             created_at_ms: 0,
             updated_at_ms: 0,
@@ -1419,6 +1475,8 @@ mod tests {
             is_required: true,
             expression: None,
             dependency_json: None,
+            domain_metadata_json: None,
+            validation_json: None,
             order_index: 0,
             created_at_ms: 0,
             updated_at_ms: 0,

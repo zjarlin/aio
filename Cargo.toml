@@ -15,6 +15,7 @@ members = [
     "plugins/ssh",
     "plugins/linux",
     "plugins/lowcode",
+    "crates/generated/nature",
     "crates/runtime/engine",
     "crates/runtime/operation-agent",
     "crates/ui/remote-ui",
@@ -34,18 +35,21 @@ ab_glyph = "0.2.32"
 az-algorithm = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-str = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 anyhow = "1.0.99"
+async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 axum = { version = "0.8.6", features = ["http1", "json", "tokio", "multipart"] }
 az-admin-plugin-registry = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
-az-dict-macros = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
-az-dict-spec = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
+az-dict-macros = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
+az-dict-spec = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 dioxus = { version = "0.7.9", default-features = false, features = ["macro", "html", "signals", "router"] }
 dioxus-ssr = "0.7.9"
 registry = { package = "registry", git = "https://github.com/rust-ui/dioxus-ui.git", rev = "91e8974e041baa9f993654ec448c3b05d973f9a9" }
 tw-merge = { package = "tw_merge", version = "0.1.21", features = ["debug"] }
 az-engine = { version = "=2026.5.10", path = "crates/runtime/engine" }
-az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
+az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 az-operation-agent = { version = "=2026.5.10", path = "crates/runtime/operation-agent" }
+az-aio-nature-generated = { version = "=2026.5.10", path = "crates/generated/nature" }
+nature-compiler = { version = "=0.1.0", git = "https://github.com/zjarlin/nature-compiler.git", rev = "f70d3fe4a250581efacce6b962c6998920f2bdb7" }
 az-system-starters = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-ssh = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 base64 = "0.22.1"

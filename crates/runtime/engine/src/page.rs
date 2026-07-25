@@ -1,6 +1,7 @@
 //! 声明式页面的 PostgreSQL 持久化边界。
 
 use anyhow::{Context, Result, bail, ensure};
+use az_aio_nature_generated::enums::PageState;
 use az_remote_ui::{PAGE_SCHEMA_VERSION, PageDefinition};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,40 +35,6 @@ pub struct PageRecord {
     pub definition: toasty::Json<Value>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
-}
-
-/// 页面发布状态。
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PageState {
-    #[default]
-    Draft,
-    Published,
-    Disabled,
-}
-
-impl PageState {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Draft => "draft",
-            Self::Published => "published",
-            Self::Disabled => "disabled",
-        }
-    }
-}
-
-impl TryFrom<&str> for PageState {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> Result<Self> {
-        match value {
-            "draft" => Ok(Self::Draft),
-            "published" => Ok(Self::Published),
-            "disabled" => Ok(Self::Disabled),
-            _ => bail!("未知页面状态: {value}"),
-        }
-    }
 }
 
 /// 创建或替换页面的输入契约。

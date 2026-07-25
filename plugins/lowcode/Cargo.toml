@@ -11,8 +11,8 @@ description = "lowcode plugin backed by az-engine."
 anyhow.workspace = true
 axum.workspace = true
 az-aio-platform = { path = "../../platform" }
+az-aio-nature-generated.workspace = true
 az-engine.workspace = true
-az-operation-agent.workspace = true
 automod.workspace = true
 dioxus.workspace = true
 serde.workspace = true

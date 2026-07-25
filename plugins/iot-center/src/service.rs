@@ -1,19 +1,21 @@
 //! 基于低代码 EngineStore 的物联网领域服务。
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Context, Result, bail};
+use az_aio_nature_generated::enums::IotOnlineStatus;
+use az_aio_nature_generated::structs::EnvironmentTelemetry;
 use az_engine::{EngineStore, FieldInput, ModelInput, PageParams};
 use serde_json::{Value, json};
 
 use crate::contract::{
-    ALARM_MODEL, ApplyIotTemplateRequest, CreateIotDeviceRequest, DEVICE_MODEL, GATEWAY_MODEL,
-    IotAlarmView, IotDashboardSnapshot, IotDeviceView, IotGatewayView, IotOnlineStatus,
-    IotProductView, IotStatusSummary, IotTelemetryView, IotTemplateApplyResult, PRODUCT_MODEL,
-    TELEMETRY_MODEL,
+    ALARM_MODEL, ApplyIotTemplateRequest, CreateIotDeviceRequest, DEVICE_MODEL,
+    FixtureTelemetryAccepted, FixtureTelemetryRequest, GATEWAY_MODEL, IotAlarmView,
+    IotDashboardSnapshot, IotDeviceView, IotGatewayView, IotProductView, IotStatusSummary,
+    IotTelemetryView, IotTemplateApplyResult, PRODUCT_MODEL, TELEMETRY_MODEL,
 };
 
 #[derive(Clone, Copy)]
@@ -166,6 +168,8 @@ impl IotService {
                     is_required: field.required,
                     expression: None,
                     dependency_json: None,
+                    domain_metadata_json: None,
+                    validation_json: None,
                     order_index: order_index as i32,
                 };
                 self.store.create_field(definition.name, input).await?;
@@ -268,6 +272,52 @@ impl IotService {
         Ok(device_view(record.id, &record.payload, timestamp_ms()))
     }
 
+    /// 解码、校验并写入模拟遥测，最后更新数据活性时间。
+    pub async fn ingest_fixture_telemetry(
+        &self,
+        device_code: &str,
+        request: FixtureTelemetryRequest,
+    ) -> Result<FixtureTelemetryAccepted> {
+        let telemetry = prepare_fixture_telemetry(&request.values)?;
+        let devices = self.list_records(DEVICE_MODEL).await?;
+        let device = devices
+            .into_iter()
+            .find(|record| text(&record.payload, "device_code") == device_code)
+            .ok_or_else(|| anyhow::anyhow!("设备不存在: {device_code}"))?;
+        let accepted_at_ms = timestamp_ms();
+        for (metric_code, value, unit) in [
+            ("temperature", telemetry.temperature, "摄氏度"),
+            ("humidity", telemetry.humidity, "百分比"),
+        ] {
+            let payload = json!({
+                "device_code": device_code,
+                "metric_code": metric_code,
+                "value": value,
+                "unit": unit,
+                "quality": "valid",
+                "collected_at_ms": accepted_at_ms,
+            });
+            self.store
+                .executor()
+                .insert_record(TELEMETRY_MODEL, payload)
+                .await
+                .with_context(|| format!("写入有效遥测失败: {device_code}/{metric_code}"))?;
+        }
+        self.store
+            .executor()
+            .update_record(
+                DEVICE_MODEL,
+                &device.id,
+                json!({ "last_data_at_ms": accepted_at_ms }),
+            )
+            .await
+            .context("有效遥测入库后更新数据活性时间失败")?;
+        Ok(FixtureTelemetryAccepted {
+            telemetry,
+            last_data_at_ms: accepted_at_ms,
+        })
+    }
+
     async fn template_ready(&self) -> Result<bool> {
         for definition in MODEL_DEFINITIONS {
             if self.store.get_model(definition.name).await?.is_none() {
@@ -306,6 +356,11 @@ impl IotService {
         }
         Ok(inserted)
     }
+}
+
+fn prepare_fixture_telemetry(values: &BTreeMap<String, Value>) -> Result<EnvironmentTelemetry> {
+    az_aio_nature_generated::functions::process_telemetry(values)
+        .context("模拟遥测解码或领域校验失败")
 }
 
 /// 按连接、心跳和数据新鲜度计算设备业务状态。
@@ -688,5 +743,25 @@ mod tests {
                 ALARM_MODEL
             ]
         );
+    }
+
+    #[test]
+    fn fixture_decode_rejects_bad_data_before_persistence() -> anyhow::Result<()> {
+        let valid = BTreeMap::from([
+            ("temp_x10".to_string(), json!(253)),
+            ("humidity_x10".to_string(), json!(612)),
+        ]);
+        let telemetry = prepare_fixture_telemetry(&valid)?;
+        assert!((telemetry.temperature - 25.3).abs() < f64::EPSILON);
+        assert!((telemetry.humidity - 61.2).abs() < f64::EPSILON);
+
+        let missing = BTreeMap::from([("temp_x10".to_string(), json!(253))]);
+        assert!(prepare_fixture_telemetry(&missing).is_err());
+        let out_of_range = BTreeMap::from([
+            ("temp_x10".to_string(), json!(1260)),
+            ("humidity_x10".to_string(), json!(612)),
+        ]);
+        assert!(prepare_fixture_telemetry(&out_of_range).is_err());
+        Ok(())
     }
 }

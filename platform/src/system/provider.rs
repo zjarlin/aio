@@ -3,21 +3,23 @@
 //! `AdminProvider` 是应用侧唯一的系统后台内容提供者，负责把系统 catalog
 //! 投射成 shell 可消费的导航、页面、toolbar 与 API 契约。
 
+use az_aio_nature_generated::enums::{
+    AdminFieldKind, PluginActivation, PluginKind, SystemFieldKind, UiContributionSlot,
+};
+
 use crate::{
     plugin::contract::{
-        AdminCliContribution, AdminFieldContract, AdminFieldKind, AdminMenuTree,
-        AdminOperationContract, AdminPluginContribution, AdminPluginProvider,
-        AdminResourceContract, BackendApiContribution, ContributionSet, NativePluginContext,
-        NativePluginRuntime, NativeUiRenderer, NavItemContribution, PageContribution,
-        PluginActivation, PluginDescriptor, PluginKind, ToolbarActionContribution, UiContribution,
-        UiContributionSlot,
+        AdminCliContribution, AdminFieldContract, AdminMenuTree, AdminOperationContract,
+        AdminPluginContribution, AdminPluginProvider, AdminResourceContract, BackendApiContribution,
+        ContributionSet, NativePluginContext, NativePluginRuntime, NativeUiRenderer,
+        NavItemContribution, PageContribution, PluginDescriptor, ToolbarActionContribution,
+        UiContribution,
     },
     system::{
         routes::{system_admin_router, SystemAdminApiState},
         catalog::{
             SYSTEM_DOMAIN_ID, SYSTEM_DOMAIN_LABEL, SYSTEM_RENDERER_ID, SYSTEM_SIDEBAR_RENDERER_ID,
-            SystemFieldKind, SystemPageView, starter_backed_system_pages, system_dashboard_view,
-            system_page_views,
+            SystemPageView, starter_backed_system_pages, system_dashboard_view, system_page_views,
         },
         dictionary_ui::{DICTIONARY_RENDERER_ID, dictionary_workbench_page},
         navigation::{AdminSectionSnapshot, system_admin_sections},

@@ -1,8 +1,8 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ContributionSet, NavItemContribution, PageContribution,
-    PluginActivation, PluginDescriptor, PluginKind, ToolbarActionContribution, UiContribution,
-    UiContributionSlot,
+    PluginDescriptor, ToolbarActionContribution, UiContribution,
 };
+use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
 pub const PLUGIN_ID: &str = "linux";
 pub const ROUTE: &str = "/linux";

@@ -5,13 +5,13 @@ use axum::{
     routing::{get, post},
 };
 use az_aio_platform::core::api_error::{ApiError, ApiJson, ApiQuery, ApiResponse, ok_json};
+use az_aio_nature_generated::enums::LinuxDistribution;
 use serde::Deserialize;
 
 use crate::backend::{
     contract::{
         BootstrapPlan, BootstrapPlanRequest, ClientPairingSeed, CONTRACT_VERSION,
-        LinuxClientStatusResponse, LinuxDistribution, LinuxProfileSummary, LinuxTarget,
-        endpoint_catalog,
+        LinuxClientStatusResponse, LinuxProfileSummary, LinuxTarget, endpoint_catalog,
     },
     env_notes::{load_environment_setup_catalog, setup_source_summary},
     profile::{adapter_for, supported_profiles},
