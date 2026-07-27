@@ -4,7 +4,10 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{Context, anyhow};
 use az_aio_platform::system::store::SystemAdminStore;
+use az_engine::EngineStore;
+use az_engine::route::EngineApplicationDeployment;
 use az_micro_dict::contribution::DictSourceBundle;
+use az_remote_ui::ComponentIndex;
 use nature_compiler::{
     ArtifactFile, ArtifactSet, CompileRequest, CompileResult, CompileStage, CompileStageStatus,
     CompileTrace, Compiler,
@@ -12,6 +15,8 @@ use nature_compiler::{
 use serde_json::{Value, json};
 
 use crate::{
+    contract::{NatureGeneratedFile, PublishedNatureRevision},
+    deployment::{ApplicationDeployment, lower_application},
     dictionary_source::enabled_dictionary_bundle,
     gate::ArtifactGate,
     store::{CompletedGenerationEventInput, GenerationEventHandle, NatureStore},
@@ -24,6 +29,8 @@ pub struct NatureService {
     compiler: Arc<Compiler>,
     gate: ArtifactGate,
     dictionary_store: SystemAdminStore,
+    components: Arc<ComponentIndex>,
+    engine_store: EngineStore,
 }
 
 impl NatureService {
@@ -32,17 +39,71 @@ impl NatureService {
         compiler: Compiler,
         output_root: PathBuf,
         dictionary_store: SystemAdminStore,
+        components: Arc<ComponentIndex>,
+        engine_store: EngineStore,
     ) -> Self {
         Self {
             store,
             compiler: Arc::new(compiler),
             gate: ArtifactGate::new(output_root),
             dictionary_store,
+            components,
+            engine_store,
         }
     }
 
     pub fn store(&self) -> &NatureStore {
         &self.store
+    }
+
+    /// 校验 artifact 并原子物化低代码应用后发布 Revision。
+    pub async fn publish_revision(
+        &self,
+        revision_id: &str,
+        registered_hash: &str,
+    ) -> anyhow::Result<PublishedNatureRevision> {
+        let revision = self.store.revision(revision_id).await?;
+        if revision.status != "succeeded" {
+            return Err(anyhow!(
+                "只有生成成功的 revision 可以发布，当前状态: {}",
+                revision.status
+            ));
+        }
+        if revision.artifact_hash != registered_hash {
+            return Err(anyhow!(
+                "运行中的 AIO artifact hash 不匹配: revision={}, runtime={registered_hash}",
+                revision.artifact_hash
+            ));
+        }
+        let files =
+            serde_json::from_str::<Vec<NatureGeneratedFile>>(&revision.generated_files_json)
+                .context("读取 revision 生成文件失败")?;
+        let deployment_source = files
+            .iter()
+            .find(|file| file.path == "deployment.json")
+            .map(|file| file.source.as_str())
+            .context("revision 缺少 deployment.json")?;
+        let deployment = serde_json::from_str::<ApplicationDeployment>(deployment_source)
+            .context("解析 ApplicationDeployment 失败")?;
+        let manifest = serde_json::to_value(&deployment)
+            .context("序列化 ApplicationDeployment manifest 失败")?;
+        self.engine_store
+            .deploy_application(EngineApplicationDeployment {
+                project_id: revision.project_id,
+                revision_id: revision.id,
+                artifact_hash: revision.artifact_hash,
+                domain_code: deployment.domain_code,
+                manifest,
+                models: deployment.models,
+                operations: deployment.operations,
+                pages: deployment.pages,
+                routes: deployment.routes,
+            })
+            .await
+            .context("物化低代码应用部署失败")?;
+        self.store
+            .publish_revision(revision_id, registered_hash)
+            .await
     }
 
     pub async fn generate_revision(&self, revision_id: String) -> anyhow::Result<()> {
@@ -187,6 +248,19 @@ impl NatureService {
         timeline
             .finish(&self.store, &compile_event, true, "", compile_metadata)
             .await?;
+
+        let blueprint = result
+            .blueprint
+            .as_ref()
+            .context("nature-compiler 成功结果缺少 Blueprint")?;
+        let deployment = lower_application(blueprint, &self.components)
+            .context("lowering AIO ApplicationDeployment 失败")?;
+        artifacts.files.push(ArtifactFile {
+            relative_path: "deployment.json".to_string(),
+            source: serde_json::to_string_pretty(&deployment)
+                .context("序列化 ApplicationDeployment 失败")?,
+        });
+        artifacts = ArtifactSet::new(artifacts.files);
 
         let dictionary_event = timeline
             .start(

@@ -277,10 +277,7 @@ fn descriptors_by_native_name(blueprint: &Blueprint) -> BTreeMap<String, Semanti
         insert_descriptor(&mut descriptors, &binding.field);
         insert_descriptor(&mut descriptors, &binding.source);
     }
-    insert_descriptor(
-        &mut descriptors,
-        &blueprint.application.domain.descriptor,
-    );
+    insert_descriptor(&mut descriptors, &blueprint.application.domain.descriptor);
     for model in &blueprint.application.domain.models {
         insert_descriptor(&mut descriptors, model);
     }
@@ -365,10 +362,7 @@ fn replace_descriptors(
         replace_descriptor(&mut binding.field, replacements);
         replace_descriptor(&mut binding.source, replacements);
     }
-    replace_descriptor(
-        &mut blueprint.application.domain.descriptor,
-        replacements,
-    );
+    replace_descriptor(&mut blueprint.application.domain.descriptor, replacements);
     for model in &mut blueprint.application.domain.models {
         replace_descriptor(model, replacements);
     }

@@ -11,8 +11,8 @@ use axum::{
     },
 };
 use az_aio_nature_generated::enums::PageState;
-use az_engine::{EngineStore, page::PageInput};
-use az_remote_ui::{ComponentIndex, PageCompiler, PageDefinition, UiOp};
+use az_engine::{EngineStore, operation::OperationRequestContext, page::PageInput};
+use az_remote_ui::{ComponentIndex, PageCompiler, PageDefinition, PropertyValue, UiOp};
 use futures_util::{Stream, stream};
 use serde::Deserialize;
 use serde_json::Value;
@@ -70,6 +70,41 @@ impl RemoteUiRuntime {
             source: "开发态内置定义",
         })
     }
+
+    async fn load_data(&self, page: &PageDefinition) -> Result<Value> {
+        let Some(store) = &self.store else {
+            return Ok(Value::Object(Default::default()));
+        };
+        let mut data = serde_json::Map::new();
+        for source in &page.data_sources {
+            let operation = store
+                .get_operation(&source.operation)
+                .await?
+                .with_context(|| format!("页面数据源 operation 不存在: {}", source.operation))?;
+            let query = source
+                .parameters
+                .iter()
+                .map(|(name, value)| {
+                    Ok((
+                        name.clone(),
+                        vec![property_value(value, &Value::Null)?.to_string()],
+                    ))
+                })
+                .collect::<Result<_>>()?;
+            let invocation = store
+                .invoke_operation(OperationRequestContext {
+                    operation_key: source.operation.clone(),
+                    method: operation.method,
+                    path: Default::default(),
+                    query,
+                    body: Value::Null,
+                })
+                .await
+                .with_context(|| format!("加载页面数据源失败: {}", source.id))?;
+            data.insert(source.id.clone(), invocation.data);
+        }
+        Ok(Value::Object(data))
+    }
 }
 
 struct LoadedPage {
@@ -88,8 +123,12 @@ pub async fn page(
 ) -> WebResult<Html<String>> {
     let page_key = query.page.as_deref().unwrap_or(DEFAULT_PAGE_KEY);
     let loaded = runtime.load_page(page_key).await.map_err(internal_error)?;
+    let data = runtime
+        .load_data(&loaded.definition)
+        .await
+        .map_err(internal_error)?;
     PageCompiler::new(&runtime.components)
-        .compile(&loaded.definition, &Value::Null)
+        .compile(&loaded.definition, &data)
         .context("校验页面定义失败")
         .map_err(internal_error)?;
 
@@ -100,6 +139,11 @@ pub async fn page(
     let page_key = escape_html(&loaded.definition.key);
     let source = escape_html(loaded.source);
     let stream_url = format!("/api/remote-ui/pages/{page_key}/stream");
+    let data_url = format!("/api/remote-ui/pages/{page_key}/data");
+    let action_url = format!("/api/remote-ui/pages/{page_key}/actions");
+    let actions_json = escape_script_json(
+        &serde_json::to_string(&loaded.definition.actions).map_err(internal_error)?,
+    );
     let html = format!(
         r#"<!DOCTYPE html>
 <html lang="zh-CN">
@@ -123,7 +167,7 @@ pub async fn page(
   </header>
   <main class="remote-ui-workbench">
     <section class="remote-ui-stage" aria-label="Remote UI preview">
-      <div id="remote-ui-root" class="remote-ui-root" data-stream-url="{stream_url}"></div>
+      <div id="remote-ui-root" class="remote-ui-root" data-stream-url="{stream_url}" data-data-url="{data_url}" data-action-url="{action_url}"></div>
     </section>
     <aside class="remote-ui-events" aria-label="Component events">
       <header class="remote-ui-events-header">
@@ -134,6 +178,7 @@ pub async fn page(
     </aside>
   </main>
   <script id="remote-ui-catalog" type="application/json">{catalog_json}</script>
+  <script id="remote-ui-actions" type="application/json">{actions_json}</script>
   <script type="module" src="/assets/remote-ui.js?v=remote-ui-v3"></script>
 </body>
 </html>"#
@@ -146,8 +191,12 @@ pub async fn page_stream(
     Path(page_key): Path<String>,
 ) -> WebResult<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     let loaded = runtime.load_page(&page_key).await.map_err(internal_error)?;
+    let data = runtime
+        .load_data(&loaded.definition)
+        .await
+        .map_err(internal_error)?;
     let operations = PageCompiler::new(&runtime.components)
-        .compile(&loaded.definition, &Value::Null)
+        .compile(&loaded.definition, &data)
         .context("编译声明式页面失败")
         .map_err(internal_error)?;
     let mut events = operations
@@ -171,6 +220,61 @@ pub async fn page_stream(
     ))
 }
 
+pub async fn page_data(
+    Extension(runtime): Extension<RemoteUiRuntime>,
+    Path(page_key): Path<String>,
+) -> WebResult<Json<Value>> {
+    let loaded = runtime.load_page(&page_key).await.map_err(internal_error)?;
+    runtime
+        .load_data(&loaded.definition)
+        .await
+        .map(Json)
+        .map_err(internal_error)
+}
+
+pub async fn invoke_action(
+    Extension(runtime): Extension<RemoteUiRuntime>,
+    Path((page_key, action_id)): Path<(String, String)>,
+    Json(input): Json<Value>,
+) -> WebResult<Json<Value>> {
+    let store = runtime
+        .store
+        .as_ref()
+        .ok_or_else(|| internal_error("未配置 PostgreSQL，不能执行页面动作"))?;
+    let loaded = runtime.load_page(&page_key).await.map_err(internal_error)?;
+    let action = loaded
+        .definition
+        .actions
+        .iter()
+        .find(|action| action.id == action_id)
+        .with_context(|| format!("页面动作不存在: {action_id}"))
+        .map_err(internal_error)?;
+    let operation = store
+        .get_operation(&action.operation)
+        .await
+        .map_err(internal_error)?
+        .with_context(|| format!("页面动作 operation 不存在: {}", action.operation))
+        .map_err(internal_error)?;
+    let mut body = input.as_object().cloned().unwrap_or_default();
+    for (name, value) in &action.input {
+        body.insert(
+            name.clone(),
+            property_value(value, &input).map_err(internal_error)?,
+        );
+    }
+    let invocation = store
+        .invoke_operation(OperationRequestContext {
+            operation_key: action.operation.clone(),
+            method: operation.method,
+            path: Default::default(),
+            query: Default::default(),
+            body: Value::Object(body),
+        })
+        .await
+        .map_err(internal_error)?;
+    Ok(Json(invocation.data))
+}
+
 /// 低代码编辑器读取的 Rudi 组件能力目录。
 pub async fn component_catalog(
     Extension(runtime): Extension<RemoteUiRuntime>,
@@ -185,6 +289,18 @@ fn default_page_definition() -> Result<PageDefinition> {
 fn serialize_operation(operation: UiOp) -> serde_json::Result<(String, String)> {
     let payload = serde_json::to_string(&operation)?;
     Ok(("message".to_string(), payload))
+}
+
+fn property_value(property: &PropertyValue, data: &Value) -> Result<Value> {
+    match property {
+        PropertyValue::Literal { value } => Ok(value.clone()),
+        PropertyValue::Binding { path } => {
+            let pointer = format!("/{}", path.replace('.', "/"));
+            data.pointer(&pointer)
+                .cloned()
+                .with_context(|| format!("数据绑定不存在: {path}"))
+        }
+    }
 }
 
 fn escape_script_json(value: &str) -> String {

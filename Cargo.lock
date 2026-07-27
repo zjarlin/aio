@@ -470,7 +470,9 @@ dependencies = [
  "az-aio-nature-generated",
  "az-aio-platform",
  "az-dict-spec",
+ "az-engine",
  "az-micro-dict",
+ "az-remote-ui",
  "convert_case 0.8.0",
  "dioxus",
  "nature-compiler",
@@ -717,10 +719,12 @@ name = "az-engine"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
+ "async-trait",
  "az-aio-nature-generated",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-remote-ui",
  "evalexpr",
+ "matchit",
  "rhai",
  "serde",
  "serde_json",
@@ -798,6 +802,7 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-engine",
  "rig-core",
  "schemars",
  "serde",
@@ -4135,7 +4140,7 @@ dependencies = [
 [[package]]
 name = "nature-compiler"
 version = "0.1.0"
-source = "git+https://github.com/zjarlin/nature-compiler.git?rev=daa6e0535fb3f37a5cf6d10726bc38965d64afc6#daa6e0535fb3f37a5cf6d10726bc38965d64afc6"
+source = "git+https://github.com/zjarlin/nature-compiler.git?rev=863a5877e359103ff0e0e4823c3479e7368f717e#863a5877e359103ff0e0e4823c3479e7368f717e"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -12,7 +12,7 @@ use crate::{
         AdminCliContribution, AdminFieldContract, AdminMenuTree, AdminOperationContract,
         AdminPluginContribution, AdminPluginProvider, AdminResourceContract, BackendApiContribution,
         ContributionSet, NativePluginContext, NativePluginRuntime, NativeUiRenderer,
-        NavItemContribution, PageContribution, PluginDescriptor, ToolbarActionContribution,
+        NavItemContribution, PageContribution, PageRenderTarget, PluginDescriptor, ToolbarActionContribution,
         UiContribution,
     },
     system::{
@@ -70,7 +70,7 @@ impl AdminProvider {
                 route: page.route.clone(),
                 title: format!("{SYSTEM_DOMAIN_LABEL} · {}", page.label),
                 subtitle: page.description.clone(),
-                renderer_id: renderer_id.to_string(),
+                render_target: PageRenderTarget::Native { renderer_id: renderer_id.to_string() },
                 placeholder_mark: page.icon.clone(),
                 order: 1_000 + page.order,
             });
@@ -398,7 +398,10 @@ mod tests {
             .pages
             .iter()
             .find(|page| page.route == "/system/oauth2/clients")
-            .map(|page| page.renderer_id.as_str());
+            .and_then(|page| match &page.render_target {
+                PageRenderTarget::Native { renderer_id } => Some(renderer_id.as_str()),
+                PageRenderTarget::RemoteUi { .. } | PageRenderTarget::Contract => None,
+            });
 
         assert_eq!(renderer_id, Some(SYSTEM_RENDERER_ID));
     }

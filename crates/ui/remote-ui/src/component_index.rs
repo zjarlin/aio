@@ -16,6 +16,7 @@ pub struct IndexedComponent {
     definition: ComponentDefinition,
     properties: BTreeMap<String, ComponentPropertySpec>,
     events: BTreeMap<String, ComponentEventSpec>,
+    semantic_names: Vec<String>,
 }
 
 impl IndexedComponent {
@@ -48,6 +49,11 @@ impl IndexedComponent {
     pub fn properties(&self) -> &BTreeMap<String, ComponentPropertySpec> {
         &self.properties
     }
+
+    #[must_use]
+    pub fn semantic_names(&self) -> &[String] {
+        &self.semantic_names
+    }
 }
 
 /// 由当前 Rudi Context 中全部组件 provider 派生出的只读查询索引。
@@ -75,7 +81,14 @@ impl ComponentIndex {
             let definition = component.definition();
             let properties = component.properties();
             let events = component.events();
-            index.insert(provider_name, definition, properties, events)?;
+            let semantic_names = component.semantic_names();
+            index.insert(
+                provider_name,
+                definition,
+                properties,
+                events,
+                semantic_names,
+            )?;
         }
         Ok(index)
     }
@@ -107,6 +120,20 @@ impl ComponentIndex {
             .collect()
     }
 
+    /// 返回自然编译器可消费的组件语义目录。
+    pub fn semantic_catalog(&self) -> Vec<(String, String, Vec<String>)> {
+        self.by_canonical_id
+            .values()
+            .map(|component| {
+                (
+                    component.canonical_id.clone(),
+                    component.dsl_name.clone(),
+                    component.semantic_names.clone(),
+                )
+            })
+            .collect()
+    }
+
     /// 按正式配置中的 canonical ID 解析组件。
     pub fn resolve_canonical(&self, canonical_id: &str) -> Result<&IndexedComponent> {
         self.by_canonical_id
@@ -121,6 +148,7 @@ impl ComponentIndex {
         definition: ComponentDefinition,
         properties: BTreeMap<String, ComponentPropertySpec>,
         events: BTreeMap<String, ComponentEventSpec>,
+        semantic_names: Vec<String>,
     ) -> Result<()> {
         let dsl_name = dsl_name_from_canonical_id(&canonical_id)?;
         if let Some(existing) = self.by_dsl_name.get(&dsl_name) {
@@ -136,6 +164,7 @@ impl ComponentIndex {
             definition,
             properties,
             events,
+            semantic_names,
         });
         self.by_dsl_name.insert(dsl_name, Arc::clone(&component));
         self.by_canonical_id.insert(canonical_id, component);

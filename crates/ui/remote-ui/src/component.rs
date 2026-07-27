@@ -57,6 +57,11 @@ pub struct ComponentCatalogEntry {
 pub trait RemoteComponent: Send + Sync {
     fn definition(&self) -> ComponentDefinition;
 
+    /// 提供给自然编译器的母语名称和别名。
+    fn semantic_names(&self) -> Vec<String> {
+        Vec::new()
+    }
+
     fn properties(&self) -> BTreeMap<String, ComponentPropertySpec> {
         BTreeMap::new()
     }
@@ -66,7 +71,7 @@ pub trait RemoteComponent: Send + Sync {
     }
 }
 
-pub(crate) type DynRemoteComponent = Arc<dyn RemoteComponent>;
+pub type DynRemoteComponent = Arc<dyn RemoteComponent>;
 
 pub(crate) fn bind_component<T>(component: T) -> DynRemoteComponent
 where

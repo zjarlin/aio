@@ -3,6 +3,9 @@
 use std::env;
 
 use anyhow::{Context, bail};
+use az_engine::operation::{
+    OperationDraft, OperationExecutorDefinition, OperationPlan, OperationPlanStep,
+};
 use rig::providers::openai;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,12 +27,61 @@ pub struct GeneratedOperationDraft {
     pub description: String,
     /// HTTP 方法，首版只能是 GET 或 POST。
     pub method: String,
-    /// 纯计算 Rhai 源码，最后一个表达式必须是可序列化返回值。
-    pub source_text: String,
+    /// 领域模型的母语名称，由宿主规范化后进入 Blueprint。
+    pub model_name: String,
+    /// 受控执行步骤，不包含脚本源码。
+    pub steps: Vec<GeneratedOperationPlanStep>,
     /// JSON Schema object，描述请求 body 和 query 的约束。
     pub input_schema: Value,
     /// JSON Schema object，描述 Rhai 返回值。
     pub output_schema: Value,
+}
+
+/// Agent 可选择的有限操作步骤。
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum GeneratedOperationPlanStep {
+    ValidateInput,
+    QueryRecords,
+    LoadRecord,
+    CreateRecord,
+    UpdateRecord,
+    DeleteRecord,
+    ReturnResult,
+}
+
+impl GeneratedOperationDraft {
+    /// 把 Agent 推导转换为 Engine 强类型草稿，执行策略由宿主补齐。
+    pub fn into_operation_draft(self) -> OperationDraft {
+        let steps = self
+            .steps
+            .into_iter()
+            .map(|step| match step {
+                GeneratedOperationPlanStep::ValidateInput => OperationPlanStep::ValidateInput,
+                GeneratedOperationPlanStep::QueryRecords => OperationPlanStep::QueryRecords,
+                GeneratedOperationPlanStep::LoadRecord => OperationPlanStep::LoadRecord,
+                GeneratedOperationPlanStep::CreateRecord => OperationPlanStep::CreateRecord,
+                GeneratedOperationPlanStep::UpdateRecord => OperationPlanStep::UpdateRecord,
+                GeneratedOperationPlanStep::DeleteRecord => OperationPlanStep::DeleteRecord,
+                GeneratedOperationPlanStep::ReturnResult => OperationPlanStep::ReturnResult,
+            })
+            .collect();
+        OperationDraft {
+            operation_key: self.operation_key,
+            display_name: self.display_name,
+            description: self.description,
+            method: self.method,
+            executor: OperationExecutorDefinition::Plan(OperationPlan {
+                model_name: self.model_name,
+                steps,
+            }),
+            input_schema: self.input_schema,
+            output_schema: self.output_schema,
+            capability_policy: serde_json::json!({}),
+            timeout_ms: 3_000,
+            generated_by_model: None,
+        }
+    }
 }
 
 /// operation Agent 的生成结果。
@@ -142,20 +194,16 @@ fn first_env<const N: usize>(names: [&str; N]) -> Option<String> {
 
 fn operation_generation_contract() -> &'static str {
     r#"
-你负责为 AIO 低代码 engine 生成可立即试运行的 operation 草稿。
+你负责为 AIO 低代码 engine 生成可验证的强类型 operation 计划。
 
 必须遵守以下契约：
 - operation_key 只能包含 ASCII 字母、数字、点、横线和下划线。
 - method 只能是 GET 或 POST。
-- source_text 必须是合法 Rhai，最后一个表达式必须返回 JSON 可序列化的值。
-- 可用变量只有 request、body、query、operation_key、method。
-- query 的每个字段都是字符串数组，例如 query.tag[0]。
-- 不得使用 eval、文件系统、网络、数据库、shell、环境变量或未声明函数。
+- model_name 必须逐字引用输入中出现的母语模型名称。
+- steps 只能使用结构化输出 Schema 中声明的步骤，最后一步必须是 return_result。
+- 不得返回 Rust、SQL、Rhai、WASM、文件系统、网络、shell、环境变量或任意源码。
 - input_schema 和 output_schema 必须是 JSON Schema object。
-- 对缺失字段给出显式判断或领域默认值，不要生成静默吞错的占位逻辑。
-
-合法 source_text 示例：
-#{ operation: operation_key, device_id: body.deviceId, start_time: query.startTime[0] }
+- 对写入操作必须先 validate_input，再执行 create_record 或 update_record。
 "#
 }
 
@@ -168,9 +216,9 @@ mod tests {
         let contract = operation_generation_contract();
 
         // Agent 只能生成受控 Rhai，不能自行扩展系统能力或执行器类型。
-        assert!(contract.contains("source_text"));
-        assert!(contract.contains("不得使用 eval"));
-        assert!(!contract.contains("executor_kind"));
+        assert!(contract.contains("steps"));
+        assert!(contract.contains("不得返回 Rust"));
+        assert!(!contract.contains("source_text"));
     }
 
     #[test]

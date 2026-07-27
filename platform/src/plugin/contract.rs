@@ -261,9 +261,18 @@ pub struct PageContribution {
     pub route: String,
     pub title: String,
     pub subtitle: String,
-    pub renderer_id: String,
+    pub render_target: PageRenderTarget,
     pub placeholder_mark: String,
     pub order: i32,
+}
+
+/// Admin shell 页面内容的强类型渲染目标。
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PageRenderTarget {
+    Native { renderer_id: String },
+    RemoteUi { page_key: String },
+    Contract,
 }
 
 /// Browser-side route contribution for a compiled-in admin plugin.

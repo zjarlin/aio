@@ -9,8 +9,8 @@ use az_aio_nature_generated::enums::{
 use az_aio_platform::plugin::contract::{
     AdminCliContribution, AdminMenuNode, AdminMenuSection, AdminMenuTree, BackendApiContribution,
     ContributionSet, DynAdminPluginProvider, NativePluginContext, NativePluginProvider,
-    NativePluginRuntime, NativeUiRenderer, NavItemContribution, PageContribution, PluginDependency,
-    PluginDescriptor, UiContribution,
+    NativePluginRuntime, NativeUiRenderer, NavItemContribution, PageContribution, PageRenderTarget,
+    PluginDependency, PluginDescriptor, UiContribution,
 };
 use az_engine::EngineStore;
 use rudi::Singleton;
@@ -70,7 +70,9 @@ impl NativePluginProvider for IotCenterPlugin {
                 route: ROUTE.to_string(),
                 title: "物联网中心".to_string(),
                 subtitle: "产品、网关、设备、遥测、告警".to_string(),
-                renderer_id: RENDERER_ID.to_string(),
+                render_target: PageRenderTarget::Native {
+                    renderer_id: RENDERER_ID.to_string(),
+                },
                 placeholder_mark: "⌁".to_string(),
                 order: 40,
             }],

@@ -12,7 +12,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use toasty::stmt::{List, Query};
 
-use crate::validation::text;
+use crate::{
+    operation::{DynOperationCapabilityProvider, OperationCapabilityCatalog},
+    validation::text,
+};
 
 /// engine Toasty 表名前缀。
 pub const TABLE_NAME_PREFIX: &str = "engine_";
@@ -242,6 +245,7 @@ pub enum HookCommand {
 #[derive(Clone)]
 pub struct EngineStore {
     pub(crate) db: Arc<tokio::sync::Mutex<toasty::Db>>,
+    pub(crate) operation_capabilities: OperationCapabilityCatalog,
 }
 
 /// engine 执行器。
@@ -273,12 +277,25 @@ impl EngineStore {
     pub fn new(db: toasty::Db) -> Self {
         Self {
             db: Arc::new(tokio::sync::Mutex::new(db)),
+            operation_capabilities: OperationCapabilityCatalog::default(),
         }
     }
 
     /// 复用应用级 Toasty 执行器单例。
     pub fn from_shared_db(db: Arc<tokio::sync::Mutex<toasty::Db>>) -> Self {
-        Self { db }
+        Self {
+            db,
+            operation_capabilities: OperationCapabilityCatalog::default(),
+        }
+    }
+
+    /// 注入由 Rudi 收集的运行期领域能力。
+    pub fn with_operation_capabilities(
+        mut self,
+        providers: Vec<DynOperationCapabilityProvider>,
+    ) -> Self {
+        self.operation_capabilities = OperationCapabilityCatalog::new(providers);
+        self
     }
 
     /// 创建执行器。
@@ -1118,6 +1135,8 @@ pub fn engine_models() -> toasty::ModelSet {
         crate::operation::OperationRevision,
         crate::operation::OperationRun,
         crate::page::PageRecord,
+        crate::route::ApplicationDeploymentRecord,
+        crate::route::RouteDefinitionRecord,
     )
 }
 

@@ -14,7 +14,7 @@ pub(crate) use az_aio_nature_generated::enums::{ComponentPropertyKind, Component
 pub use compiler::PageCompiler;
 pub use component::{
     ComponentCatalogEntry, ComponentDefinition, ComponentEventSpec, ComponentPropertySpec,
-    ComponentSpec,
+    ComponentSpec, DynRemoteComponent, RemoteComponent,
 };
 pub use component_index::{ComponentIndex, IndexedComponent};
 pub use contract::{UiNode, UiOp};

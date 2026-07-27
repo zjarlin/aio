@@ -1,8 +1,8 @@
 use rudi::Singleton;
 
 use crate::component::{
-    ComponentBehavior, ComponentDefinition, ComponentShape, RemoteComponent, bind_component,
-    spec_with_behavior,
+    ComponentBehavior, ComponentDefinition, ComponentPropertyKind, ComponentShape,
+    RemoteComponent, bind_component, properties, property, spec_with_behavior,
 };
 
 /// 带滚动边界的数据表格。
@@ -11,6 +11,10 @@ use crate::component::{
 pub struct Table;
 
 impl RemoteComponent for Table {
+    fn semantic_names(&self) -> Vec<String> {
+        vec!["表格".to_string(), "列表".to_string()]
+    }
+
     fn definition(&self) -> ComponentDefinition {
         ComponentDefinition {
             shape: ComponentShape::Container,
@@ -20,5 +24,12 @@ impl RemoteComponent for Table {
                 ComponentBehavior::Table,
             ),
         }
+    }
+
+    fn properties(&self) -> std::collections::BTreeMap<String, crate::ComponentPropertySpec> {
+        properties(&[
+            ("source", property(ComponentPropertyKind::Text, false)),
+            ("columns", property(ComponentPropertyKind::Text, false)),
+        ])
     }
 }

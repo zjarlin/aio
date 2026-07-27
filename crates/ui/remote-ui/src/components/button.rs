@@ -12,6 +12,10 @@ use crate::component::{
 pub struct Button;
 
 impl RemoteComponent for Button {
+    fn semantic_names(&self) -> Vec<String> {
+        vec!["按钮".to_string(), "操作".to_string()]
+    }
+
     fn definition(&self) -> ComponentDefinition {
         ComponentDefinition {
             shape: ComponentShape::Leaf,

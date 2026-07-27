@@ -1,15 +1,17 @@
 const catalogElement = document.querySelector('#remote-ui-catalog');
+const actionsElement = document.querySelector('#remote-ui-actions');
 const root = document.querySelector('#remote-ui-root');
 const replayButton = document.querySelector('#remote-ui-replay');
 const statusElement = document.querySelector('#remote-ui-status');
 const eventLog = document.querySelector('#remote-ui-event-log');
 const eventCount = document.querySelector('#remote-ui-event-count');
 
-if (!catalogElement || !root || !replayButton || !statusElement || !eventLog || !eventCount) {
+if (!catalogElement || !actionsElement || !root || !replayButton || !statusElement || !eventLog || !eventCount) {
   throw new Error('Remote UI bootstrap elements are incomplete');
 }
 
 const catalog = JSON.parse(catalogElement.textContent || '{}');
+const actions = new Map(JSON.parse(actionsElement.textContent || '[]').map((action) => [action.id, action]));
 const nodesById = new Map();
 let mountStack = [root];
 let kindStack = [];
@@ -42,10 +44,10 @@ function connect() {
   source.onmessage = (event) => {
     applyOperation(JSON.parse(event.data));
   };
-  source.addEventListener('done', () => {
+  source.addEventListener('done', async () => {
     source?.close();
     source = null;
-    setStatus('已完成', 'ready');
+    await refreshData();
   });
   source.onerror = () => {
     source?.close();
@@ -114,6 +116,8 @@ function renderNode(node) {
   const element = document.createElement(spec.html_tag);
   applySpec(element, node, spec);
   if (spec.behavior === 'table') {
+    element.dataset.source = node.attributes.source || '';
+    element.dataset.columns = node.attributes.columns || '';
     const wrapper = document.createElement('div');
     wrapper.className = 'remote-ui-table-wrapper relative w-full overflow-x-auto rounded-xl border';
     wrapper.append(element);
@@ -231,9 +235,81 @@ function updateProgress(element, attributes) {
 function bindAction(element, action) {
   if (!action) return;
   element.dataset.action = action;
-  element.addEventListener('click', () => {
-    recordEvent('button.click', { action });
+  element.addEventListener('click', async () => {
+    const definition = actions.get(action);
+    if (!definition) {
+      recordEvent('动作不存在', { action });
+      return;
+    }
+    if (definition.confirmation && !window.confirm(definition.confirmation)) return;
+    const body = Object.fromEntries(
+      [...root.querySelectorAll('input[name]')].map((input) => [input.name, input.value]),
+    );
+    element.disabled = true;
+    setStatus('正在执行', 'streaming');
+    try {
+      const response = await fetch(`${root.dataset.actionUrl}/${encodeURIComponent(action)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      recordEvent('动作完成', { action, data });
+      await refreshData();
+    } catch (error) {
+      setStatus('执行失败', 'error');
+      recordEvent('动作失败', { action, message: String(error) });
+    } finally {
+      element.disabled = false;
+    }
   });
+}
+
+async function refreshData() {
+  try {
+    const response = await fetch(root.dataset.dataUrl, { headers: { accept: 'application/json' } });
+    if (!response.ok) throw new Error(await response.text());
+    const sources = await response.json();
+    for (const table of root.querySelectorAll('table[data-source]')) {
+      renderTable(table, sources[table.dataset.source]);
+    }
+    setStatus('数据已同步', 'ready');
+  } catch (error) {
+    setStatus('数据加载失败', 'error');
+    recordEvent('数据加载失败', { message: String(error) });
+  }
+}
+
+function renderTable(table, source) {
+  const rows = Array.isArray(source) ? source : (source?.d || source?.data || []);
+  const columns = (table.dataset.columns || '')
+    .split(',')
+    .filter(Boolean)
+    .map((column) => {
+      const [field, label = field] = column.split(':');
+      return { field, label };
+    });
+  const head = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  for (const column of columns) {
+    const cell = document.createElement('th');
+    cell.textContent = column.label;
+    headerRow.append(cell);
+  }
+  head.append(headerRow);
+  const body = document.createElement('tbody');
+  for (const row of rows) {
+    const tableRow = document.createElement('tr');
+    for (const column of columns) {
+      const cell = document.createElement('td');
+      const value = row?.[column.field];
+      cell.textContent = value == null ? '' : String(value);
+      tableRow.append(cell);
+    }
+    body.append(tableRow);
+  }
+  table.replaceChildren(head, body);
 }
 
 function rememberNode(node, element) {

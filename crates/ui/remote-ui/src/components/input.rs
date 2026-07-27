@@ -12,6 +12,10 @@ use crate::component::{
 pub struct Input;
 
 impl RemoteComponent for Input {
+    fn semantic_names(&self) -> Vec<String> {
+        vec!["输入框".to_string(), "表单字段".to_string()]
+    }
+
     fn definition(&self) -> ComponentDefinition {
         ComponentDefinition {
             shape: ComponentShape::Leaf,

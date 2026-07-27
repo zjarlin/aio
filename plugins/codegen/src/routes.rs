@@ -93,7 +93,6 @@ async fn publish_revision_handler(
     ensure_local_client(peer).map_err(ApiError::from)?;
     state
         .service
-        .store()
         .publish_revision(&revision_id, az_aio_nature_generated::ARTIFACT_HASH)
         .await
         .map(ok_json)

@@ -176,7 +176,7 @@ impl EngineStore {
     }
 }
 
-fn validate_page_input(input: &PageInput) -> Result<()> {
+pub(crate) fn validate_page_input(input: &PageInput) -> Result<()> {
     validate_page_key(&input.definition.key)?;
     ensure!(
         input.definition.schema_version == PAGE_SCHEMA_VERSION,

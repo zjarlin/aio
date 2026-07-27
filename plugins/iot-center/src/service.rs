@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 use az_aio_nature_generated::enums::IotOnlineStatus;
-use az_aio_nature_generated::structs::EnvironmentalTelemetry;
+use az_aio_nature_generated::structs::EnvironmentTelemetry;
 use az_engine::{EngineStore, FieldInput, ModelInput, PageParams};
 use serde_json::{Value, json};
 
@@ -358,7 +358,7 @@ impl IotService {
     }
 }
 
-fn prepare_fixture_telemetry(values: &BTreeMap<String, Value>) -> Result<EnvironmentalTelemetry> {
+fn prepare_fixture_telemetry(values: &BTreeMap<String, Value>) -> Result<EnvironmentTelemetry> {
     az_aio_nature_generated::functions::process_telemetry(values)
         .context("模拟遥测解码或领域校验失败")
 }

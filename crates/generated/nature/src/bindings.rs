@@ -51,8 +51,8 @@ pub fn decode_environment_telemetry(
     source: &std::collections::BTreeMap<String, serde_json::Value>,
 ) -> anyhow::Result<crate::structs::EnvironmentTelemetry> {
     let value = crate::structs::EnvironmentTelemetry {
-        temperature: (read_decimal(source, "raw_temperature")?) / 10f64,
-        humidity: (read_decimal(source, "raw_humidity")?) / 10f64,
+        temperature: (read_decimal(source, "temp_x10")?) / 10f64,
+        humidity: (read_decimal(source, "humidity_x10")?) / 10f64,
     };
     crate::validators::validate_environment_telemetry(&value)?;
     Ok(value)

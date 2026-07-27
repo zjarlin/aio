@@ -568,6 +568,7 @@ mod tests {
     use crate::plugin::contract::{
         AdminMenuNode, AdminMenuSection, AdminPluginContribution, AdminPluginProvider,
         BackendApiContribution, ClientPageContribution, NativePluginRuntime, PageContribution,
+        PageRenderTarget,
     };
 
     use super::*;
@@ -612,7 +613,7 @@ mod tests {
                         route: self.route.to_string(),
                         title: self.id.to_string(),
                         subtitle: "测试页面".to_string(),
-                        renderer_id: format!("{}.page", self.id),
+                        render_target: PageRenderTarget::Native { renderer_id: format!("{}.page", self.id) },
                         placeholder_mark: "T".to_string(),
                         order: 10,
                     }],

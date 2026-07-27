@@ -1,5 +1,5 @@
 use az_aio_platform::plugin::contract::{
-    BackendApiContribution, ContributionSet, NavItemContribution, PageContribution,
+    BackendApiContribution, ContributionSet, NavItemContribution, PageContribution, PageRenderTarget,
     PluginDescriptor, UiContribution,
 };
 use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
@@ -36,7 +36,7 @@ pub fn contributions() -> ContributionSet {
             route: ROUTE.to_string(),
             title: "算法中心".to_string(),
             subtitle: "9 个视觉算法组件 · 目录与契约".to_string(),
-            renderer_id: RENDERER_ID.to_string(),
+            render_target: PageRenderTarget::Native { renderer_id: RENDERER_ID.to_string() },
             placeholder_mark: "◈".to_string(),
             order: 70,
         }],

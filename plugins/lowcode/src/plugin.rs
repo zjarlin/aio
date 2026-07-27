@@ -8,11 +8,13 @@ use az_aio_platform::plugin::contract::{
     AdminCliContribution, AdminFieldContract, AdminMenuNode, AdminMenuSection, AdminMenuTree,
     AdminOperationContract, AdminResourceContract, BackendApiContribution, ContributionSet,
     DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
-    NativeUiRenderer, NavItemContribution, PageContribution, PluginDescriptor, UiContribution,
+    NativeUiRenderer, NavItemContribution, PageContribution, PageRenderTarget, PluginDescriptor,
+    UiContribution,
 };
 use az_engine::operation::{
-    OP_OPERATIONS_CREATE, OP_OPERATIONS_INVOKE, OP_OPERATIONS_LIST, OP_OPERATIONS_PUBLISH,
-    OPERATION_INVOKE_PATH_TEMPLATE, OPERATION_PUBLISH_PATH_TEMPLATE, OPERATIONS_PATH,
+    DynOperationCapabilityProvider, OP_OPERATIONS_CREATE, OP_OPERATIONS_INVOKE, OP_OPERATIONS_LIST,
+    OP_OPERATIONS_PUBLISH, OPERATION_INVOKE_PATH_TEMPLATE, OPERATION_PUBLISH_PATH_TEMPLATE,
+    OPERATIONS_PATH,
 };
 use az_engine::page::{
     OP_PAGES_CREATE, OP_PAGES_DELETE, OP_PAGES_GET, OP_PAGES_LIST, OP_PAGES_UPDATE,
@@ -39,7 +41,9 @@ const ROUTE: &str = "/lowcode";
 const API_PREFIX: &str = "/api/engine";
 
 #[derive(Default)]
-pub struct LowcodePlugin;
+pub struct LowcodePlugin {
+    operation_capabilities: Vec<DynOperationCapabilityProvider>,
+}
 
 impl NativePluginProvider for LowcodePlugin {
     fn descriptor(&self) -> PluginDescriptor {
@@ -75,7 +79,9 @@ impl NativePluginProvider for LowcodePlugin {
                 route: ROUTE.into(),
                 title: "低代码引擎".into(),
                 subtitle: "模型、字段、钩子、记录和动态接口统一管理".into(),
-                renderer_id: RENDERER_ID.into(),
+                render_target: PageRenderTarget::Native {
+                    renderer_id: RENDERER_ID.into(),
+                },
                 placeholder_mark: "▣".into(),
                 order: 50,
             }],
@@ -118,7 +124,8 @@ impl NativePluginProvider for LowcodePlugin {
         let shared_db = context
             .shared_db
             .ok_or_else(|| anyhow!("lowcode 插件启动需要共享 Db 单例"))?;
-        let store = store_from_shared_db(shared_db);
+        let store = store_from_shared_db(shared_db)
+            .with_operation_capabilities(self.operation_capabilities.clone());
         install_store(store.clone());
 
         Ok(NativePluginRuntime {
@@ -233,8 +240,12 @@ impl NativePluginProvider for LowcodePlugin {
 }
 
 #[Singleton(name = "lowcode")]
-pub fn lowcode_plugin() -> DynAdminPluginProvider {
-    Arc::new(LowcodePlugin)
+pub fn lowcode_plugin(
+    #[di(vec)] operation_capabilities: Vec<DynOperationCapabilityProvider>,
+) -> DynAdminPluginProvider {
+    Arc::new(LowcodePlugin {
+        operation_capabilities,
+    })
 }
 
 fn backend_api_contributions() -> Vec<BackendApiContribution> {
@@ -683,7 +694,7 @@ mod tests {
 
     #[test]
     fn contributions_include_content_sidebar_and_new_api_prefix() {
-        let contributions = match LowcodePlugin.contributions() {
+        let contributions = match LowcodePlugin::default().contributions() {
             Ok(value) => value,
             Err(error) => panic!("贡献声明应创建成功: {error}"),
         };
@@ -707,7 +718,7 @@ mod tests {
 
     #[test]
     fn runtime_without_database_url_fails() {
-        let error = match LowcodePlugin.runtime(NativePluginContext::default()) {
+        let error = match LowcodePlugin::default().runtime(NativePluginContext::default()) {
             Ok(_) => String::new(),
             Err(error) => error.to_string(),
         };
@@ -718,7 +729,7 @@ mod tests {
 
     #[test]
     fn admin_menu_does_not_expose_old_screen_entries() {
-        let tree = LowcodePlugin.admin_menu(&ContributionSet::default());
+        let tree = LowcodePlugin::default().admin_menu(&ContributionSet::default());
         let serialized = match serde_json::to_string(&tree) {
             Ok(value) => value,
             Err(error) => panic!("菜单应可序列化: {error}"),
@@ -735,7 +746,7 @@ mod tests {
 
     #[test]
     fn resources_reference_engine_tables_only() {
-        let resources = LowcodePlugin.admin_resources();
+        let resources = LowcodePlugin::default().admin_resources();
 
         // 资源契约不再引用旧的低代码表。
         let old_prefix = ["biz", "lowcode"].join("_");

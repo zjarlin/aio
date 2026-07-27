@@ -9,11 +9,12 @@ use axum::{
     extract::{RawQuery, State},
     http::{Method, StatusCode},
     response::{IntoResponse, Redirect, Response},
-    routing::{get, post},
+    routing::{any, get, post},
 };
 use az_aio_platform::core::api_error::{ApiError, ApiForm, ApiJson, ApiPath, parse_usize_param};
 use az_engine::operation::{
-    OperationDraft, OperationRequestContext, OperationRevisionInput, OperationTestInput,
+    OperationDraft, OperationExecutorDefinition, OperationRequestContext, OperationRevisionInput,
+    OperationTestInput,
 };
 use az_engine::page::PageInput;
 use az_engine::{EngineStore, FieldInput, HookInput, ModelInput, PageParams};
@@ -27,6 +28,7 @@ pub struct LowcodeApiState {
 /// 构建 lowcode 插件的新 engine API 路由。
 pub fn engine_router(state: LowcodeApiState) -> Router {
     Router::new()
+        .route("/api/app/{*path}", any(invoke_application_route))
         .route("/api/engine/models", get(list_models).post(create_model))
         .route(
             "/api/engine/models/{model_name}",
@@ -88,6 +90,32 @@ pub fn engine_router(state: LowcodeApiState) -> Router {
         )
         .route("/api/engine/ui-action", post(ui_action))
         .with_state(state)
+}
+
+async fn invoke_application_route(
+    State(state): State<LowcodeApiState>,
+    method: Method,
+    ApiPath(path): ApiPath<String>,
+    RawQuery(raw_query): RawQuery,
+    body: Bytes,
+) -> Response {
+    let body = match operation_body(&body) {
+        Ok(body) => body,
+        Err(error) => return ApiError::bad_request(error.to_string()).into_response(),
+    };
+    let query = match operation_query_from_raw(raw_query.as_deref()) {
+        Ok(query) => query,
+        Err(error) => return ApiError::bad_request(error.to_string()).into_response(),
+    };
+    let path = format!("/api/app/{path}");
+    match state
+        .store
+        .invoke_application_route(method.as_str(), &path, query, body)
+        .await
+    {
+        Ok(data) => az_aio_platform::core::api_error::ok_json(data).into_response(),
+        Err(error) => ApiError::from_anyhow(error).into_response(),
+    }
 }
 
 async fn list_pages(
@@ -675,8 +703,9 @@ fn operation_draft_from_form(form: &BTreeMap<String, String>) -> anyhow::Result<
         display_name: required_form_value(form, "display_name")?,
         description: form_value(form, "description").unwrap_or_default(),
         method: required_form_value(form, "method")?,
-        executor_kind: "rhai".to_string(),
-        source_text: required_form_value(form, "source_text")?,
+        executor: OperationExecutorDefinition::Rhai {
+            source_text: required_form_value(form, "source_text")?,
+        },
         input_schema: form_json_object(form, "input_schema")?,
         output_schema: form_json_object(form, "output_schema")?,
         capability_policy: json!({ "allow": [] }),
@@ -689,8 +718,9 @@ fn operation_revision_from_form(
     form: &BTreeMap<String, String>,
 ) -> anyhow::Result<OperationRevisionInput> {
     Ok(OperationRevisionInput {
-        executor_kind: "rhai".to_string(),
-        source_text: required_form_value(form, "source_text")?,
+        executor: OperationExecutorDefinition::Rhai {
+            source_text: required_form_value(form, "source_text")?,
+        },
         input_schema: form_json_object(form, "input_schema")?,
         output_schema: form_json_object(form, "output_schema")?,
         capability_policy: json!({ "allow": [] }),

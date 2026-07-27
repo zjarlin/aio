@@ -3,7 +3,9 @@
 //! lowcode 插件的低代码引擎 Admin 页面。
 
 use az_aio_platform::plugin::contract::NativeRenderContext;
-use az_engine::operation::{OperationDefinition, OperationRevisionView};
+use az_engine::operation::{
+    OperationDefinition, OperationExecutorDefinition, OperationRevisionView,
+};
 use az_engine::{DataRecordView, HookDefinition, MetaField, MetaModel, PageData, PageParams};
 use dioxus::prelude::*;
 use registry::ui::{
@@ -302,9 +304,9 @@ fn render_selected_operation(snapshot: &PageSnapshot, operation_key: &str) -> El
                                         }
                                     }
                                 }
-                                TableCell { Badge { "{revision.executor_kind}" } }
+                                TableCell { Badge { "{executor_label(&revision.executor)}" } }
                                 TableCell { "{revision_origin(revision)}" }
-                                TableCell { code { "{compact_script(&revision.source_text)}" } }
+                                TableCell { code { "{executor_preview(&revision.executor)}" } }
                                 TableCell {
                                     ActionForm { method: "post", action: ACTION_ENDPOINT,
                                         HiddenInput { name: "action", value: "publish_operation" }
@@ -358,7 +360,7 @@ fn render_operation_revision_form(
 ) -> Element {
     let (source_text, input_schema, output_schema, timeout_ms) = match latest_revision {
         Some(revision) => (
-            revision.source_text.clone(),
+            rhai_source(&revision.executor),
             json_text(&revision.input_schema),
             json_text(&revision.output_schema),
             revision.timeout_ms.to_string(),
@@ -1102,6 +1104,27 @@ fn compact_script(value: &str) -> String {
         .chars()
         .take(120)
         .collect()
+}
+
+fn executor_label(executor: &OperationExecutorDefinition) -> &'static str {
+    match executor {
+        OperationExecutorDefinition::Plan(_) => "plan",
+        OperationExecutorDefinition::Rhai { .. } => "rhai",
+    }
+}
+
+fn executor_preview(executor: &OperationExecutorDefinition) -> String {
+    match executor {
+        OperationExecutorDefinition::Plan(plan) => json_text(&serde_json::json!(plan)),
+        OperationExecutorDefinition::Rhai { source_text } => compact_script(source_text),
+    }
+}
+
+fn rhai_source(executor: &OperationExecutorDefinition) -> String {
+    match executor {
+        OperationExecutorDefinition::Plan(_) => String::new(),
+        OperationExecutorDefinition::Rhai { source_text } => source_text.clone(),
+    }
 }
 
 fn revision_origin(revision: &OperationRevisionView) -> String {

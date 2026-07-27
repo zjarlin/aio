@@ -1,5 +1,5 @@
 use az_aio_platform::plugin::contract::{
-    BackendApiContribution, ContributionSet, NavItemContribution, PageContribution,
+    BackendApiContribution, ContributionSet, NavItemContribution, PageContribution, PageRenderTarget,
     PluginDescriptor, SettingsDefaultContribution, SettingsSectionContribution,
     ToolbarActionContribution, UiContribution,
 };
@@ -48,7 +48,7 @@ pub fn contributions() -> ContributionSet {
             route: ROUTE.to_string(),
             title: "配置中心".to_string(),
             subtitle: "Dotfiles 监控 · 配对身份 · 路径配置".to_string(),
-            renderer_id: RENDERER_ID.to_string(),
+            render_target: PageRenderTarget::Native { renderer_id: RENDERER_ID.to_string() },
             placeholder_mark: "⚙".to_string(),
             order: 30,
         }],

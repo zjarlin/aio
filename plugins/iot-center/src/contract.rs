@@ -27,7 +27,7 @@ pub struct FixtureTelemetryRequest {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FixtureTelemetryAccepted {
-    pub telemetry: az_aio_nature_generated::structs::EnvironmentalTelemetry,
+    pub telemetry: az_aio_nature_generated::structs::EnvironmentTelemetry,
     pub last_data_at_ms: i64,
 }
 

@@ -14,7 +14,9 @@ axum.workspace = true
 az-aio-platform = { path = "../../platform" }
 az-aio-nature-generated.workspace = true
 az-dict-spec.workspace = true
+az-engine.workspace = true
 az-micro-dict.workspace = true
+az-remote-ui = { path = "../../crates/ui/remote-ui" }
 convert_case.workspace = true
 dioxus.workspace = true
 nature-compiler.workspace = true

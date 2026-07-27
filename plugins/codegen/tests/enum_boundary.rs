@@ -39,9 +39,18 @@ fn scan_rust_files(path: &Path, violations: &mut Vec<String>) -> Result<()> {
             .lines()
             .filter(|line| line.trim_start().starts_with("pub enum "))
         {
-            let allowed = ["HookCommand", "UiOp", "PropertyValue", "EdgeAuthError"]
-                .iter()
-                .any(|name| line.contains(name));
+            let allowed = [
+                "HookCommand",
+                "UiOp",
+                "PropertyValue",
+                "EdgeAuthError",
+                "PageRenderTarget",
+                "GeneratedOperationPlanStep",
+                "OperationExecutorDefinition",
+                "OperationPlanStep",
+            ]
+            .iter()
+            .any(|name| line.contains(name));
             if !allowed {
                 violations.push(format!("{}: {}", path.display(), line.trim()));
             }

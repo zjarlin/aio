@@ -1,6 +1,6 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ClientPageContribution, ContributionSet, NavItemContribution,
-    PageContribution, PluginDescriptor, ToolbarActionContribution, UiContribution,
+    PageContribution, PageRenderTarget, PluginDescriptor, ToolbarActionContribution, UiContribution,
 };
 use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
@@ -46,7 +46,7 @@ pub fn contributions() -> ContributionSet {
             title: "网盘中心".to_string(),
             subtitle: "Drive hosting, tracked items, queue, conflicts, and root aliases."
                 .to_string(),
-            renderer_id: RENDERER_ID.to_string(),
+            render_target: PageRenderTarget::Native { renderer_id: RENDERER_ID.to_string() },
             placeholder_mark: "⇄".to_string(),
             order: 40,
         }],

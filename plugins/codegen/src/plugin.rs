@@ -10,11 +10,13 @@ use az_aio_platform::plugin::contract::{
     AdminCliContribution, AdminFieldContract, AdminMenuNode, AdminMenuSection, AdminMenuTree,
     AdminResourceContract, BackendApiContribution, ContributionSet, DynAdminPluginProvider,
     NativePluginContext, NativePluginProvider, NativePluginRuntime, NativeUiRenderer,
-    NavItemContribution, PageContribution, PluginDescriptor, UiContribution,
+    NavItemContribution, PageContribution, PageRenderTarget, PluginDescriptor, UiContribution,
 };
+use az_engine::operation::DynOperationCapabilityProvider;
+use az_remote_ui::ComponentIndex;
 use nature_compiler::{
     AppliedDefault, Blueprint, CapabilityCatalog, CapabilityProvider, Compiler, CompilerCatalog,
-    Diagnostic, FixtureMapProvider, SemanticDescriptor,
+    Diagnostic, FixtureMapProvider, SemanticCapabilityDefinition, SemanticDescriptor,
 };
 use rudi::Singleton;
 use serde_json::Value;
@@ -76,17 +78,21 @@ where
 /// 由母语 revision 驱动的代码生成插件。
 pub struct CodegenPlugin {
     capabilities: Vec<Arc<dyn CapabilityProvider>>,
+    operation_capabilities: Vec<DynOperationCapabilityProvider>,
+    components: Arc<ComponentIndex>,
 }
 
 impl CodegenPlugin {
-    pub fn new(capabilities: Vec<Arc<dyn CapabilityProvider>>) -> Self {
-        Self { capabilities }
-    }
-}
-
-impl Default for CodegenPlugin {
-    fn default() -> Self {
-        Self::new(vec![Arc::new(FixtureMapCapability)])
+    pub fn new(
+        capabilities: Vec<Arc<dyn CapabilityProvider>>,
+        operation_capabilities: Vec<DynOperationCapabilityProvider>,
+        components: Arc<ComponentIndex>,
+    ) -> Self {
+        Self {
+            capabilities,
+            operation_capabilities,
+            components,
+        }
     }
 }
 
@@ -123,7 +129,9 @@ impl NativePluginProvider for CodegenPlugin {
                 route: ROUTE.to_string(),
                 title: "nature-compiler".to_string(),
                 subtitle: "母语 Blueprint 与 Rust 生成门禁".to_string(),
-                renderer_id: RENDERER_ID.to_string(),
+                render_target: PageRenderTarget::Native {
+                    renderer_id: RENDERER_ID.to_string(),
+                },
                 placeholder_mark: "⌘".to_string(),
                 order: 60,
             }],
@@ -257,19 +265,53 @@ impl NativePluginProvider for CodegenPlugin {
             .shared_db
             .ok_or_else(|| anyhow!("nature-compiler 启动需要共享 PostgreSQL Db"))?;
         let store = NatureStore::new(shared_db.shared_handle());
+        let engine_store = az_engine::EngineStore::from_shared_db(shared_db.shared_handle())
+            .with_operation_capabilities(self.operation_capabilities.clone());
         let dictionary_store =
             az_aio_platform::system::store::SystemAdminStore::from_shared(shared_db);
         let compiler = Compiler::new(
             Arc::new(NatureInferenceAgent::from_env()?),
             CompilerCatalog::new(
                 CapabilityCatalog::new(self.capabilities.clone()),
-                Vec::new(),
-                Vec::new(),
+                self.operation_capabilities
+                    .iter()
+                    .map(|provider| {
+                        let definition = provider.definition();
+                        SemanticCapabilityDefinition {
+                            descriptor: SemanticDescriptor::new(
+                                definition.native_name,
+                                &definition.code,
+                                &definition.code,
+                            ),
+                            aliases: definition.aliases,
+                            config_schema: definition.input_schema,
+                        }
+                    })
+                    .collect(),
+                self.components
+                    .semantic_catalog()
+                    .into_iter()
+                    .filter_map(|(_canonical_id, dsl_name, semantic_names)| {
+                        let native_name = semantic_names.first()?.clone();
+                        Some(SemanticCapabilityDefinition {
+                            descriptor: SemanticDescriptor::new(native_name, &dsl_name, &dsl_name),
+                            aliases: semantic_names,
+                            config_schema: serde_json::json!({"type": "object"}),
+                        })
+                    })
+                    .collect(),
             ),
         );
         let output_root =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../crates/generated/nature");
-        let service = NatureService::new(store, compiler, output_root, dictionary_store);
+        let service = NatureService::new(
+            store,
+            compiler,
+            output_root,
+            dictionary_store,
+            self.components.clone(),
+            engine_store,
+        );
         let recovery_service = service.clone();
         tokio::spawn(async move {
             if let Err(error) = recovery_service.resume_incomplete().await {
@@ -327,8 +369,14 @@ fn admin_field(
 #[Singleton(name = "nature-compiler")]
 pub fn codegen_plugin(
     #[di(vec)] capabilities: Vec<Arc<dyn CapabilityProvider>>,
+    #[di(vec)] operation_capabilities: Vec<DynOperationCapabilityProvider>,
+    components: Arc<ComponentIndex>,
 ) -> DynAdminPluginProvider {
-    Arc::new(CodegenPlugin::new(capabilities))
+    Arc::new(CodegenPlugin::new(
+        capabilities,
+        operation_capabilities,
+        components,
+    ))
 }
 
 fn backend_api(
@@ -354,7 +402,10 @@ mod tests {
 
     #[test]
     fn plugin_exposes_only_nature_revision_operations() -> anyhow::Result<()> {
-        let plugin = CodegenPlugin::default();
+        let mut context = rudi::Context::auto_register();
+        let components = Arc::new(ComponentIndex::from_context(&mut context)?);
+        let plugin =
+            CodegenPlugin::new(vec![Arc::new(FixtureMapCapability)], Vec::new(), components);
         let contributions = plugin.contributions()?;
 
         assert!(contributions.pages.iter().any(|page| page.route == ROUTE));

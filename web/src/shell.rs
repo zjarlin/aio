@@ -2,7 +2,7 @@ use az_aio_nature_generated::enums::AdminMenuNodeKind;
 use az_aio_platform::plugin::{
     contract::{
         AdminMenuNode, AdminMenuSection, AdminResourceContract, NativeRenderContext,
-        PageContribution,
+        PageContribution, PageRenderTarget,
     },
     host::{self, HostSnapshot},
 };
@@ -322,15 +322,28 @@ fn menu_node(node: AdminMenuNode, active_route: String, depth: usize) -> Element
 
 fn route_content(snapshot: HostSnapshot, active_route: String, api_base_url: String) -> Element {
     match active_page(&snapshot, &active_route).cloned() {
-        Some(page) => {
-            if let Some(renderer) = host::native_renderer(&snapshot, &page.renderer_id) {
-                return renderer(NativeRenderContext {
-                    active_route,
-                    api_base_url,
-                });
+        Some(page) => match &page.render_target {
+            PageRenderTarget::Native { renderer_id } => {
+                if let Some(renderer) = host::native_renderer(&snapshot, renderer_id) {
+                    return renderer(NativeRenderContext {
+                        active_route,
+                        api_base_url,
+                    });
+                }
+                page_content(snapshot, page, active_route)
             }
-            page_content(snapshot, page, active_route)
-        }
+            PageRenderTarget::RemoteUi { page_key } => {
+                let source = format!("/remote-ui?page={}", urlencoding::encode(page_key));
+                rsx! {
+                    iframe {
+                        class: "h-[calc(100vh-7rem)] min-h-[38rem] w-full border-0 bg-background",
+                        title: "{page.title}",
+                        src: source,
+                    }
+                }
+            }
+            PageRenderTarget::Contract => page_content(snapshot, page, active_route),
+        },
         None => missing_route(snapshot.pages, active_route),
     }
 }
@@ -547,7 +560,9 @@ mod tests {
             route: "/demo".to_string(),
             title: "Demo Page".to_string(),
             subtitle: "Rendered by Dioxus".to_string(),
-            renderer_id: "demo.page".to_string(),
+            render_target: PageRenderTarget::Native {
+                renderer_id: "demo.page".to_string(),
+            },
             placeholder_mark: "D".to_string(),
             order: 1,
         });

@@ -1,8 +1,8 @@
 # az-operation-agent
 
-`az-operation-agent` 使用 Rig typed extractor，把自然语言接口需求转换为 AIO engine 可校验的 Rhai operation 草稿。
+`az-operation-agent` 使用 Rig typed extractor，把自然语言接口需求转换为 AIO engine 可校验的强类型 `OperationPlan`。
 
-本 crate 只负责生成强类型草稿，不直接写 PostgreSQL、不发布 operation，也不执行模型生成的源码。执行器类型、capability policy、资源限制和发布状态由 engine 宿主决定。
+本 crate 只负责生成强类型草稿，不直接写 PostgreSQL、不发布 operation，也不生成或执行 Rust、SQL、Rhai、WASM。能力策略、资源限制和发布状态由 engine 宿主决定。
 
 运行时读取：
 

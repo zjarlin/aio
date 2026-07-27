@@ -1,6 +1,6 @@
 use az_aio_platform::plugin::contract::{
     BackendApiContribution, ClientPageContribution, ContributionSet, NavItemContribution,
-    PageContribution, PluginDescriptor, ToolbarActionContribution, UiContribution,
+    PageContribution, PageRenderTarget, PluginDescriptor, ToolbarActionContribution, UiContribution,
 };
 use az_aio_nature_generated::enums::{PluginActivation, PluginKind, UiContributionSlot};
 
@@ -47,7 +47,7 @@ pub fn contributions() -> ContributionSet {
             route: ROUTE.to_string(),
             title: "软件中心".to_string(),
             subtitle: "安装包扫描 · 归档目标 · 目录关联".to_string(),
-            renderer_id: RENDERER_ID.to_string(),
+            render_target: PageRenderTarget::Native { renderer_id: RENDERER_ID.to_string() },
             placeholder_mark: "⬢".to_string(),
             order: 60,
         }],

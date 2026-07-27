@@ -3,6 +3,7 @@
 //! AIO 的 nature-compiler 母语编译工作台。
 
 pub mod contract;
+pub mod deployment;
 pub mod dictionary_source;
 pub mod gate;
 pub mod inference_agent;

@@ -6,11 +6,14 @@ use axum::{
     extract::{Query, State},
     middleware,
     response::Html,
-    routing::get,
+    routing::{get, post},
 };
 use az_aio_platform::{
     core::{config::AppConfig, db},
-    plugin::host,
+    plugin::{
+        contract::{PageContribution, PageRenderTarget, merge_menu_tree},
+        host,
+    },
     system::{
         api_key_auth::{SystemApiKeyAuthState, optional_system_api_key_auth},
         store::SystemAdminStore,
@@ -31,6 +34,7 @@ fn main() -> Result<()> {
     let mut di = Context::auto_register();
     let remote_ui_components =
         Arc::new(ComponentIndex::from_context(&mut di).context("收集 Remote UI 组件失败")?);
+    di.insert_singleton(remote_ui_components.clone());
     let config = di.resolve::<az_aio_platform::core::config::ConfigCenterConfig>();
 
     let port = config.port();
@@ -83,6 +87,13 @@ async fn run_web_server(
     shared_db: Option<db::Db>,
     remote_ui_runtime: remote_ui::RemoteUiRuntime,
 ) -> Result<()> {
+    let engine_store = shared_db
+        .as_ref()
+        .map(|db| az_engine::EngineStore::from_shared_db(db.shared_handle()));
+    let page_state = PageState {
+        base_snapshot: snapshot.clone(),
+        engine_store,
+    };
     let api_key_auth_state = if database_url
         .as_ref()
         .is_some_and(|value| !value.trim().is_empty())
@@ -101,7 +112,6 @@ async fn run_web_server(
     let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
     let client_dist_dir = client_dist_dir();
 
-    let page_snapshot = snapshot.clone();
     let page_router = Router::new()
         .route("/", get(root_page))
         .route("/gateway", get(root_page))
@@ -112,6 +122,14 @@ async fn run_web_server(
             get(remote_ui::page_stream),
         )
         .route(
+            "/api/remote-ui/pages/{page_key}/data",
+            get(remote_ui::page_data),
+        )
+        .route(
+            "/api/remote-ui/pages/{page_key}/actions/{action_id}",
+            post(remote_ui::invoke_action),
+        )
+        .route(
             "/api/remote-ui/components",
             get(remote_ui::component_catalog),
         )
@@ -120,7 +138,7 @@ async fn run_web_server(
         .nest_service("/client", ServeDir::new(&client_dist_dir))
         .nest_service("/wasm", ServeDir::new(client_dist_dir.join("wasm")))
         .layer(Extension(remote_ui_runtime))
-        .with_state(page_snapshot);
+        .with_state(page_state);
 
     let app = page_router.merge(native_router.with_state(()));
 
@@ -138,9 +156,13 @@ async fn run_web_server(
 }
 
 async fn root_page(
-    State(snapshot): State<az_aio_platform::plugin::host::HostSnapshot>,
+    State(state): State<PageState>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Html<String> {
+    let snapshot = state.snapshot().await.unwrap_or_else(|error| {
+        eprintln!("加载 active nature deployment 失败: {error:#}");
+        state.base_snapshot.clone()
+    });
     let active_route = query
         .get("route")
         .cloned()
@@ -155,13 +177,53 @@ async fn root_page(
 }
 
 async fn client_bootstrap(
-    State(snapshot): State<az_aio_platform::plugin::host::HostSnapshot>,
+    State(state): State<PageState>,
 ) -> Json<az_aio_platform::plugin::contract::ClientBootstrapPayload> {
+    let snapshot = state.snapshot().await.unwrap_or_else(|error| {
+        eprintln!("加载 active nature deployment 失败: {error:#}");
+        state.base_snapshot.clone()
+    });
     Json(host::client_bootstrap_payload(
         &snapshot,
         default_route(&snapshot),
         "",
     ))
+}
+
+#[derive(Clone)]
+struct PageState {
+    base_snapshot: az_aio_platform::plugin::host::HostSnapshot,
+    engine_store: Option<az_engine::EngineStore>,
+}
+
+impl PageState {
+    async fn snapshot(&self) -> Result<az_aio_platform::plugin::host::HostSnapshot> {
+        let mut snapshot = self.base_snapshot.clone();
+        let Some(store) = &self.engine_store else {
+            return Ok(snapshot);
+        };
+        for record in store.active_application_deployments().await? {
+            let deployment = serde_json::from_value::<codegen::deployment::ApplicationDeployment>(
+                record.manifest.0,
+            )
+            .with_context(|| format!("解析活动部署清单失败: {}", record.revision_id))?;
+            merge_menu_tree(&mut snapshot.admin_menu_tree, deployment.menu);
+            snapshot
+                .pages
+                .extend(deployment.pages.into_iter().map(|page| PageContribution {
+                    route: page.route,
+                    title: page.definition.title,
+                    subtitle: "由 nature-compiler 发布".to_string(),
+                    render_target: PageRenderTarget::RemoteUi {
+                        page_key: page.definition.key,
+                    },
+                    placeholder_mark: "N".to_string(),
+                    order: 500,
+                }));
+        }
+        snapshot.pages.sort_by_key(|page| page.order);
+        Ok(snapshot)
+    }
 }
 
 fn default_route(snapshot: &az_aio_platform::plugin::host::HostSnapshot) -> String {
@@ -212,11 +274,20 @@ mod tests {
 
     use super::*;
 
+    fn test_context() -> Context {
+        let mut context = Context::auto_register();
+        let components = Arc::new(
+            ComponentIndex::from_context(&mut context).expect("测试 Remote UI 组件目录应可构建"),
+        );
+        context.insert_singleton(components);
+        context
+    }
+
     #[test]
     fn rudi_collects_all_admin_plugin_providers() {
         enable_plugin_providers();
 
-        let mut di = Context::auto_register();
+        let mut di = test_context();
         let mut plugin_ids = di
             .resolve_by_type::<DynAdminPluginProvider>()
             .into_iter()
@@ -248,7 +319,7 @@ mod tests {
     fn rudi_menu_reserves_admin_knowledge_base_and_gateway_scenes() {
         enable_plugin_providers();
 
-        let mut di = Context::auto_register();
+        let mut di = test_context();
         let snapshot = host::load_native_snapshot(NativePluginContext::default(), &mut di);
         let labels = snapshot
             .admin_menu_tree
@@ -336,6 +407,7 @@ mod tests {
         assert_eq!(
             model_names,
             [
+                "ApplicationDeploymentRecord",
                 "AssetRecord",
                 "ConfigEntry",
                 "DataRecord",
@@ -358,6 +430,7 @@ mod tests {
                 "OperationRevision",
                 "OperationRun",
                 "PageRecord",
+                "RouteDefinitionRecord",
                 "SoftwarePackageRecord",
                 "SystemApiKeyRecord",
                 "SystemDataRecord",
@@ -371,7 +444,7 @@ mod tests {
     fn migrated_plugins_expose_matching_client_pages() {
         enable_plugin_providers();
 
-        let mut di = Context::auto_register();
+        let mut di = test_context();
         let snapshot = host::load_native_snapshot(NativePluginContext::default(), &mut di);
         let client_routes = snapshot
             .client_pages
