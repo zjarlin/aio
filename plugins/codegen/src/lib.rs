@@ -10,6 +10,7 @@ pub mod model;
 pub mod plugin;
 pub mod routes;
 pub mod service;
+mod source_template;
 pub mod store;
 pub mod ui;
 

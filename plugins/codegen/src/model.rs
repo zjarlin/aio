@@ -53,6 +53,27 @@ pub struct NatureGenerationRunRecord {
     pub finished_at_ms: i64,
 }
 
+/// 单次生成任务中的可观测阶段事件。
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, toasty::Model)]
+#[table = "nature_generation_events"]
+pub struct NatureGenerationEventRecord {
+    #[key]
+    pub id: String,
+    #[index]
+    pub run_id: String,
+    #[index]
+    pub revision_id: String,
+    pub parent_event_id: String,
+    pub sequence: i64,
+    pub stage: String,
+    pub status: String,
+    pub message: String,
+    pub metadata_json: String,
+    pub started_at_ms: i64,
+    pub finished_at_ms: i64,
+    pub duration_ms: i64,
+}
+
 /// 产品或设备模型拥有的字段数据源绑定。
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, toasty::Model)]
 #[table = "engine_field_bindings"]
@@ -79,6 +100,7 @@ pub fn nature_model_contribution() -> ToastyModelContribution {
         NatureProjectRecord,
         NatureRevisionRecord,
         NatureGenerationRunRecord,
+        NatureGenerationEventRecord,
         EngineFieldBindingRecord,
     ))
 }

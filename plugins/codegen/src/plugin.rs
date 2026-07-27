@@ -13,8 +13,8 @@ use az_aio_platform::plugin::contract::{
     NavItemContribution, PageContribution, PluginDescriptor, UiContribution,
 };
 use nature_compiler::{
-    AppliedDefault, Blueprint, CapabilityCatalog, CapabilityProvider, Compiler, Diagnostic,
-    FixtureMapProvider, SemanticDescriptor,
+    AppliedDefault, Blueprint, CapabilityCatalog, CapabilityProvider, Compiler, CompilerCatalog,
+    Diagnostic, FixtureMapProvider, SemanticDescriptor,
 };
 use rudi::Singleton;
 use serde_json::Value;
@@ -221,6 +221,18 @@ impl NativePluginProvider for CodegenPlugin {
                 ],
             ),
             nature_resource(
+                "nature.events",
+                "生成事件",
+                "nature_generation_events",
+                vec![
+                    admin_field("run_id", "生成运行", AdminFieldKind::Relation, true),
+                    admin_field("stage", "阶段", AdminFieldKind::Badge, true),
+                    admin_field("status", "状态", AdminFieldKind::Badge, true),
+                    admin_field("duration_ms", "耗时", AdminFieldKind::Number, false),
+                    admin_field("message", "消息", AdminFieldKind::Text, false),
+                ],
+            ),
+            nature_resource(
                 "nature.field-bindings",
                 "字段绑定",
                 "engine_field_bindings",
@@ -249,7 +261,11 @@ impl NativePluginProvider for CodegenPlugin {
             az_aio_platform::system::store::SystemAdminStore::from_shared(shared_db);
         let compiler = Compiler::new(
             Arc::new(NatureInferenceAgent::from_env()?),
-            CapabilityCatalog::new(self.capabilities.clone()),
+            CompilerCatalog::new(
+                CapabilityCatalog::new(self.capabilities.clone()),
+                Vec::new(),
+                Vec::new(),
+            ),
         );
         let output_root =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../crates/generated/nature");

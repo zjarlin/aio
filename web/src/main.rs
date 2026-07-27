@@ -350,6 +350,7 @@ mod tests {
                 "HookDefinition",
                 "MetaField",
                 "MetaModel",
+                "NatureGenerationEventRecord",
                 "NatureGenerationRunRecord",
                 "NatureProjectRecord",
                 "NatureRevisionRecord",

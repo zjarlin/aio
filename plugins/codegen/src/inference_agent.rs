@@ -5,8 +5,9 @@ use std::{collections::BTreeMap, env};
 use anyhow::{Context, bail};
 use async_trait::async_trait;
 use nature_compiler::{
-    Blueprint, DescriptorEncoder, FieldType, InferenceDecision, InferenceEngine, InferenceResult,
-    MotherTongueInferenceEngine, SemanticDescriptor,
+    Blueprint, CompilerCatalog, DescriptorEncoder, FieldType, InferenceDecision, InferenceEngine,
+    InferenceMetrics, InferenceMode, InferenceResult, MotherTongueInferenceEngine,
+    OperationPlanStep, SemanticDescriptor,
 };
 use rig::providers::openai;
 use schemars::JsonSchema;
@@ -26,6 +27,11 @@ struct SemanticHint {
     native_name: String,
     english_stem: String,
     field_type: Option<InferredFieldType>,
+}
+
+struct ObservedSemanticHints {
+    hints: SemanticHints,
+    metrics: InferenceMetrics,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -57,6 +63,30 @@ struct AgentConfig {
     api_key: String,
     api_base: String,
     model: String,
+    protocol: AgentProtocol,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AgentProtocol {
+    Responses,
+    ChatCompletions,
+}
+
+impl AgentProtocol {
+    fn from_env() -> anyhow::Result<Self> {
+        match first_env(["AZ_AIO_NATURE_AGENT_PROTOCOL"]).as_deref() {
+            None | Some("responses") => Ok(Self::Responses),
+            Some("chat_completions") => Ok(Self::ChatCompletions),
+            Some(value) => bail!("不支持的 nature Agent 协议: {value}"),
+        }
+    }
+
+    fn engine(self) -> &'static str {
+        match self {
+            Self::Responses => "rig.openai.responses",
+            Self::ChatCompletions => "rig.openai.chat_completions",
+        }
+    }
 }
 
 /// 先生成基础 Blueprint，再用 Rig 的强类型语义提示增强英文 stem 与歧义类型。
@@ -75,11 +105,13 @@ impl NatureInferenceAgent {
         let api_base = normalize_api_base(&api_base)?;
         let model = first_env(["AZ_AIO_NATURE_AGENT_MODEL", "OPENAI_MODEL"])
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        let protocol = AgentProtocol::from_env()?;
         Ok(Self {
             config: Some(AgentConfig {
                 api_key,
                 api_base,
                 model,
+                protocol,
             }),
         })
     }
@@ -89,26 +121,66 @@ impl NatureInferenceAgent {
         Self { config: None }
     }
 
-    async fn infer_hints(&self, source_text: &str) -> anyhow::Result<Option<SemanticHints>> {
+    async fn infer_hints(
+        &self,
+        source_text: &str,
+        catalog: &CompilerCatalog,
+    ) -> anyhow::Result<Option<ObservedSemanticHints>> {
         let Some(config) = self.config.as_ref() else {
             return Ok(None);
         };
-        let client = openai::Client::builder()
-            .api_key(&config.api_key)
-            .base_url(&config.api_base)
-            .build()
-            .context("创建 nature Rig client 失败")?;
-        let extractor = client
-            .extractor::<SemanticHints>(&config.model)
-            .preamble(inference_contract())
-            .max_tokens(4_096)
-            .retries(2)
-            .build();
-        extractor
-            .extract(source_text)
-            .await
-            .context("Rig 母语语义推导失败")
-            .map(Some)
+        let prompt = inference_prompt(source_text, catalog);
+        let response = match config.protocol {
+            AgentProtocol::Responses => {
+                let client = openai::Client::builder()
+                    .api_key(&config.api_key)
+                    .base_url(&config.api_base)
+                    .build()
+                    .context("创建 nature Rig Responses client 失败")?;
+                client
+                    .extractor::<SemanticHints>(&config.model)
+                    .preamble(inference_contract())
+                    .max_tokens(4_096)
+                    .retries(2)
+                    .build()
+                    .extract_with_usage(&prompt)
+                    .await
+            }
+            AgentProtocol::ChatCompletions => {
+                let client = openai::CompletionsClient::builder()
+                    .api_key(&config.api_key)
+                    .base_url(&config.api_base)
+                    .build()
+                    .context("创建 nature Rig Chat Completions client 失败")?;
+                client
+                    .extractor::<SemanticHints>(&config.model)
+                    .preamble(inference_contract())
+                    .max_tokens(4_096)
+                    .retries(2)
+                    .build()
+                    .extract_with_usage(&prompt)
+                    .await
+            }
+        }
+        .with_context(|| {
+            format!(
+                "Rig 母语语义推导失败: model={}, protocol={}",
+                config.model,
+                config.protocol.engine()
+            )
+        })?;
+        Ok(Some(ObservedSemanticHints {
+            hints: response.data,
+            metrics: InferenceMetrics {
+                engine: config.protocol.engine().to_string(),
+                mode: InferenceMode::Remote,
+                model: Some(config.model.clone()),
+                input_tokens: response.usage.input_tokens,
+                output_tokens: response.usage.output_tokens,
+                total_tokens: response.usage.total_tokens,
+                cached_input_tokens: response.usage.cached_input_tokens,
+            },
+        }))
     }
 }
 
@@ -118,13 +190,17 @@ impl InferenceEngine for NatureInferenceAgent {
         &self,
         source_text: &str,
         previous_blueprint: Option<&Blueprint>,
+        catalog: &CompilerCatalog,
     ) -> anyhow::Result<InferenceResult> {
         let fallback = MotherTongueInferenceEngine;
-        let mut result = fallback.infer(source_text, previous_blueprint).await?;
-        let Some(hints) = self.infer_hints(source_text).await? else {
+        let mut result = fallback
+            .infer(source_text, previous_blueprint, catalog)
+            .await?;
+        let Some(observed) = self.infer_hints(source_text, catalog).await? else {
             return Ok(result);
         };
-        apply_semantic_hints(&mut result.blueprint, previous_blueprint, hints);
+        apply_semantic_hints(&mut result.blueprint, previous_blueprint, observed.hints);
+        result.metrics = observed.metrics;
         Ok(result)
     }
 }
@@ -201,6 +277,58 @@ fn descriptors_by_native_name(blueprint: &Blueprint) -> BTreeMap<String, Semanti
         insert_descriptor(&mut descriptors, &binding.field);
         insert_descriptor(&mut descriptors, &binding.source);
     }
+    insert_descriptor(
+        &mut descriptors,
+        &blueprint.application.domain.descriptor,
+    );
+    for model in &blueprint.application.domain.models {
+        insert_descriptor(&mut descriptors, model);
+    }
+    for operation in &blueprint.application.operations {
+        insert_descriptor(&mut descriptors, &operation.descriptor);
+        insert_descriptor(&mut descriptors, &operation.model);
+        for step in &operation.steps {
+            if let OperationPlanStep::InvokeCapability { capability } = step {
+                insert_descriptor(&mut descriptors, capability);
+            }
+        }
+    }
+    for interface in &blueprint.application.interfaces {
+        insert_descriptor(&mut descriptors, &interface.descriptor);
+        insert_descriptor(&mut descriptors, &interface.operation);
+    }
+    for view in &blueprint.application.views {
+        insert_descriptor(&mut descriptors, &view.descriptor);
+        insert_descriptor(&mut descriptors, &view.model);
+        for field in &view.fields {
+            insert_descriptor(&mut descriptors, field);
+        }
+        for action in &view.actions {
+            insert_descriptor(&mut descriptors, &action.descriptor);
+            insert_descriptor(&mut descriptors, &action.operation);
+        }
+    }
+    insert_descriptor(
+        &mut descriptors,
+        &blueprint.application.navigation.descriptor,
+    );
+    insert_descriptor(
+        &mut descriptors,
+        &blueprint.application.navigation.default_view,
+    );
+    for entry in &blueprint.application.navigation.entries {
+        insert_descriptor(&mut descriptors, &entry.descriptor);
+        insert_descriptor(&mut descriptors, &entry.view);
+        for permission in &entry.permissions {
+            insert_descriptor(&mut descriptors, permission);
+        }
+    }
+    for permission in &blueprint.application.permissions {
+        insert_descriptor(&mut descriptors, &permission.descriptor);
+        for operation in &permission.operations {
+            insert_descriptor(&mut descriptors, operation);
+        }
+    }
     descriptors
 }
 
@@ -237,6 +365,59 @@ fn replace_descriptors(
         replace_descriptor(&mut binding.field, replacements);
         replace_descriptor(&mut binding.source, replacements);
     }
+    replace_descriptor(
+        &mut blueprint.application.domain.descriptor,
+        replacements,
+    );
+    for model in &mut blueprint.application.domain.models {
+        replace_descriptor(model, replacements);
+    }
+    for operation in &mut blueprint.application.operations {
+        replace_descriptor(&mut operation.descriptor, replacements);
+        replace_descriptor(&mut operation.model, replacements);
+        for step in &mut operation.steps {
+            if let OperationPlanStep::InvokeCapability { capability } = step {
+                replace_descriptor(capability, replacements);
+            }
+        }
+    }
+    for interface in &mut blueprint.application.interfaces {
+        replace_descriptor(&mut interface.descriptor, replacements);
+        replace_descriptor(&mut interface.operation, replacements);
+    }
+    for view in &mut blueprint.application.views {
+        replace_descriptor(&mut view.descriptor, replacements);
+        replace_descriptor(&mut view.model, replacements);
+        for field in &mut view.fields {
+            replace_descriptor(field, replacements);
+        }
+        for action in &mut view.actions {
+            replace_descriptor(&mut action.descriptor, replacements);
+            replace_descriptor(&mut action.operation, replacements);
+        }
+    }
+    replace_descriptor(
+        &mut blueprint.application.navigation.descriptor,
+        replacements,
+    );
+    replace_descriptor(
+        &mut blueprint.application.navigation.default_view,
+        replacements,
+    );
+    for entry in &mut blueprint.application.navigation.entries {
+        replace_descriptor(&mut entry.descriptor, replacements);
+        replace_descriptor(&mut entry.view, replacements);
+        for permission in &mut entry.permissions {
+            replace_descriptor(permission, replacements);
+        }
+    }
+    for permission in &mut blueprint.application.permissions {
+        replace_descriptor(&mut permission.descriptor, replacements);
+        for operation in &mut permission.operations {
+            replace_descriptor(operation, replacements);
+        }
+    }
+    blueprint.application.refresh_derived_paths();
 }
 
 fn replace_descriptor(
@@ -266,6 +447,24 @@ fn first_env<const N: usize>(names: [&str; N]) -> Option<String> {
         .find_map(|name| env::var(name).ok().filter(|value| !value.trim().is_empty()))
 }
 
+fn inference_prompt(source_text: &str, catalog: &CompilerCatalog) -> String {
+    let operation_capabilities = catalog
+        .operation_capabilities
+        .iter()
+        .map(|capability| capability.descriptor.native_name.as_str())
+        .collect::<Vec<_>>()
+        .join("、");
+    let view_components = catalog
+        .view_components
+        .iter()
+        .map(|capability| capability.descriptor.native_name.as_str())
+        .collect::<Vec<_>>()
+        .join("、");
+    format!(
+        "{source_text}\n\n宿主可用的母语操作能力：{operation_capabilities}\n宿主可用的母语界面组件：{view_components}"
+    )
+}
+
 fn inference_contract() -> &'static str {
     r#"
 你只负责从中文需求中推导语义提示。
@@ -288,6 +487,7 @@ mod tests {
             .infer(
                 include_str!("../../../crates/generated/nature/blueprint-source.txt"),
                 None,
+                &CompilerCatalog::with_fixture_map(),
             )
             .await?;
 

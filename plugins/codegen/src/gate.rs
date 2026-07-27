@@ -216,9 +216,16 @@ fn merge_repository_enums(
         .split_once(GENERATED_ENUMS_START)
         .map(|(foundation, _)| foundation.trim_end())
         .unwrap_or_else(|| repository_source.trim_end());
-    format!(
-        "{foundation}\n\n{GENERATED_ENUMS_START}\n{blueprint_source}\n{dictionary_source}\n{GENERATED_ENUMS_END}\n"
-    )
+    let generated = [blueprint_source.trim(), dictionary_source.trim()]
+        .into_iter()
+        .filter(|source| !source.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    if generated.is_empty() {
+        format!("{foundation}\n\n{GENERATED_ENUMS_START}\n{GENERATED_ENUMS_END}\n")
+    } else {
+        format!("{foundation}\n\n{GENERATED_ENUMS_START}\n{generated}\n{GENERATED_ENUMS_END}\n")
+    }
 }
 
 fn write_artifact(root: &Path, file: &ArtifactFile, artifact_hash: &str) -> anyhow::Result<()> {
@@ -324,5 +331,17 @@ mod tests {
         assert!(result.is_err());
         assert!(fs::read_to_string(output.join("src/lib.rs"))?.contains("KEPT"));
         Ok(())
+    }
+
+    #[test]
+    fn empty_generated_enums_do_not_create_unstable_whitespace() {
+        let repository = "pub enum Kept {}\n\n// nature-compiler 动态枚举开始\n\n\n// nature-compiler 动态枚举结束\n";
+
+        let merged = merge_repository_enums(repository, "\n", "");
+
+        assert_eq!(
+            merged,
+            "pub enum Kept {}\n\n// nature-compiler 动态枚举开始\n// nature-compiler 动态枚举结束\n"
+        );
     }
 }

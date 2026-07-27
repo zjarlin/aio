@@ -1,26 +1,15 @@
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use az_aio_codegen::gate::ArtifactGate;
-use nature_compiler::{CapabilityCatalog, CompileRequest, Compiler, MotherTongueInferenceEngine};
+use nature_compiler::{Blueprint, RustBackend};
 
 #[tokio::test]
 async fn committed_sources_match_deterministic_generation() -> Result<()> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../crates/generated/nature");
-    let source = fs::read_to_string(root.join("blueprint-source.txt"))?;
-    let compiler = Compiler::new(
-        Arc::new(MotherTongueInferenceEngine),
-        CapabilityCatalog::with_fixture_map(),
-    );
-    let result = compiler
-        .compile(CompileRequest {
-            source_text: source,
-            previous_blueprint: None,
-        })
-        .await?;
-    let Some(artifacts) = result.artifacts else {
-        bail!("提交的 fixture Blueprint 未生成 artifact");
-    };
+    let blueprint =
+        serde_json::from_str::<Blueprint>(&fs::read_to_string(root.join("blueprint.json"))?)?;
+    let artifacts = RustBackend.generate(&blueprint)?;
     let artifacts = ArtifactGate::new(&root).format_artifacts(&artifacts, None)?;
     for file in artifacts.files {
         if file.relative_path == "src/enums.rs" {

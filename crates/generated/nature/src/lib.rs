@@ -7,4 +7,4 @@ pub mod functions;
 pub mod structs;
 pub mod validators;
 
-pub const ARTIFACT_HASH: &str = "9521d5c4555cdd766a6443e63938c7555e296c91219293cbb4b2e1d310997ec8";
+pub const ARTIFACT_HASH: &str = "3787b340eeac21cf6f94baf2d91998b385a6d2f4b61748aeb9c14e22c25d1af6";

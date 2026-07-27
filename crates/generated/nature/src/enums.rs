@@ -385,5 +385,4 @@ mod tests {
 }
 
 // nature-compiler 动态枚举开始
-
 // nature-compiler 动态枚举结束

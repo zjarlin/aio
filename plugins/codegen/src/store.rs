@@ -1,6 +1,6 @@
 //! nature revision 的 PostgreSQL 读写边界。
 
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{Context, anyhow, bail};
 use az_aio_platform::core::db;
@@ -10,12 +10,35 @@ use toasty::stmt::{List, Query};
 use tokio::sync::Mutex;
 
 use crate::{
-    contract::{NatureGeneratedFile, NatureRevisionView, PublishedNatureRevision},
+    contract::{
+        NatureGeneratedFile, NatureGenerationEventView, NatureGenerationRunView,
+        NatureRevisionView, PublishedNatureRevision,
+    },
     model::{
-        EngineFieldBindingRecord, NatureGenerationRunRecord, NatureProjectRecord,
-        NatureRevisionRecord,
+        EngineFieldBindingRecord, NatureGenerationEventRecord, NatureGenerationRunRecord,
+        NatureProjectRecord, NatureRevisionRecord,
     },
 };
+
+/// 正在执行的生成阶段句柄。
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GenerationEventHandle {
+    pub id: String,
+    pub started_at_ms: i64,
+}
+
+/// 已完成编译器子阶段的持久化输入。
+pub struct CompletedGenerationEventInput<'a> {
+    pub run_id: &'a str,
+    pub revision_id: &'a str,
+    pub parent_event_id: &'a str,
+    pub sequence: i64,
+    pub stage: &'a str,
+    pub status: &'a str,
+    pub metadata: serde_json::Value,
+    pub started_at_ms: i64,
+    pub duration_ms: i64,
+}
 
 /// nature 工作台正式存储。
 #[derive(Clone)]
@@ -74,7 +97,51 @@ impl NatureStore {
 
     pub async fn revision_view(&self, revision_id: &str) -> anyhow::Result<NatureRevisionView> {
         let record = self.revision(revision_id).await?;
-        revision_view(record)
+        let runs = self.generation_runs(revision_id).await?;
+        revision_view(record, runs)
+    }
+
+    pub async fn generation_runs(
+        &self,
+        revision_id: &str,
+    ) -> anyhow::Result<Vec<NatureGenerationRunView>> {
+        let mut database = self.db.lock().await;
+        let mut runs = Query::<List<NatureGenerationRunRecord>>::filter(
+            NatureGenerationRunRecord::fields()
+                .revision_id()
+                .eq(revision_id),
+        )
+        .exec(&mut *database)
+        .await
+        .context("读取 nature generation runs 失败")?;
+        let events = Query::<List<NatureGenerationEventRecord>>::filter(
+            NatureGenerationEventRecord::fields()
+                .revision_id()
+                .eq(revision_id),
+        )
+        .exec(&mut *database)
+        .await
+        .context("读取 nature generation events 失败")?;
+        drop(database);
+
+        let mut events_by_run = BTreeMap::<String, Vec<NatureGenerationEventView>>::new();
+        for event in events {
+            events_by_run
+                .entry(event.run_id.clone())
+                .or_default()
+                .push(generation_event_view(event)?);
+        }
+        for events in events_by_run.values_mut() {
+            events.sort_by_key(|event| event.sequence);
+        }
+        runs.sort_by_key(|run| run.started_at_ms);
+        Ok(runs
+            .into_iter()
+            .map(|run| {
+                let events = events_by_run.remove(&run.id).unwrap_or_default();
+                generation_run_view(run, events)
+            })
+            .collect())
     }
 
     pub async fn latest_blueprint(&self, project_id: &str) -> anyhow::Result<Option<Blueprint>> {
@@ -286,6 +353,93 @@ impl NatureStore {
         Ok(())
     }
 
+    pub async fn start_run_event(
+        &self,
+        run_id: &str,
+        revision_id: &str,
+        parent_event_id: &str,
+        sequence: i64,
+        stage: &str,
+        metadata: &serde_json::Value,
+    ) -> anyhow::Result<GenerationEventHandle> {
+        let id = db::new_uuid_id();
+        let started_at_ms = db::timestamp_ms();
+        let mut database = self.db.lock().await;
+        NatureGenerationRunRecord::filter(NatureGenerationRunRecord::fields().id().eq(run_id))
+            .update()
+            .stage(stage)
+            .exec(&mut *database)
+            .await
+            .context("更新 nature generation run 阶段失败")?;
+        NatureGenerationEventRecord::create()
+            .id(&id)
+            .run_id(run_id)
+            .revision_id(revision_id)
+            .parent_event_id(parent_event_id)
+            .sequence(sequence)
+            .stage(stage)
+            .status("running")
+            .message("")
+            .metadata_json(serde_json::to_string(metadata)?)
+            .started_at_ms(started_at_ms)
+            .finished_at_ms(0)
+            .duration_ms(0)
+            .exec(&mut *database)
+            .await
+            .context("创建 nature generation event 失败")?;
+        Ok(GenerationEventHandle { id, started_at_ms })
+    }
+
+    pub async fn finish_run_event(
+        &self,
+        handle: &GenerationEventHandle,
+        status: &str,
+        message: &str,
+        metadata: &serde_json::Value,
+    ) -> anyhow::Result<()> {
+        let finished_at_ms = db::timestamp_ms();
+        let duration_ms = finished_at_ms.saturating_sub(handle.started_at_ms);
+        let mut database = self.db.lock().await;
+        NatureGenerationEventRecord::filter(
+            NatureGenerationEventRecord::fields().id().eq(&handle.id),
+        )
+        .update()
+        .status(status)
+        .message(message)
+        .metadata_json(serde_json::to_string(metadata)?)
+        .finished_at_ms(finished_at_ms)
+        .duration_ms(duration_ms)
+        .exec(&mut *database)
+        .await
+        .context("结束 nature generation event 失败")?;
+        Ok(())
+    }
+
+    pub async fn record_completed_run_event(
+        &self,
+        input: CompletedGenerationEventInput<'_>,
+    ) -> anyhow::Result<()> {
+        let finished_at_ms = input.started_at_ms.saturating_add(input.duration_ms);
+        let mut database = self.db.lock().await;
+        NatureGenerationEventRecord::create()
+            .id(db::new_uuid_id())
+            .run_id(input.run_id)
+            .revision_id(input.revision_id)
+            .parent_event_id(input.parent_event_id)
+            .sequence(input.sequence)
+            .stage(input.stage)
+            .status(input.status)
+            .message("")
+            .metadata_json(serde_json::to_string(&input.metadata)?)
+            .started_at_ms(input.started_at_ms)
+            .finished_at_ms(finished_at_ms)
+            .duration_ms(input.duration_ms)
+            .exec(&mut *database)
+            .await
+            .context("保存 nature compiler 子阶段事件失败")?;
+        Ok(())
+    }
+
     pub async fn publish_revision(
         &self,
         revision_id: &str,
@@ -346,7 +500,10 @@ impl NatureStore {
     }
 }
 
-fn revision_view(record: NatureRevisionRecord) -> anyhow::Result<NatureRevisionView> {
+fn revision_view(
+    record: NatureRevisionRecord,
+    runs: Vec<NatureGenerationRunView>,
+) -> anyhow::Result<NatureRevisionView> {
     let blueprint = if record.blueprint_json.is_empty() {
         None
     } else {
@@ -363,11 +520,67 @@ fn revision_view(record: NatureRevisionRecord) -> anyhow::Result<NatureRevisionV
         diagnostics: parse_json_list(&record.diagnostics_json)?,
         breaking_changes: parse_json_list(&record.breaking_changes_json)?,
         generated_files: parse_json_list(&record.generated_files_json)?,
+        runs,
         artifact_hash: non_empty(record.artifact_hash),
         error_message: non_empty(record.error_message),
         created_at_ms: record.created_at_ms,
         updated_at_ms: record.updated_at_ms,
     })
+}
+
+fn generation_run_view(
+    record: NatureGenerationRunRecord,
+    events: Vec<NatureGenerationEventView>,
+) -> NatureGenerationRunView {
+    NatureGenerationRunView {
+        id: record.id,
+        status: record.status,
+        stage: record.stage,
+        artifact_hash: non_empty(record.artifact_hash),
+        error_message: non_empty(record.error_message),
+        started_at_ms: record.started_at_ms,
+        finished_at_ms: positive(record.finished_at_ms),
+        duration_ms: positive(record.finished_at_ms)
+            .map(|finished| finished.saturating_sub(record.started_at_ms)),
+        events,
+    }
+}
+
+fn generation_event_view(
+    record: NatureGenerationEventRecord,
+) -> anyhow::Result<NatureGenerationEventView> {
+    let finished_at_ms = positive(record.finished_at_ms);
+    Ok(NatureGenerationEventView {
+        id: record.id,
+        parent_event_id: non_empty(record.parent_event_id),
+        sequence: record.sequence,
+        label: generation_stage_label(&record.stage).to_string(),
+        stage: record.stage,
+        status: record.status,
+        message: non_empty(record.message),
+        metadata: serde_json::from_str(&record.metadata_json)
+            .context("解析 nature generation event metadata 失败")?,
+        started_at_ms: record.started_at_ms,
+        finished_at_ms,
+        duration_ms: finished_at_ms.map(|_| record.duration_ms.max(0)),
+    })
+}
+
+fn generation_stage_label(stage: &str) -> &str {
+    match stage {
+        "load_context" => "加载编译上下文",
+        "compile" => "母语编译",
+        "source_contract" => "输入契约校验",
+        "inference" => "语义推导",
+        "capability_resolution" => "能力解析",
+        "blueprint_policy" => "Blueprint 策略校验",
+        "rust_generation" => "Rust 生成",
+        "dictionary_generation" => "字典源码合并",
+        "cargo_gate" => "Cargo 编译门禁",
+        "field_bindings" => "字段绑定持久化",
+        "persist_result" => "编译结果持久化",
+        _ => stage,
+    }
 }
 
 fn parse_json_list<T: DeserializeOwned>(value: &str) -> anyhow::Result<Vec<T>> {
@@ -379,6 +592,10 @@ fn parse_json_list<T: DeserializeOwned>(value: &str) -> anyhow::Result<Vec<T>> {
 
 fn non_empty(value: String) -> Option<String> {
     if value.is_empty() { None } else { Some(value) }
+}
+
+fn positive(value: i64) -> Option<i64> {
+    (value > 0).then_some(value)
 }
 
 fn required<'a>(value: &'a str, label: &str) -> anyhow::Result<&'a str> {

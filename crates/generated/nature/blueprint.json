@@ -1,5 +1,5 @@
 {
-  "sourceText": "需求：环境采集\n1. 采集温度和湿度\n2. 无效数据不能入库\n3. 有效数据到达后更新数据活性时间\n\n建模：环境遥测\n1. 温度：小数，摄氏度，范围 -40 到 125\n2. 湿度：小数，百分比，范围 0 到 100\n\n数据获取：\n1. 模拟采集提供温度原值和湿度原值\n2. 温度等于温度原值除以 10\n3. 湿度等于湿度原值除以 10",
+  "sourceText": "需求：环境采集\r\n1. 采集温度和湿度\r\n2. 无效数据不能入库\r\n3. 有效数据到达后更新数据活性时间\r\n\r\n建模：环境遥测\r\n1. 温度：小数，摄氏度，范围 -40 到 125\r\n2. 湿度：小数，百分比，范围 0 到 100\r\n\r\n数据获取：\r\n1. 模拟采集提供温度原值和湿度原值\r\n2. 温度等于温度原值除以 10\r\n3. 湿度等于湿度原值除以 10",
   "requirements": [
     {
       "descriptor": {
@@ -147,8 +147,8 @@
       },
       "source": {
         "nativeName": "温度原值",
-        "englishStem": "temp_x10",
-        "code": "temp_x10"
+        "englishStem": "raw_temperature",
+        "code": "raw_temperature"
       },
       "transform": {
         "divide": {
@@ -169,8 +169,8 @@
       },
       "source": {
         "nativeName": "湿度原值",
-        "englishStem": "humidity_x10",
-        "code": "humidity_x10"
+        "englishStem": "raw_humidity",
+        "code": "raw_humidity"
       },
       "transform": {
         "divide": {
@@ -238,6 +238,31 @@
     {
       "subject": "原始数据",
       "decision": "推导英文语义 source_values，编码为 source_values",
+      "reused": false
+    },
+    {
+      "subject": "数据活性时间",
+      "decision": "Rig 推导英文语义 active_time",
+      "reused": false
+    },
+    {
+      "subject": "温度",
+      "decision": "Rig 推导英文语义 temperature",
+      "reused": false
+    },
+    {
+      "subject": "温度原值",
+      "decision": "Rig 推导英文语义 raw_temperature",
+      "reused": false
+    },
+    {
+      "subject": "湿度",
+      "decision": "Rig 推导英文语义 humidity",
+      "reused": false
+    },
+    {
+      "subject": "湿度原值",
+      "decision": "Rig 推导英文语义 raw_humidity",
       "reused": false
     }
   ],

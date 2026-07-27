@@ -1,13 +1,13 @@
 use std::{path::PathBuf, sync::Arc};
 
 use az_aio_codegen::gate::ArtifactGate;
-use nature_compiler::{CapabilityCatalog, CompileRequest, Compiler, MotherTongueInferenceEngine};
+use nature_compiler::{CompileRequest, Compiler, CompilerCatalog, MotherTongueInferenceEngine};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let compiler = Compiler::new(
         Arc::new(MotherTongueInferenceEngine),
-        CapabilityCatalog::with_fixture_map(),
+        CompilerCatalog::with_fixture_map(),
     );
     let source = include_str!("../../../crates/generated/nature/blueprint-source.txt");
     let result = compiler

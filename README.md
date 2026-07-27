@@ -17,8 +17,10 @@ AIO 是独立的 Rust 管理工作台仓库，使用 Axum、Dioxus、Rudi、Post
 
 ```bash
 cargo test -p az-remote-ui -p az-engine -p az-aio-web
-cargo run -p az-aio-web
+./scripts/preview.zsh
 ```
+
+预览脚本会加载 `~/.codex/nature-compiler-env.zsh` 中的模型配置，并在 `http://127.0.0.1:8080` 启动工作台。
 
 服务端默认读取 `DATABASE_URL`。未配置 PostgreSQL 时，只允许明确声明的开发态降级页面，不作为正式数据源。
 
