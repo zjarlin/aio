@@ -58,13 +58,14 @@ impl NatureStore {
     ) -> anyhow::Result<NatureRevisionRecord> {
         let project_id = required(project_id, "项目 ID")?;
         let source_text = required(source_text, "母语源码")?;
+        let source_text = normalize_source_text(source_text);
         self.ensure_project(project_id).await?;
         let now = db::timestamp_ms();
         let mut database = self.db.lock().await;
         NatureRevisionRecord::create()
             .id(db::new_uuid_id())
             .project_id(project_id)
-            .source_text(source_text)
+            .source_text(&source_text)
             .status("queued")
             .blueprint_json("")
             .inference_decisions_json("[]")
@@ -497,6 +498,23 @@ impl NatureStore {
             .await
             .context("创建 nature project 失败")?;
         Ok(())
+    }
+}
+
+fn normalize_source_text(source_text: &str) -> String {
+    source_text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
+#[cfg(test)]
+mod source_text_tests {
+    use super::normalize_source_text;
+
+    #[test]
+    fn revision_source_uses_stable_line_endings() {
+        assert_eq!(
+            normalize_source_text("领域：设备\r\n\r需求：\r\n1. 查询设备"),
+            "领域：设备\n\n需求：\n1. 查询设备"
+        );
     }
 }
 
