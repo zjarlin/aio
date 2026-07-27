@@ -4140,7 +4140,7 @@ dependencies = [
 [[package]]
 name = "nature-compiler"
 version = "0.1.0"
-source = "git+https://github.com/zjarlin/nature-compiler.git?rev=863a5877e359103ff0e0e4823c3479e7368f717e#863a5877e359103ff0e0e4823c3479e7368f717e"
+source = "git+https://github.com/zjarlin/nature-compiler.git?rev=5dbcd436af9528c6a14aa93190f61bd28925f77b#5dbcd436af9528c6a14aa93190f61bd28925f77b"
 dependencies = [
  "anyhow",
  "async-trait",

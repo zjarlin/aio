@@ -49,7 +49,7 @@ az-engine = { version = "=2026.5.10", path = "crates/runtime/engine" }
 az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 az-operation-agent = { version = "=2026.5.10", path = "crates/runtime/operation-agent" }
 az-aio-nature-generated = { version = "=2026.5.10", path = "crates/generated/nature" }
-nature-compiler = { version = "=0.1.0", git = "https://github.com/zjarlin/nature-compiler.git", rev = "863a5877e359103ff0e0e4823c3479e7368f717e" }
+nature-compiler = { version = "=0.1.0", git = "https://github.com/zjarlin/nature-compiler.git", rev = "5dbcd436af9528c6a14aa93190f61bd28925f77b" }
 az-system-starters = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-ssh = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 base64 = "0.22.1"

@@ -179,6 +179,7 @@ impl NatureInferenceAgent {
                 output_tokens: response.usage.output_tokens,
                 total_tokens: response.usage.total_tokens,
                 cached_input_tokens: response.usage.cached_input_tokens,
+                reused_semantics: 0,
             },
         }))
     }
