@@ -19,6 +19,7 @@ pub fn NatureCompilerPage(context: NativeRenderContext) -> Element {
     let error = query_value(&context.active_route, "error");
     let template_key = query_value(&context.active_route, "template");
     let selected_template = select_source_template(template_key.as_deref());
+    let output_root = generated_output_root();
     rsx! {
         div { class: "space-y-5",
             if let Some(revision_id) = revision {
@@ -67,6 +68,42 @@ pub fn NatureCompilerPage(context: NativeRenderContext) -> Element {
                         id: "nature-observability-error",
                         hidden: true,
                         class: "overflow-x-auto whitespace-pre-wrap border-l-4 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+                    }
+                    section {
+                        id: "nature-generated-files",
+                        hidden: true,
+                        class: "grid min-w-0 gap-3 border-t border-border pt-4",
+                        "data-output-root": "{output_root}",
+                        div { class: "flex flex-wrap items-center justify-between gap-3",
+                            div { class: "grid min-w-0 gap-1",
+                                h3 { class: "text-sm font-semibold", "生成文件" }
+                                code {
+                                    id: "nature-generated-path",
+                                    class: "break-all text-xs text-muted-foreground",
+                                    "{output_root}"
+                                }
+                            }
+                            button {
+                                id: "nature-copy-generated-path",
+                                class: "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border hover:bg-muted",
+                                r#type: "button",
+                                title: "复制生成目录",
+                                aria_label: "复制生成目录",
+                                "⧉"
+                            }
+                        }
+                        div { class: "grid min-w-0 gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]",
+                            nav {
+                                id: "nature-generated-file-list",
+                                class: "grid max-h-[32rem] content-start gap-1 overflow-auto border-r border-border pr-3",
+                                aria_label: "生成文件"
+                            }
+                            pre {
+                                id: "nature-generated-file-preview",
+                                class: "max-h-[32rem] min-h-64 min-w-0 overflow-auto whitespace-pre p-4 text-xs bg-muted/40",
+                                "选择文件后在这里预览"
+                            }
+                        }
                     }
                 }
                 script { dangerous_inner_html: OBSERVABILITY_SCRIPT }
@@ -139,6 +176,10 @@ const OBSERVABILITY_SCRIPT: &str = r#"
   const timeline = document.getElementById('nature-observability-timeline');
   const errorBox = document.getElementById('nature-observability-error');
   const refresh = document.getElementById('nature-observability-refresh');
+  const filesRoot = document.getElementById('nature-generated-files');
+  const fileList = document.getElementById('nature-generated-file-list');
+  const filePreview = document.getElementById('nature-generated-file-preview');
+  const copyPath = document.getElementById('nature-copy-generated-path');
   const activeStatuses = new Set(['queued', 'running', 'checking']);
   const statusLabels = {
     queued: '排队中',
@@ -224,8 +265,43 @@ const OBSERVABILITY_SCRIPT: &str = r#"
     errorBox.textContent = error || '';
     errorBox.hidden = !error;
 
+    renderFiles(data.generatedFiles || []);
+
     if (timer) window.clearTimeout(timer);
     if (activeStatuses.has(data.status)) timer = window.setTimeout(load, 1000);
+  }
+
+  function renderFiles(files) {
+    clear(fileList);
+    filesRoot.hidden = files.length === 0;
+    if (files.length === 0) {
+      filePreview.textContent = '';
+      return;
+    }
+    let selected;
+    const selectFile = (file, button) => {
+      if (selected) selected.removeAttribute('data-selected');
+      selected = button;
+      selected.setAttribute('data-selected', 'true');
+      for (const item of fileList.querySelectorAll('button')) {
+        item.className = item === selected
+          ? 'w-full border-l-2 border-primary bg-muted px-3 py-2 text-left text-xs font-medium'
+          : 'w-full border-l-2 border-transparent px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted';
+      }
+      filePreview.textContent = file.source;
+    };
+    for (const file of files) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = file.path;
+      button.title = `预览 ${file.path}`;
+      button.addEventListener('click', () => selectFile(file, button));
+      fileList.appendChild(button);
+    }
+    const preferred = files.find((file) => file.path === 'application.json') || files[0];
+    const preferredButton = [...fileList.querySelectorAll('button')]
+      .find((button) => button.textContent === preferred.path);
+    if (preferredButton) selectFile(preferred, preferredButton);
   }
 
   async function load() {
@@ -245,9 +321,27 @@ const OBSERVABILITY_SCRIPT: &str = r#"
   }
 
   refresh.addEventListener('click', load);
+  copyPath.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(filesRoot.dataset.outputRoot);
+      copyPath.title = '已复制生成目录';
+    } catch (error) {
+      errorBox.textContent = `复制目录失败：${String(error)}`;
+      errorBox.hidden = false;
+    }
+  });
   load();
 })();
 "#;
+
+fn generated_output_root() -> String {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/generated/nature");
+    match path.canonicalize() {
+        Ok(path) => path.display().to_string(),
+        Err(_) => path.display().to_string(),
+    }
+}
 
 fn template_href(template_key: &str) -> String {
     let route = format!("/nature?template={}", urlencoding::encode(template_key));
