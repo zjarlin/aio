@@ -1,0 +1,41 @@
+[package]
+name = "az-aio-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "AIO single-package full-stack Dioxus application."
+workspace = ".."
+
+[dependencies]
+studio = { package = "az-studio", path = "plugins/studio" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dioxus = { workspace = true, features = ["web", "launch"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+axum.workspace = true
+az-plugin-core.workspace = true
+asset-hub = { package = "az-asset-hub", path = "plugins/asset-hub" }
+config-center = { package = "az-config-center", path = "plugins/config-center" }
+drive-center = { package = "az-drive-center", path = "plugins/drive-center" }
+edge-gateway = { package = "az-edge-gateway", path = "plugins/edge-gateway" }
+iot-center = { package = "az-iot-center", path = "plugins/iot-center" }
+algorithm-center = { package = "az-algorithm-center", path = "plugins/algorithm-center" }
+software-center = { package = "az-software-center", path = "plugins/software-center" }
+ssh-plugin = { package = "az-ssh-plugin", path = "plugins/ssh" }
+az-linux = { path = "plugins/linux" }
+dirs = "6"
+rudi.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+system-admin = { package = "az-system-admin", path = "plugins/system-admin" }
+tokio.workspace = true
+tower-http.workspace = true
+urlencoding.workspace = true
+
+[lints]
+workspace = true

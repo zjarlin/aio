@@ -1,24 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "client",
-    "platform",
-    "web",
-    "plugins/asset-hub",
-    "plugins/algorithm-center",
-    "plugins/codegen",
-    "plugins/config-center",
-    "plugins/drive-center",
-    "plugins/edge-gateway",
-    "plugins/iot-center",
-    "plugins/software-center",
-    "plugins/ssh",
-    "plugins/linux",
-    "plugins/lowcode",
-    "crates/generated/nature",
-    "crates/runtime/engine",
-    "crates/runtime/operation-agent",
-    "crates/ui/remote-ui",
+    "app",
+    "app/plugins/studio",
+    "app/plugins/system-admin",
+    "app/plugins/asset-hub",
+    "app/plugins/algorithm-center",
+    "app/plugins/config-center",
+    "app/plugins/drive-center",
+    "app/plugins/edge-gateway",
+    "app/plugins/iot-center",
+    "app/plugins/software-center",
+    "app/plugins/ssh",
+    "app/plugins/linux",
+    "crates/plugin/core",
 ]
 
 [workspace.package]
@@ -35,21 +30,19 @@ ab_glyph = "0.2.32"
 az-algorithm = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-str = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 anyhow = "1.0.99"
+arc-swap = "1.7.1"
 async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 axum = { version = "0.8.6", features = ["http1", "json", "tokio", "multipart"] }
 az-admin-plugin-registry = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
+az-config-center-client = "=2026.6.13"
 az-dict-macros = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 az-dict-spec = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 dioxus = { version = "0.7.9", default-features = false, features = ["macro", "html", "signals", "router"] }
 dioxus-ssr = "0.7.9"
-registry = { package = "registry", git = "https://github.com/rust-ui/dioxus-ui.git", rev = "91e8974e041baa9f993654ec448c3b05d973f9a9" }
 tw-merge = { package = "tw_merge", version = "0.1.21", features = ["debug"] }
-az-engine = { version = "=2026.5.10", path = "crates/runtime/engine" }
+az-plugin-core = { version = "=2026.5.10", path = "crates/plugin/core" }
 az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
-az-operation-agent = { version = "=2026.5.10", path = "crates/runtime/operation-agent" }
-az-aio-nature-generated = { version = "=2026.5.10", path = "crates/generated/nature" }
-nature-compiler = { version = "=0.1.0", git = "https://github.com/zjarlin/nature-compiler.git", rev = "5dbcd436af9528c6a14aa93190f61bd28925f77b" }
 az-system-starters = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-ssh = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 base64 = "0.22.1"
@@ -68,21 +61,21 @@ quote = "1.0.41"
 regex = "1.12.2"
 rudi = "0.8.3"
 rqrr = { version = "0.10.1", default-features = false, features = ["img"] }
-rhai = { version = "1", features = ["sync", "serde"] }
 rusty-tesseract = "1.1.10"
 schemars = "1.2.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
+hex = "0.4.3"
 ssh2 = "0.9.5"
-sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio-rustls", "migrate", "macros"] }
+sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio-rustls", "migrate", "macros", "json"] }
 strum = { version = "0.27.2", features = ["derive"] }
 tempfile = "3.23.0"
-tokio = { version = "1.47.1", features = ["macros", "net", "rt", "sync"] }
+tokio = { version = "1.47.1", features = ["macros", "net", "rt", "sync", "time"] }
 tracing = "0.1.44"
 toasty = { version = "0.7.0", features = ["postgresql", "serde"] }
 trybuild = "1.0.112"
-uuid = { version = "1.23.1", features = ["v4", "serde"] }
+uuid = { version = "1.23.1", features = ["v4", "serde", "js"] }
 handlebars = "6.4.1"
 md5 = "0.8.0"
 matchit = "0.8.4"

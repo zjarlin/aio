@@ -1,27 +1,55 @@
 # AIO
 
-AIO 是独立的 Rust 管理工作台仓库，使用 Axum、Dioxus、Rudi、PostgreSQL 和声明式 Remote UI。
+AIO 是数据库原生的 Dioxus 零代码应用。PostgreSQL 保存正式 `ProgramDefinition`，业务页面和交互由 Studio 编辑、编译为 `ApplicationImage` 缓存并原子发布，不生成业务 Rust 源码，也不依赖业务文件系统或服务重启。
+
+```text
+拖拽 / AI Vibe
+    -> PostgreSQL Draft
+    -> 类型、Effect、权限、组件门禁
+    -> ApplicationImage cache
+    -> ArcSwap 原子发布
+    -> Dioxus 动态渲染与 Graph VM
+```
 
 ## 目录
 
-- `web/`：Axum 服务端与工作台入口。
-- `client/`：Dioxus Web 客户端。
-- `platform/`：无头 admin shell、插件契约和共享数据库底座。
-- `plugins/`：按大功能拆分的业务插件。
-- `crates/`：AIO 独占或紧密耦合的基础能力。
-- `migrations/`：PostgreSQL 正式迁移。
+Rust 包只放在两个根目录：
 
-通用 Rust crate 只在 [`addzero-lib-rust`](https://github.com/zjarlin/addzero-lib-rust) 维护；本仓库通过固定 Git 提交消费，不保留源码副本。
+```text
+app/
+  src/main.rs             单一全栈启动入口
+  plugins/                一个领域功能一个插件
+  migrations/             PostgreSQL 正式协议迁移
+  assets/                 应用静态资源
+crates/
+  plugin/core/            所有插件共同使用的唯一公共 crate
+```
+
+`app/plugins/studio` 同时拥有编辑器、组件目录、ProgramGraph、编译器、发布器、Graph VM、REST/SSE 和 WASM 界面，不再拆成 client、program、runtime、bootstrap、remote-ui 等技术包。场景只是菜单树的根节点，不存在单独的场景数据结构。
+
+`crates/plugin/core` 的 Cargo 工件名是 `az-plugin-core`，统一提供插件 Provider/Contribution、HTTP 边界、共享 PostgreSQL 句柄、动态模型和 JSONB 记录。它不加载插件，也不实现业务功能。
+
+## 依赖方向
+
+```text
+az-aio-app
+  -> az-studio
+  -> az-system-admin / az-asset-hub / az-iot-center / ...
+  -> az-plugin-core
+
+各功能插件 -> az-plugin-core
+扩展 ProgramGraph Capability 的插件 -> az-studio
+```
+
+插件之间不得通过应用入口反向依赖。只有确实被多个插件共同使用的契约或基础能力才进入 `az-plugin-core`。
 
 ## 开发
 
 ```bash
-cargo test -p az-remote-ui -p az-engine -p az-aio-web
-./scripts/preview.zsh
+cargo test --workspace
+cd app && dx build --platform web
+AZ_AIO_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1/aio \
+  cargo run -p az-aio-app
 ```
 
-预览脚本会加载 `~/.codex/nature-compiler-env.zsh` 中的模型配置，并在 `http://127.0.0.1:8080` 启动工作台。
-
-服务端默认读取 `DATABASE_URL`。未配置 PostgreSQL 时，只允许明确声明的开发态降级页面，不作为正式数据源。
-
-Remote UI 组件只通过 Rudi 注册，页面以 `PageDefinition` 保存到 PostgreSQL，运行时编译为 `UiOp`。
+启动后访问 `http://127.0.0.1:8080/`。正式 ProgramGraph 持久化需要 PostgreSQL；未配置数据库时只启动母机、健康检查和可降级的插件 API。
