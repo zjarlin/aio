@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
 use anyhow::{Context as _, Result};
 use axum::{
@@ -9,20 +9,22 @@ use axum::{
     routing::get,
 };
 use az_plugin_core::{
-    Db, RecordStore,
+    Db, PluginState, RecordStore,
     database::{collect_toasty_models, install_shared_db_singleton},
     http::{ApiResponse, ok_json},
     plugin::NativePluginContext,
 };
 use rudi::Context;
 use studio::{
-    ComponentCatalog, ComponentIndex, ProgramPatchAgent, PublishedApplication, WorkbenchBootstrap,
+    AdminWorkbenchState, ProgramPatchAgent, PublishedProgram, WorkbenchBootstrap,
     capability::{CapabilityCatalog, DynCapabilityProvider},
     program_runtime::ProgramRuntime,
     program_store::ProgramStore,
 };
 use system_admin::{
     api_key_auth::{SystemApiKeyAuthState, optional_system_api_key_auth},
+    app_state::resolve_admin_app_state,
+    catalog::SYSTEM_DOMAIN_ID,
     store::SystemAdminStore,
 };
 use tower_http::services::ServeDir;
@@ -37,11 +39,6 @@ pub fn run() -> Result<()> {
     enable_plugin_providers();
 
     let mut di = Context::auto_register();
-    let components =
-        Arc::new(ComponentIndex::from_context(&mut di).context("收集 Studio 组件失败")?);
-    let program_components = components.program_catalog();
-    di.insert_singleton(components);
-
     let config = AppConfig::from_env().context("加载 AIO 应用配置失败")?;
     let port = config.port;
     let database_url = config.database_url;
@@ -70,6 +67,19 @@ pub fn run() -> Result<()> {
         let _runtime_guard = runtime.enter();
         plugin_host::load_native_snapshot(native_context, &mut di)
     };
+    let admin = snapshot
+        .plugins
+        .iter()
+        .any(|plugin| {
+            plugin.descriptor.id == SYSTEM_DOMAIN_ID && plugin.state == PluginState::Active
+        })
+        .then(|| resolve_admin_app_state(&mut di))
+        .flatten()
+        .map(|state| AdminWorkbenchState {
+            can_add_scene: state.can_add_scene,
+            can_add_menu: state.can_add_menu,
+            can_edit_page: state.can_edit_page,
+        });
     let capabilities = CapabilityCatalog::new(di.resolve_by_type::<DynCapabilityProvider>())?;
 
     runtime.block_on(run_server(
@@ -77,8 +87,8 @@ pub fn run() -> Result<()> {
         port,
         database_url,
         shared_db,
-        program_components,
         capabilities,
+        admin,
     ))
 }
 
@@ -87,8 +97,8 @@ async fn run_server(
     port: u16,
     database_url: Option<String>,
     shared_db: Option<Db>,
-    components: ComponentCatalog,
     capabilities: CapabilityCatalog,
+    admin: Option<AdminWorkbenchState>,
 ) -> Result<()> {
     let record_store = shared_db
         .as_ref()
@@ -96,9 +106,9 @@ async fn run_server(
     let program_runtime = match (database_url.as_deref(), record_store) {
         (Some(database_url), Some(record_store)) => {
             let store = ProgramStore::connect(database_url).await?;
-            let runtime = ProgramRuntime::new(store, record_store, components, capabilities);
-            runtime.restore_active_images().await?;
-            runtime.publish_unactivated_applications().await?;
+            let runtime = ProgramRuntime::new(store, record_store, capabilities);
+            runtime.restore_active_image().await?;
+            runtime.publish_unactivated_program().await?;
             runtime.spawn_postgres_listener(database_url).await?;
             Some(runtime)
         }
@@ -106,6 +116,7 @@ async fn run_server(
     };
     let page_state = PageState {
         program_runtime: program_runtime.clone(),
+        admin,
     };
     let api_key_auth_state = if database_url
         .as_ref()
@@ -135,7 +146,11 @@ async fn run_server(
         .nest_service("/app", ServeDir::new(web_dist_dir))
         .with_state(page_state)
         .merge(studio::studio_http::router(
-            studio::studio_http::StudioState::new(program_runtime, ProgramPatchAgent::from_env()?),
+            studio::studio_http::StudioState::new(
+                program_runtime,
+                ProgramPatchAgent::from_env()?,
+                studio::FormStateExtractor::from_env()?,
+            ),
         ));
 
     let app = page_router.merge(native_router.with_state(()));
@@ -165,36 +180,32 @@ async fn bootstrap(State(state): State<PageState>) -> Json<ApiResponse<Workbench
 #[derive(Clone)]
 struct PageState {
     program_runtime: Option<ProgramRuntime>,
+    admin: Option<AdminWorkbenchState>,
 }
 
 impl PageState {
     async fn workbench_bootstrap(&self) -> WorkbenchBootstrap {
         let mut bootstrap = WorkbenchBootstrap::default();
+        bootstrap.admin = self.admin.clone();
         let Some(runtime) = &self.program_runtime else {
             return bootstrap;
         };
-        bootstrap.applications = runtime
-            .active_images()
-            .await
-            .into_iter()
-            .map(|(application_id, runtime_image)| {
-                let image = runtime_image.image();
-                PublishedApplication {
-                    application_id,
-                    program_id: image.application_id,
-                    name: image.name.clone(),
-                    title: image.title.clone(),
-                    revision_id: image.revision_id.clone(),
-                    content_hash: image.content_hash.clone(),
-                    menus: image.menus.clone(),
-                    routes: image.routes.clone(),
-                }
-            })
-            .collect();
+        bootstrap.program = runtime.active_image().await.map(|runtime_image| {
+            let image = runtime_image.image();
+            PublishedProgram {
+                id: image.program_id,
+                name: image.name.clone(),
+                title: image.title.clone(),
+                revision_id: image.revision_id.clone(),
+                content_hash: image.content_hash.clone(),
+                menus: image.menus.clone(),
+                routes: image.routes.clone(),
+            }
+        });
         bootstrap.default_route = bootstrap
-            .applications
+            .program
             .iter()
-            .flat_map(|application| &application.routes)
+            .flat_map(|program| &program.routes)
             .map(|route| route.path.clone())
             .next()
             .unwrap_or_else(|| "/studio".to_owned());

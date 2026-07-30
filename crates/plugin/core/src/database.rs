@@ -103,7 +103,7 @@ pub async fn install_shared_db_singleton(
 
 /// 把 Rudi 收集的全部 Toasty 模型贡献合并为一个模型集合。
 pub fn collect_toasty_models(di: &mut rudi::Context) -> ModelSet {
-    let mut models = ModelSet::new();
+    let mut models = crate::records::engine_models();
     for contribution in di.resolve_by_type::<ToastyModelContribution>() {
         for model in contribution.into_model_set() {
             models.add(model);
@@ -151,6 +151,22 @@ pub fn timestamp_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_model_collection_contains_engine_models() {
+        let engine_model_ids = crate::records::engine_models()
+            .iter()
+            .map(|model| model.id())
+            .collect::<Vec<_>>();
+        let mut context = rudi::Context::create(Vec::new());
+        let models = collect_toasty_models(&mut context);
+
+        assert!(
+            engine_model_ids
+                .into_iter()
+                .all(|model_id| models.contains(model_id))
+        );
+    }
 
     #[test]
     fn rejects_empty_url() {

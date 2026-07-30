@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, anyhow, bail};
 use evalexpr::{ContextWithMutableVariables, HashMapContext, Value as EvalValue};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use sqlx::{PgPool, Row, postgres::PgPoolOptions, types::Json as SqlJson};
@@ -535,6 +536,49 @@ impl RecordStore {
         })
     }
 
+    /// 按 payload 字段精确筛选后分页查询原始记录。
+    pub async fn list_raw_records_page_by_field(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        field_value: &str,
+        page: PageParams,
+    ) -> anyhow::Result<PageData<DataRecord>> {
+        let total = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM engine_data_records
+             WHERE model_name = $1 AND payload ->> $2 = $3",
+        )
+        .bind(model_name)
+        .bind(field_name)
+        .bind(field_value)
+        .fetch_one(&self.pool)
+        .await
+        .context("统计筛选后的 engine 记录失败")?;
+        let rows = sqlx::query(
+            "SELECT id, model_name, payload, created_at_ms, updated_at_ms
+             FROM engine_data_records
+             WHERE model_name = $1 AND payload ->> $2 = $3
+             ORDER BY created_at_ms, id OFFSET $4 LIMIT $5",
+        )
+        .bind(model_name)
+        .bind(field_name)
+        .bind(field_value)
+        .bind(page.o as i64)
+        .bind(page.s as i64)
+        .fetch_all(&self.pool)
+        .await
+        .context("分页查询筛选后的 engine 记录失败")?;
+        let records = rows
+            .iter()
+            .map(data_record_from_row)
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        Ok(PageData {
+            d: records,
+            t: total as u64,
+            p: page,
+        })
+    }
+
     async fn ensure_model(&self, model_name: &str) -> anyhow::Result<MetaModel> {
         self.get_model(model_name)
             .await?
@@ -694,6 +738,35 @@ impl EngineExecutor {
         self.store.ensure_model(model_name).await?;
         let fields = self.store.list_fields(model_name).await?;
         let raw = self.store.list_raw_records_page(model_name, page).await?;
+        self.evaluate_record_page(model_name, &fields, raw).await
+    }
+
+    /// 按模型字段精确筛选记录并执行集合化计算字段。
+    pub async fn list_records_by_field(
+        &self,
+        model_name: &str,
+        field_name: &str,
+        field_value: &str,
+        page: PageParams,
+    ) -> anyhow::Result<PageData<DataRecordView>> {
+        self.store.ensure_model(model_name).await?;
+        let fields = self.store.list_fields(model_name).await?;
+        if !fields.iter().any(|field| field.name == field_name) {
+            bail!("筛选字段不存在: {model_name}.{field_name}");
+        }
+        let raw = self
+            .store
+            .list_raw_records_page_by_field(model_name, field_name, field_value, page)
+            .await?;
+        self.evaluate_record_page(model_name, &fields, raw).await
+    }
+
+    async fn evaluate_record_page(
+        &self,
+        model_name: &str,
+        fields: &[MetaField],
+        raw: PageData<DataRecord>,
+    ) -> anyhow::Result<PageData<DataRecordView>> {
         let mut payloads = raw
             .d
             .iter()
@@ -989,18 +1062,37 @@ fn validate_field_constraints(field: &MetaField, value: &Value) -> anyhow::Resul
     };
     let definition = serde_json::from_str::<Value>(definition)
         .with_context(|| format!("解析字段 {} 的校验定义失败", field.name))?;
-    let Some(number) = value.as_f64() else {
-        return Ok(());
-    };
-    if let Some(minimum) = definition.get("minimum").and_then(Value::as_f64)
-        && number < minimum
-    {
-        bail!("字段 {} 小于最小值 {minimum}", field.name);
+    if let Some(text) = value.as_str() {
+        let length = text.chars().count() as u64;
+        if let Some(min_length) = definition.get("min_length").and_then(Value::as_u64)
+            && length < min_length
+        {
+            bail!("字段 {} 长度不能小于 {min_length}", field.name);
+        }
+        if let Some(max_length) = definition.get("max_length").and_then(Value::as_u64)
+            && length > max_length
+        {
+            bail!("字段 {} 长度不能大于 {max_length}", field.name);
+        }
+        if let Some(pattern) = definition.get("pattern").and_then(Value::as_str) {
+            let pattern = Regex::new(pattern)
+                .with_context(|| format!("字段 {} 的正则表达式无效", field.name))?;
+            if !pattern.is_match(text) {
+                bail!("字段 {} 不符合格式要求", field.name);
+            }
+        }
     }
-    if let Some(maximum) = definition.get("maximum").and_then(Value::as_f64)
-        && number > maximum
-    {
-        bail!("字段 {} 大于最大值 {maximum}", field.name);
+    if let Some(number) = value.as_f64() {
+        if let Some(minimum) = definition.get("minimum").and_then(Value::as_f64)
+            && number < minimum
+        {
+            bail!("字段 {} 小于最小值 {minimum}", field.name);
+        }
+        if let Some(maximum) = definition.get("maximum").and_then(Value::as_f64)
+            && number > maximum
+        {
+            bail!("字段 {} 大于最大值 {maximum}", field.name);
+        }
     }
     Ok(())
 }
@@ -1011,6 +1103,9 @@ fn validate_json_type(field: &MetaField, value: &Value) -> anyhow::Result<()> {
             bail!("字段不能为空: {}", field.name);
         }
         return Ok(());
+    }
+    if field.is_required && value.as_str().is_some_and(str::is_empty) {
+        bail!("字段不能为空: {}", field.name);
     }
     let matched = match field.field_type.as_str() {
         "string" => value.is_string(),
@@ -1128,6 +1223,32 @@ mod tests {
 
         // 必填字段缺失时应在落库前阻断。
         assert!(validate_payload(&[field], &payload, false).is_err());
+    }
+
+    #[test]
+    fn validates_string_length_and_pattern() {
+        let field = MetaField {
+            id: "code".to_string(),
+            model_name: "asset".to_string(),
+            name: "code".to_string(),
+            display_name: "编码".to_string(),
+            field_type: "string".to_string(),
+            is_required: true,
+            expression: None,
+            dependency_json: None,
+            domain_metadata_json: None,
+            validation_json: Some(
+                json!({"min_length": 3, "max_length": 8, "pattern": "^[A-Z]+$"}).to_string(),
+            ),
+            order_index: 0,
+            created_at_ms: 0,
+            updated_at_ms: 0,
+        };
+
+        // 长度和格式规则必须与数值上下界一样在统一写入管线生效。
+        assert!(validate_field_constraints(&field, &json!("ABC")).is_ok());
+        assert!(validate_field_constraints(&field, &json!("ab")).is_err());
+        assert!(validate_field_constraints(&field, &json!("abcdefghi")).is_err());
     }
 
     #[test]

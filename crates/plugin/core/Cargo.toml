@@ -16,6 +16,7 @@ az-admin-plugin-registry.workspace = true
 az-str.workspace = true
 evalexpr.workspace = true
 rudi.workspace = true
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true

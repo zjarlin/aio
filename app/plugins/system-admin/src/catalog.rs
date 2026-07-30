@@ -363,7 +363,7 @@ const MENU_ROWS: &[SystemTableRow] = &[
         cell("label", "Program Studio", None),
         cell("route", "/studio", None),
         cell("permission", "studio:edit", None),
-        cell("kind", "母机", Some("neutral")),
+        cell("kind", "管理工具", Some("neutral")),
         cell("status", "托管", Some("success")),
     ]),
 ];

@@ -53,6 +53,7 @@ evalexpr = "13.1.0"
 half = "2.7.1"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
 imageproc = "0.25.0"
+icons = { version = "0.18.3", features = ["dioxus"] }
 inventory = "0.3.21"
 ndarray = "0.17.1"
 ort = "2.0.0-rc.12"
