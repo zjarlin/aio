@@ -39,7 +39,7 @@ pub fn run() -> Result<()> {
     enable_plugin_providers();
 
     let mut di = Context::auto_register();
-    let config = AppConfig::from_env().context("加载 AIO 应用配置失败")?;
+    let config = AppConfig::load().context("加载 AIO 应用配置失败")?;
     let port = config.port;
     let database_url = config.database_url;
     let runtime = tokio::runtime::Builder::new_multi_thread()

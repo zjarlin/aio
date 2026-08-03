@@ -48,8 +48,7 @@ az-aio-app
 ```bash
 cargo test --workspace
 cd app && dx build --platform web
-AZ_AIO_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1/aio \
-  cargo run -p az-aio-app
+cargo run -p az-aio-app
 ```
 
-启动后访问 `http://127.0.0.1:8080/`。正式 ProgramGraph 持久化需要 PostgreSQL；未配置数据库时只启动母机、健康检查和可降级的插件 API。
+应用启动配置以明文保存在仓库根目录 `.env`。启动后访问 `http://127.0.0.1:8080/`。

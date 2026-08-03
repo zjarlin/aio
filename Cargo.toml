@@ -49,6 +49,7 @@ base64 = "0.22.1"
 convert_case = "0.8.0"
 deunicode = "1.6.2"
 derive_more = { version = "2.1.1", features = ["display"] }
+dotenvy = "0.15.7"
 evalexpr = "13.1.0"
 half = "2.7.1"
 image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }

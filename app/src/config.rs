@@ -1,6 +1,9 @@
+use std::path::Path;
+
 use anyhow::{Context as _, Result};
 
 const DEFAULT_WEB_PORT: u16 = 8080;
+const REPOSITORY_ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../.env");
 
 /// 应用启动配置。
 #[derive(Clone, Debug)]
@@ -10,8 +13,10 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    /// 从进程环境变量加载一次应用配置。
-    pub fn from_env() -> Result<Self> {
+    /// 从仓库配置文件加载一次应用配置。
+    pub fn load() -> Result<Self> {
+        load_repository_env()?;
+
         let port = optional_env("AZ_AIO_WEB_PORT")?
             .map(|value| {
                 value
@@ -24,6 +29,12 @@ impl AppConfig {
 
         Ok(Self { port, database_url })
     }
+}
+
+fn load_repository_env() -> Result<()> {
+    let path = Path::new(REPOSITORY_ENV_PATH);
+    dotenvy::from_path_override(path)
+        .with_context(|| format!("读取仓库配置文件失败: {}", path.display()))
 }
 
 fn optional_env(key: &str) -> Result<Option<String>> {

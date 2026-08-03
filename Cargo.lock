@@ -323,6 +323,7 @@ dependencies = [
  "az-system-admin",
  "dioxus",
  "dirs",
+ "dotenvy",
  "rudi",
  "serde",
  "serde_json",
@@ -707,8 +708,10 @@ dependencies = [
  "tokio",
  "tracing",
  "tw_merge",
+ "urlencoding",
  "uuid",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

@@ -1,5 +1,10 @@
 #!/usr/bin/env zsh
 
+# 调用方显式使用其他 shell 时，重新进入脚本声明的 Zsh 运行时。
+if [ -z "${ZSH_VERSION:-}" ]; then
+  exec zsh "$0" "$@"
+fi
+
 set -euo pipefail
 
 script_dir="${0:A:h}"

@@ -30,6 +30,7 @@ software-center = { package = "az-software-center", path = "plugins/software-cen
 ssh-plugin = { package = "az-ssh-plugin", path = "plugins/ssh" }
 az-linux = { path = "plugins/linux" }
 dirs = "6"
+dotenvy.workspace = true
 rudi.workspace = true
 serde.workspace = true
 serde_json.workspace = true
