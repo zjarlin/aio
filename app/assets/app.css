@@ -2816,6 +2816,152 @@ body {
   min-width: 0;
 }
 
+.aio-studio-shell__toolbar {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.aio-studio-view-tabs {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+.aio-studio-view-tabs > button {
+  min-height: 2rem;
+  padding: .375rem .75rem;
+  border: 1px solid transparent;
+  border-radius: .375rem;
+  color: var(--muted-foreground);
+  font-size: .8125rem;
+  font-weight: 600;
+}
+
+.aio-studio-view-tabs > button:hover,
+.aio-studio-view-tabs > button.is-active {
+  border-color: var(--border);
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.aio-permission-management {
+  min-width: 0;
+}
+
+.aio-permission-management__toolbar {
+  min-height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0 .75rem;
+}
+
+.aio-permission-management__toolbar h2,
+.aio-permission-management__toolbar p {
+  margin: 0;
+}
+
+.aio-permission-management__toolbar h2 {
+  color: var(--foreground);
+  font-size: .9375rem;
+  font-weight: 650;
+}
+
+.aio-permission-management__toolbar p {
+  margin-top: .125rem;
+  color: var(--muted-foreground);
+  font-size: .75rem;
+}
+
+.aio-permission-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: .375rem;
+  background: var(--background);
+}
+
+.aio-permission-table {
+  min-width: 72rem;
+  color: var(--foreground);
+  font-size: .8125rem;
+}
+
+.aio-permission-table__header,
+.aio-permission-table__row {
+  display: grid;
+  grid-template-columns: 14rem 14rem minmax(24rem, 1fr) 6rem 8rem;
+  align-items: center;
+}
+
+.aio-permission-table__header {
+  min-height: 2.75rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 55%, var(--background));
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+
+.aio-permission-table__header > *,
+.aio-permission-table__row > * {
+  min-width: 0;
+  padding: .625rem .75rem;
+}
+
+.aio-permission-table__row {
+  min-height: 4.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.aio-permission-table__row--new {
+  background: color-mix(in srgb, #409eff 5%, var(--background));
+}
+
+.aio-permission-table__row .aio-input {
+  width: 100%;
+  min-width: 0;
+  height: 2rem;
+  padding: .375rem .5rem !important;
+  font-size: .75rem !important;
+}
+
+.aio-permission-table__effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem .75rem;
+}
+
+.aio-permission-table__effects label {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: .75rem;
+}
+
+.aio-permission-table__effects input {
+  width: .875rem;
+  height: .875rem;
+  accent-color: var(--primary);
+}
+
+.aio-permission-table__usage {
+  color: var(--muted-foreground);
+  font-size: .75rem;
+  white-space: nowrap;
+}
+
+.aio-permission-table__actions {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+}
+
 .aio-menu-management__toolbar {
   min-height: 3.25rem;
   display: flex;
@@ -3219,11 +3365,17 @@ body {
 }
 
 .aio-endpoint-workbench,
-.aio-endpoint-section,
-.aio-endpoint-editor-list {
+.aio-endpoint-section {
   display: grid;
   min-width: 0;
   gap: 1rem;
+}
+
+.aio-endpoint-workbench {
+  height: 100%;
+  align-content: start;
+  overflow: auto;
+  padding: 1rem;
 }
 
 .aio-endpoint-workbench__header,
@@ -3266,44 +3418,41 @@ body {
   font-size: .8125rem;
 }
 
-.aio-endpoint-catalog {
-  overflow: hidden;
+.aio-endpoint-table {
+  min-width: 56rem;
   border: 1px solid var(--border);
   border-radius: .375rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--background);
 }
 
-.aio-endpoint-catalog__item {
-  display: grid;
-  grid-template-columns: 4rem minmax(0, 1fr) 13rem;
-  align-items: center;
-  gap: .75rem;
-  min-height: 3.5rem;
-  padding: .625rem .75rem;
+.aio-endpoint-table th,
+.aio-endpoint-table td {
   border-bottom: 1px solid var(--border);
 }
 
-.aio-endpoint-catalog__item:last-child {
+.aio-endpoint-table th {
+  background: var(--muted);
+}
+
+.aio-endpoint-table tr:last-child td {
   border-bottom: 0;
 }
 
-.aio-endpoint-catalog__item > div {
-  display: grid;
-  min-width: 0;
-  gap: .125rem;
-}
-
-.aio-endpoint-catalog__item strong {
-  font-size: .8125rem;
-}
-
-.aio-endpoint-catalog__item code,
-.aio-endpoint-catalog__provider {
-  overflow-wrap: anywhere;
+.aio-endpoint-table__path,
+.aio-endpoint-table__provider {
+  display: block;
+  max-width: 28rem;
+  overflow: hidden;
   color: var(--muted-foreground);
-  font-size: .6875rem;
+  font-size: .75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.aio-endpoint-catalog__provider {
+.aio-endpoint-table__provider {
+  max-width: 12rem;
   text-align: right;
 }
 
@@ -3347,7 +3496,7 @@ body {
 }
 
 .aio-endpoint-ai textarea {
-  min-height: 5.25rem;
+  min-height: 4rem;
   resize: vertical;
 }
 
@@ -3381,12 +3530,12 @@ body {
 
 .aio-endpoint-editor__identity {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 34rem;
+  grid-template-columns: minmax(0, 1fr);
   gap: .75rem;
 }
 
 .aio-endpoint-editor__identity label,
-.aio-endpoint-editor__intent,
 .aio-rest-endpoint-form__inputs label {
   display: grid;
   gap: .375rem;
@@ -3404,46 +3553,45 @@ body {
 }
 
 .aio-endpoint-parameter-table {
-  min-width: 42rem;
-  overflow-x: auto;
+  min-width: 46rem;
+  border: 1px solid var(--border);
+  border-radius: .375rem;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-.aio-endpoint-parameter-table__head,
-.aio-endpoint-parameter-table__row {
-  display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) 7rem 7rem 3rem 2rem;
-  align-items: center;
-  gap: .5rem;
+.aio-endpoint-parameter-table th,
+.aio-endpoint-parameter-table td,
+.aio-endpoint-output-grid th,
+.aio-endpoint-output-grid td {
+  min-width: 7rem;
+  border-bottom: 1px solid var(--border);
+  padding: .375rem .5rem;
 }
 
-.aio-endpoint-parameter-table__head {
-  padding: 0 .25rem .375rem;
-  color: var(--muted-foreground);
-  font-size: .6875rem;
-  font-weight: 600;
+.aio-endpoint-parameter-table tr:last-child td,
+.aio-endpoint-output-grid tr:last-child td {
+  border-bottom: 0;
 }
 
-.aio-endpoint-parameter-table__row {
-  padding-block: .375rem;
-  border-top: 1px solid var(--border);
+.aio-endpoint-parameter-table__required,
+.aio-endpoint-parameter-table__action {
+  width: 4rem;
+  text-align: center;
 }
 
-.aio-endpoint-parameter-table__row input[type="checkbox"] {
+.aio-endpoint-parameter-table__required input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   justify-self: center;
 }
 
-.aio-endpoint-output-grid,
-.aio-endpoint-output-grid__row {
-  display: grid;
-  min-width: 0;
-  gap: .5rem;
-}
-
-.aio-endpoint-output-grid__row {
-  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) 7rem 2rem;
-  align-items: center;
+.aio-endpoint-output-grid {
+  min-width: 34rem;
+  border: 1px solid var(--border);
+  border-radius: .375rem;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .aio-endpoint-parameters__empty {
@@ -3716,6 +3864,99 @@ body {
   font-weight: 650;
 }
 
+.aio-model-metadata-editor {
+  display: grid;
+  gap: .5rem;
+  padding: .75rem;
+}
+
+.aio-model-metadata-editor__saved {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  border: 1px solid var(--border);
+  padding: .5rem .625rem;
+}
+
+.aio-model-metadata-editor__saved > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: .625rem;
+}
+
+.aio-model-metadata-editor__saved span,
+.aio-model-metadata-editor__saved code {
+  color: var(--muted-foreground);
+  font-size: .75rem;
+}
+
+.aio-model-metadata-editor__form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(9rem, 1fr));
+  gap: .5rem;
+  border: 1px dashed var(--border);
+  padding: .625rem;
+}
+
+.aio-model-metadata-editor__form label {
+  display: grid;
+  min-width: 0;
+  gap: .25rem;
+  color: var(--muted-foreground);
+  font-size: .6875rem;
+  font-weight: 650;
+}
+
+.aio-model-metadata-editor__form footer {
+  display: flex;
+  align-items: end;
+  gap: .5rem;
+}
+
+.aio-model-audit-editor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .625rem .75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.aio-model-audit-editor__roles {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: .375rem .625rem;
+}
+
+.aio-model-audit-editor__roles label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: .25rem;
+  color: var(--foreground);
+  font-size: .75rem;
+}
+
+.aio-model-audit-editor__roles input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--primary);
+}
+
+.aio-model-audit-editor__roles code {
+  color: var(--muted-foreground);
+  font-size: .6875rem;
+}
+
+.aio-model-audit-editor footer {
+  flex: 0 0 auto;
+}
+
 .aio-edit-grid {
   min-width: 0;
   overflow-x: auto;
@@ -3738,7 +3979,7 @@ body {
 }
 
 .aio-edit-grid--fields table {
-  min-width: 118rem;
+  min-width: 124rem;
 }
 
 .aio-edit-grid--fields th:nth-child(1),
@@ -3753,8 +3994,8 @@ body {
   width: 9rem;
 }
 
-.aio-edit-grid--fields th:nth-child(n+15):nth-child(-n+18),
-.aio-edit-grid--fields td:nth-child(n+15):nth-child(-n+18) {
+.aio-edit-grid--fields th:nth-child(n+16):nth-child(-n+19),
+.aio-edit-grid--fields td:nth-child(n+16):nth-child(-n+19) {
   width: 11rem;
 }
 
@@ -3833,6 +4074,47 @@ body {
 
 .aio-edit-grid td.aio-edit-grid__actions > button {
   margin-inline: auto;
+}
+
+.aio-edit-grid__validation {
+  min-width: 25rem;
+}
+
+.aio-edit-grid__validation-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
+  gap: .25rem;
+  padding: .25rem;
+}
+
+.aio-edit-grid__validation-grid label {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .25rem;
+  color: var(--muted-foreground);
+  font-size: .625rem;
+}
+
+.aio-edit-grid__validation-grid label input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+  height: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: .25rem;
+  padding: .125rem .25rem;
+  font-size: .6875rem;
+}
+
+.aio-edit-grid__validation-pattern {
+  grid-column: span 3;
+}
+
+.aio-edit-grid__validation-unique {
+  grid-column: span 4;
+  display: flex !important;
+  justify-content: flex-start;
 }
 
 .aio-edit-grid__new-row {
@@ -4815,6 +5097,22 @@ textarea.aio-input:disabled,
 }
 
 @media (max-width: 680px) {
+  .aio-studio-shell__toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+  }
+
+  .aio-page-settings__tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .aio-page-settings__tabs > button {
+    flex: 0 0 auto;
+  }
+
   .aio-endpoint-workbench__header,
   .aio-endpoint-editor__header,
   .aio-endpoint-ai {
@@ -4827,28 +5125,14 @@ textarea.aio-input:disabled,
     flex-direction: column;
   }
 
-  .aio-endpoint-catalog__item {
-    grid-template-columns: 4rem minmax(0, 1fr);
-  }
-
-  .aio-endpoint-catalog__provider {
-    grid-column: 2;
-    text-align: left;
-  }
-
   .aio-endpoint-request-line,
-  .aio-endpoint-editor__identity,
   .aio-rest-endpoint-form__inputs,
   .aio-rest-endpoint-form__outputs {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .aio-endpoint-output-grid {
-    overflow-x: auto;
-  }
-
-  .aio-endpoint-output-grid__row {
-    min-width: 30rem;
+  .aio-endpoint-table {
+    min-width: 48rem;
   }
 
   .aio-model-workspace {
@@ -4889,6 +5173,26 @@ textarea.aio-input:disabled,
   .aio-model-grid__identity > button {
     grid-column: 2;
     grid-row: 1;
+  }
+
+  .aio-model-designer__header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+
+  .aio-model-metadata-editor__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aio-model-audit-editor {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .aio-edit-grid__validation-pattern,
+  .aio-edit-grid__validation-unique {
+    grid-column: auto;
   }
 
   .aio-page-settings__panel--fullscreen > header {

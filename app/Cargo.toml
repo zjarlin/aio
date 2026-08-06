@@ -38,7 +38,6 @@ sqlx.workspace = true
 system-admin = { package = "az-system-admin", path = "plugins/system-admin" }
 tokio.workspace = true
 tower-http.workspace = true
-urlencoding.workspace = true
 
 [lints]
 workspace = true

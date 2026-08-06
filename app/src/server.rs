@@ -1,13 +1,7 @@
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::{Context as _, Result};
-use axum::{
-    Json, Router,
-    extract::{Query, State},
-    middleware,
-    response::Redirect,
-    routing::get,
-};
+use axum::{Json, Router, extract::State, middleware, response::Redirect, routing::get};
 use az_plugin_core::{
     Db, PluginState, RecordStore,
     database::{collect_toasty_models, install_shared_db_singleton},
@@ -27,7 +21,7 @@ use system_admin::{
     catalog::SYSTEM_DOMAIN_ID,
     store::SystemAdminStore,
 };
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{
     config::AppConfig,
@@ -136,14 +130,20 @@ async fn run_server(
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let assets_dir = manifest_dir.join("assets");
     let web_dist_dir = web_dist_dir();
+    let web_index = web_dist_dir.join("index.html");
+    let web_assets_router = Router::<PageState>::new()
+        .route_service("/", ServeFile::new(web_index.clone()))
+        .route_service("/{*asset}", ServeDir::new(web_dist_dir.join("assets")));
 
     let page_router = Router::new()
         .route("/", get(root_page))
-        .route("/gateway", get(root_page))
+        .route("/gateway", get(gateway_page))
         .route("/api/bootstrap", get(bootstrap))
         .route("/health", get(health))
         .nest_service("/assets", ServeDir::new(assets_dir))
-        .nest_service("/app", ServeDir::new(web_dist_dir))
+        .nest("/app/assets", web_assets_router)
+        .route_service("/app", ServeFile::new(web_index.clone()))
+        .route_service("/app/{*route}", ServeFile::new(web_index))
         .with_state(page_state)
         .merge(studio::studio_http::router(
             studio::studio_http::StudioState::new(
@@ -165,12 +165,12 @@ async fn run_server(
     Ok(())
 }
 
-async fn root_page(Query(query): Query<HashMap<String, String>>) -> Redirect {
-    let route = query
-        .get("route")
-        .cloned()
-        .unwrap_or_else(|| "/studio".to_owned());
-    Redirect::temporary(&format!("/app/?route={}", urlencoding::encode(&route)))
+async fn root_page() -> Redirect {
+    Redirect::temporary("/app/studio")
+}
+
+async fn gateway_page() -> Redirect {
+    Redirect::temporary("/app/gateway")
 }
 
 async fn bootstrap(State(state): State<PageState>) -> Json<ApiResponse<WorkbenchBootstrap>> {
@@ -224,7 +224,7 @@ fn web_dist_dir() -> PathBuf {
         manifest_dir.join("../target/dx/az-aio-app/debug/web/public"),
     ]
     .into_iter()
-    .find(|path| path.join("wasm/az-aio-app.js").exists())
+    .find(|path| path.join("index.html").is_file() && path.join("assets").is_dir())
     .unwrap_or_else(|| manifest_dir.join("dist"))
 }
 

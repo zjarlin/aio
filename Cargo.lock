@@ -330,7 +330,6 @@ dependencies = [
  "sqlx",
  "tokio",
  "tower-http",
- "urlencoding",
 ]
 
 [[package]]
@@ -694,7 +693,6 @@ dependencies = [
  "gloo-timers",
  "hex",
  "icons",
- "js-sys",
  "matchit",
  "regex",
  "rig-core",
@@ -710,7 +708,6 @@ dependencies = [
  "tw_merge",
  "urlencoding",
  "uuid",
- "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
 ]

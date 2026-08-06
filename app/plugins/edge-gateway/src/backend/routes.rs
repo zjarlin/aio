@@ -181,9 +181,9 @@ async fn ui_route_action_handler(
     ApiForm(form): ApiForm<UpsertGatewayRouteRequest>,
 ) -> Response {
     let redirect = match apply_ui_route_action(state, form).await {
-        Ok(route_id) => format!("/?route=/gateway&routeId={route_id}&saved=route"),
+        Ok(route_id) => format!("/app/gateway?routeId={route_id}&saved=route"),
         Err(error) => format!(
-            "/?route=/gateway&error={}",
+            "/app/gateway?error={}",
             urlencoding::encode(&error.to_string())
         ),
     };

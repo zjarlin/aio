@@ -121,7 +121,7 @@ async fn ui_action_handler(
             urlencoding::encode(&error.to_string())
         ),
     };
-    let redirect = format!("/?route={}", urlencoding::encode(&route));
+    let redirect = format!("/app{route}");
     Redirect::to(&redirect).into_response()
 }
 

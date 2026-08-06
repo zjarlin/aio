@@ -254,11 +254,11 @@ async fn ui_create_api_key_handler(
 ) -> Response {
     let redirect = match create_api_key_for_ui(state, headers, body).await {
         Ok(created) => format!(
-            "/?route=/system/account/api-keys&created=1&prefix={}",
+            "/app/system/account/api-keys?created=1&prefix={}",
             urlencoding::encode(&created.summary.prefix)
         ),
         Err(error) => format!(
-            "/?route=/system/account/api-keys&error={}",
+            "/app/system/account/api-keys?error={}",
             urlencoding::encode(&error.to_string())
         ),
     };
@@ -271,9 +271,9 @@ async fn ui_revoke_api_key_handler(
     body: Bytes,
 ) -> Response {
     let redirect = match revoke_api_key_for_ui(state, headers, body).await {
-        Ok(_) => "/?route=/system/account/api-keys&revoked=1".to_string(),
+        Ok(_) => "/app/system/account/api-keys?revoked=1".to_string(),
         Err(error) => format!(
-            "/?route=/system/account/api-keys&error={}",
+            "/app/system/account/api-keys?error={}",
             urlencoding::encode(&error.to_string())
         ),
     };

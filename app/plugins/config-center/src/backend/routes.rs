@@ -129,9 +129,9 @@ async fn ui_action_handler(
     ApiForm(form): ApiForm<UpsertConfigEntryRequest>,
 ) -> Response {
     let redirect = match apply_ui_action(state, form).await {
-        Ok(()) => "/?route=/config".to_string(),
+        Ok(()) => "/app/config".to_string(),
         Err(error) => format!(
-            "/?route=/config&error={}",
+            "/app/config?error={}",
             urlencoding::encode(&error.to_string())
         ),
     };

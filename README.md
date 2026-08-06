@@ -48,7 +48,7 @@ az-aio-app
 ```bash
 cargo test --workspace
 cd app && dx build --platform web
-cargo run -p az-aio-app
+./scripts/preview.zsh
 ```
 
-应用启动配置以明文保存在仓库根目录 `.env`。启动后访问 `http://127.0.0.1:8080/`。
+应用启动配置以明文保存在仓库根目录 `.env`。`scripts/preview.zsh` 会先验证直连数据库；直连不可用时，经本机 SOCKS relay 回退到同一数据库，且不会修改 `.env`。启动后访问 `http://127.0.0.1:8080/`。

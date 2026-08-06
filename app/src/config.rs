@@ -4,6 +4,8 @@ use anyhow::{Context as _, Result};
 
 const DEFAULT_WEB_PORT: u16 = 8080;
 const REPOSITORY_ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../.env");
+const DATABASE_URL_ENV: &str = "AZ_AIO_DATABASE_URL";
+const DATABASE_URL_OVERRIDE_ENV: &str = "AZ_AIO_DATABASE_URL_OVERRIDE";
 
 /// 应用启动配置。
 #[derive(Clone, Debug)]
@@ -25,10 +27,20 @@ impl AppConfig {
             })
             .transpose()?
             .unwrap_or(DEFAULT_WEB_PORT);
-        let database_url = optional_env("AZ_AIO_DATABASE_URL")?;
+        let database_url = resolve_database_url(
+            optional_env(DATABASE_URL_OVERRIDE_ENV)?,
+            optional_env(DATABASE_URL_ENV)?,
+        );
 
         Ok(Self { port, database_url })
     }
+}
+
+fn resolve_database_url(
+    override_url: Option<String>,
+    configured_url: Option<String>,
+) -> Option<String> {
+    override_url.or(configured_url)
 }
 
 fn load_repository_env() -> Result<()> {
@@ -45,5 +57,21 @@ fn optional_env(key: &str) -> Result<Option<String>> {
         }
         Err(std::env::VarError::NotPresent) => Ok(None),
         Err(error) => Err(error).with_context(|| format!("环境变量 {key} 不是有效的 Unicode")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_database_url;
+
+    #[test]
+    fn database_url_override_has_priority() {
+        let configured_url = Some("postgresql://configured/aio".to_owned());
+        let override_url = Some("postgresql://tunnel/aio".to_owned());
+
+        assert_eq!(
+            resolve_database_url(override_url, configured_url),
+            Some("postgresql://tunnel/aio".to_owned())
+        );
     }
 }

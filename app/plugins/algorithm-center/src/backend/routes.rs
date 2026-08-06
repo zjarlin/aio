@@ -147,7 +147,7 @@ async fn ui_action_handler(
     ) {
         Ok(result) => process_redirect(result),
         Err(error) => format!(
-            "/?route=/algorithms&error={}",
+            "/app/algorithms?error={}",
             urlencoding::encode(error.message())
         ),
     };
@@ -205,7 +205,6 @@ struct ProcessVideoForm {
 
 fn process_redirect(result: ProcessVideoResponse) -> String {
     let mut parts = vec![
-        "route=/algorithms".to_string(),
         "run=1".to_string(),
         format!("video_url={}", urlencoding::encode(&result.input_video_url)),
         format!(
@@ -222,7 +221,7 @@ fn process_redirect(result: ProcessVideoResponse) -> String {
         ));
         parts.push(format!("active={}", urlencoding::encode(&algorithm.code)));
     }
-    format!("/?{}", parts.join("&"))
+    format!("/app/algorithms?{}", parts.join("&"))
 }
 
 fn selected_algorithms(
