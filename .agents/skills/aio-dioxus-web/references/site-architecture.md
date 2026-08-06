@@ -23,8 +23,9 @@ registry 固定为 DioxusLabs/dioxus-components 提交 `bf007c15d0cf4d04d3181cc4
 | 文本、数字、路径输入 | `components/input` | 事件闭包显式标注 `FormEvent` |
 | 多行文本 | `components/textarea` | 事件闭包显式标注 `FormEvent` |
 | 布尔状态 | `components/checkbox` | 使用 Checkbox；它包含用于表单提交的隐藏 input |
+| 对象新增、编辑与确认 | `components/dialog` | 由明确操作打开，关闭后卸载完整 Form |
 | 下拉选项 | 原生 `select` | 当前官方 Select 未把 `name` 写入可提交字段，修复前不得迁移 |
-| 数据表格 | 语义化 HTML table | 官方 registry 没有 Table；由页面域定义列、行和操作 |
+| 数据表格 | `components/data_table` | 仓库复合组件；支持编辑、固定表头/列、右侧面板、合并单元格和树形表头 |
 
 `app/assets/dx-components-theme.css` 是官方主题变量。`app/assets/tailwind.css` 只承担已有布局工具类，`app/assets/app.css` 保存 AIO 页面布局与领域样式。不要把页面领域样式写进官方组件 CSS。
 
@@ -50,5 +51,5 @@ REST 功能定义以 `method + path` 作为身份。标题为空时从路径末�
 - `GET /health` 返回 HTTP 200 与 `ok`。
 - `GET /api/studio/program/draft` 返回 HTTP 200 且 JSON 业务 `code` 为成功值。
 - `/app/studio` 加载最新 wasm，不出现 definition 反序列化错误。
-- 功能定义页使用真实 table，能选择行、编辑路径、保存、删除。
+- 功能定义页使用 DataTable，能直接编辑路径；新增、编辑和删除操作使用 Dialog，不在页面常驻完整 Form。
 - 375px 左右移动端和桌面端均无横向页面溢出；表格自身可以横向滚动。
