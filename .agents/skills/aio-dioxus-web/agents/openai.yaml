@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIO Dioxus Web"
+  short_description: "用官方 Dioxus Components 构建和验证 AIO 网页"
+  default_prompt: "Use $aio-dioxus-web to build or refactor an AIO web page with the repository component and verification conventions."

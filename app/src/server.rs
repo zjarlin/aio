@@ -40,6 +40,10 @@ pub fn run() -> Result<()> {
         .enable_all()
         .build()
         .context("创建 AIO runtime 失败")?;
+    let address = SocketAddr::from(([0, 0, 0, 0], port));
+    let listener = runtime
+        .block_on(tokio::net::TcpListener::bind(address))
+        .with_context(|| format!("绑定 AIO 监听地址失败: {address}"))?;
     let models = collect_toasty_models(&mut di);
     let shared_db = runtime
         .block_on(async {
@@ -78,7 +82,7 @@ pub fn run() -> Result<()> {
 
     runtime.block_on(run_server(
         snapshot,
-        port,
+        listener,
         database_url,
         shared_db,
         capabilities,
@@ -88,7 +92,7 @@ pub fn run() -> Result<()> {
 
 async fn run_server(
     snapshot: HostSnapshot,
-    port: u16,
+    listener: tokio::net::TcpListener,
     database_url: Option<String>,
     shared_db: Option<Db>,
     capabilities: CapabilityCatalog,
@@ -154,9 +158,8 @@ async fn run_server(
         ));
 
     let app = page_router.merge(native_router.with_state(()));
-    let address = SocketAddr::from(([0, 0, 0, 0], port));
+    let address = listener.local_addr().context("读取 AIO 监听地址失败")?;
     println!("AIO listening on http://{address}");
-    let listener = tokio::net::TcpListener::bind(address).await?;
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
