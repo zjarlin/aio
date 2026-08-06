@@ -1,5 +1,5 @@
-/* This file contains the theme variables for the styled dioxus-components components. You only
- * need to import this file once in your project root.
+/* 此文件提供 Dioxus Components 样式组件所需的主题变量。
+ * 只需在应用根节点引入一次。
  */
 
 html[data-theme="dark"] {
@@ -37,7 +37,7 @@ html[data-theme="light"] [class~="dxc-system"] {
 }
 
 :root {
-  /* Primary colors */
+  /* 主色 */
   --primary-color: var(--dark, #000) var(--light, #fff);
   --primary-color-1: var(--dark, #0e0e0e) var(--light, #fbfbfb);
   --primary-color-2: var(--dark, #0a0a0a) var(--light, #fff);
@@ -47,7 +47,7 @@ html[data-theme="light"] [class~="dxc-system"] {
   --primary-color-6: var(--dark, #232323) var(--light, #e5e5e5);
   --primary-color-7: var(--dark, #3e3e3e) var(--light, #b0b0b0);
 
-  /* Secondary colors */
+  /* 辅色 */
   --secondary-color: var(--dark, #fff) var(--light, #000);
   --secondary-color-1: var(--dark, #fafafa) var(--light, #000);
   --secondary-color-2: var(--dark, #e6e6e6) var(--light, #0d0d0d);
@@ -56,7 +56,7 @@ html[data-theme="light"] [class~="dxc-system"] {
   --secondary-color-5: var(--dark, #a1a1a1) var(--light, #848484);
   --secondary-color-6: var(--dark, #5d5d5d) var(--light, #d0d0d0);
 
-  /* Highlight colors */
+  /* 状态色 */
   --focused-border-color: var(--dark, #2b7fff) var(--light, #2b7fff);
   --primary-success-color: var(--dark, #02271c) var(--light, #ecfdf5);
   --secondary-success-color: var(--dark, #b6fae3) var(--light, #10b981);
