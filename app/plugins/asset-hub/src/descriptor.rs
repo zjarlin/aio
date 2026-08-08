@@ -1,4 +1,6 @@
-use az_plugin_core::plugin::{BackendApiContribution, ContributionSet, PluginDescriptor};
+use az_plugin_core::plugin::{
+    BackendApiContribution, BackendPageContribution, ContributionSet, PluginDescriptor,
+};
 use az_plugin_core::{PluginActivation, PluginKind};
 
 pub const PLUGIN_ID: &str = "asset-hub";
@@ -29,6 +31,11 @@ pub fn descriptor() -> PluginDescriptor {
 
 pub fn contributions() -> ContributionSet {
     ContributionSet {
+        backend_page: Some(BackendPageContribution {
+            name: "assets".to_string(),
+            title: "资产中心".to_string(),
+            route: ROUTE.to_string(),
+        }),
         backend_apis: vec![
             backend_api(
                 "asset-hub.api.status",

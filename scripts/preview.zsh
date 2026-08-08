@@ -30,6 +30,8 @@ if [[ -z "$database_url" ]]; then
   print -u2 "缺少 .env 中的 AZ_AIO_DATABASE_URL"
   exit 1
 fi
+repository_web_port="$(sed -n -E 's/^AZ_AIO_WEB_PORT=(.*)$/\1/p' .env | head -n 1)"
+web_port="${repository_web_port:-${AZ_AIO_WEB_PORT:-8080}}"
 
 database_authority="${${database_url#*://}%%/*}"
 database_host_port="${database_authority##*@}"
@@ -55,8 +57,45 @@ database_identity() {
     2>/dev/null || true
 }
 
+prepare_web_port() {
+  local listener_pids
+  local listener_pid
+  local listener_cwd
+  local listener_executable
+
+  listener_pids="$(lsof -nP -tiTCP:"$web_port" -sTCP:LISTEN 2>/dev/null || true)"
+  if [[ -z "$listener_pids" ]]; then
+    return
+  fi
+
+  for listener_pid in ${(f)listener_pids}; do
+    listener_cwd="$(lsof -a -p "$listener_pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+    listener_executable="$(lsof -a -p "$listener_pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+    if [[ "$listener_cwd" != "$repository_root" || "${listener_executable:t}" != "az-aio-app" ]]; then
+      print -u2 "端口 $web_port 已被其他进程占用: PID $listener_pid"
+      exit 1
+    fi
+  done
+
+  print "停止旧 AIO 进程: PID ${listener_pids//$'\n'/, }"
+  for listener_pid in ${(f)listener_pids}; do
+    kill "$listener_pid" 2>/dev/null || true
+  done
+
+  for attempt in {1..50}; do
+    if ! lsof -nP -iTCP:"$web_port" -sTCP:LISTEN >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.1
+  done
+
+  print -u2 "旧 AIO 进程未在 5 秒内释放端口 $web_port"
+  exit 1
+}
+
 if [[ "$database_transport" == "auto" || "$database_transport" == "direct" ]]; then
   if [[ "$(database_identity "$database_url")" == "$expected_database_identity" ]]; then
+    prepare_web_port
     exec cargo run -p az-aio-app
   fi
   if [[ "$database_transport" == "direct" ]]; then
@@ -118,4 +157,5 @@ if [[ -z "$relay_ready" ]]; then
   exit 1
 fi
 
+prepare_web_port
 AZ_AIO_DATABASE_URL_OVERRIDE="$relay_database_url" cargo run -p az-aio-app

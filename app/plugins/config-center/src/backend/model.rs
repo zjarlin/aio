@@ -1,4 +1,5 @@
 use az_plugin_core::ToastyModelContribution;
+use az_config_center_contract::ConfigEntrySummary;
 use serde::{Deserialize, Serialize};
 
 pub const TABLE_NAME_PREFIX: &str = "biz_config_center_";
@@ -21,14 +22,6 @@ pub fn config_center_model_contribution() -> ToastyModelContribution {
     ToastyModelContribution::new(toasty::models!(ConfigEntry))
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ConfigEntrySummary {
-    pub id: String,
-    pub namespace: String,
-    pub key: String,
-    pub value: String,
-}
-
 impl From<ConfigEntry> for ConfigEntrySummary {
     fn from(entry: ConfigEntry) -> Self {
         Self {
@@ -36,6 +29,7 @@ impl From<ConfigEntry> for ConfigEntrySummary {
             namespace: entry.namespace,
             key: entry.key,
             value: entry.value,
+            updated_at: entry.updated_at,
         }
     }
 }

@@ -10,7 +10,7 @@ use evalexpr::{ContextWithMutableVariables, HashMapContext, Value as EvalValue};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
-use sqlx::{PgPool, Row, postgres::PgPoolOptions, types::Json as SqlJson};
+use sqlx::{PgPool, Postgres, QueryBuilder, Row, postgres::PgPoolOptions, types::Json as SqlJson};
 use toasty::stmt::{List, Query};
 
 use crate::database::{timestamp_ms, verify_database_url};
@@ -132,6 +132,38 @@ impl Default for PageParams {
     fn default() -> Self {
         Self { o: 0, s: 50 }
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecordFilterOperator {
+    Equals,
+    Contains,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordFilter {
+    pub field: String,
+    pub operator: RecordFilterOperator,
+    pub value: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecordSortDirection {
+    Ascending,
+    Descending,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RecordSort {
+    pub field: String,
+    pub direction: RecordSortDirection,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RecordCriteria {
+    pub all: Vec<RecordFilter>,
+    pub any: Vec<RecordFilter>,
+    pub sort: Option<RecordSort>,
 }
 
 /// 对外返回的记录视图。
@@ -536,38 +568,41 @@ impl RecordStore {
         })
     }
 
-    /// 按 payload 字段精确筛选后分页查询原始记录。
-    pub async fn list_raw_records_page_by_field(
+    /// 按结构化条件筛选、排序并分页查询原始记录。
+    pub async fn list_raw_records_page_with_criteria(
         &self,
         model_name: &str,
-        field_name: &str,
-        field_value: &str,
+        criteria: &RecordCriteria,
+        sort_field_type: Option<&str>,
         page: PageParams,
     ) -> anyhow::Result<PageData<DataRecord>> {
-        let total = sqlx::query_scalar::<_, i64>(
-            "SELECT COUNT(*) FROM engine_data_records
-             WHERE model_name = $1 AND payload ->> $2 = $3",
-        )
-        .bind(model_name)
-        .bind(field_name)
-        .bind(field_value)
-        .fetch_one(&self.pool)
-        .await
-        .context("统计筛选后的 engine 记录失败")?;
-        let rows = sqlx::query(
-            "SELECT id, model_name, payload, created_at_ms, updated_at_ms
-             FROM engine_data_records
-             WHERE model_name = $1 AND payload ->> $2 = $3
-             ORDER BY created_at_ms, id OFFSET $4 LIMIT $5",
-        )
-        .bind(model_name)
-        .bind(field_name)
-        .bind(field_value)
-        .bind(page.o as i64)
-        .bind(page.s as i64)
-        .fetch_all(&self.pool)
-        .await
-        .context("分页查询筛选后的 engine 记录失败")?;
+        let mut count = QueryBuilder::<Postgres>::new(
+            "SELECT COUNT(*) FROM engine_data_records WHERE model_name = ",
+        );
+        count.push_bind(model_name.to_owned());
+        push_record_criteria_predicate(&mut count, criteria);
+        let total = count
+            .build_query_scalar::<i64>()
+            .fetch_one(&self.pool)
+            .await
+            .context("统计筛选后的 engine 记录失败")?;
+
+        let mut query = QueryBuilder::<Postgres>::new(
+            "SELECT id, model_name, payload, created_at_ms, updated_at_ms \
+             FROM engine_data_records WHERE model_name = ",
+        );
+        query.push_bind(model_name.to_owned());
+        push_record_criteria_predicate(&mut query, criteria);
+        push_record_sort(&mut query, criteria.sort.as_ref(), sort_field_type);
+        query.push(" OFFSET ");
+        query.push_bind(page.o as i64);
+        query.push(" LIMIT ");
+        query.push_bind(page.s as i64);
+        let rows = query
+            .build()
+            .fetch_all(&self.pool)
+            .await
+            .context("分页查询筛选后的 engine 记录失败")?;
         let records = rows
             .iter()
             .map(data_record_from_row)
@@ -641,6 +676,85 @@ impl RecordStore {
             .context("删除 engine 记录失败")?;
         Ok(())
     }
+}
+
+fn push_record_criteria_predicate(
+    query: &mut QueryBuilder<'_, Postgres>,
+    criteria: &RecordCriteria,
+) {
+    for filter in &criteria.all {
+        query.push(" AND ");
+        push_record_filter(query, filter);
+    }
+    if criteria.any.is_empty() {
+        return;
+    }
+    query.push(" AND (");
+    for (index, filter) in criteria.any.iter().enumerate() {
+        if index > 0 {
+            query.push(" OR ");
+        }
+        push_record_filter(query, filter);
+    }
+    query.push(")");
+}
+
+fn push_record_filter(query: &mut QueryBuilder<'_, Postgres>, filter: &RecordFilter) {
+    push_payload_text_expression(query, &filter.field);
+    match filter.operator {
+        RecordFilterOperator::Equals => {
+            query.push(" = ");
+            query.push_bind(filter.value.clone());
+        }
+        RecordFilterOperator::Contains => {
+            query.push(" ILIKE ");
+            query.push_bind(contains_pattern(&filter.value));
+            query.push(" ESCAPE E'\\\\'");
+        }
+    }
+}
+
+fn push_record_sort(
+    query: &mut QueryBuilder<'_, Postgres>,
+    sort: Option<&RecordSort>,
+    field_type: Option<&str>,
+) {
+    let Some(sort) = sort else {
+        query.push(" ORDER BY created_at_ms, id");
+        return;
+    };
+    query.push(" ORDER BY ");
+    push_payload_text_expression(query, &sort.field);
+    match field_type {
+        Some("int" | "datetime") => {
+            query.push("::bigint");
+        }
+        Some("decimal") => {
+            query.push("::numeric");
+        }
+        Some("boolean") => {
+            query.push("::boolean");
+        }
+        _ => {}
+    }
+    query.push(match sort.direction {
+        RecordSortDirection::Ascending => " ASC NULLS LAST, created_at_ms, id",
+        RecordSortDirection::Descending => " DESC NULLS LAST, created_at_ms, id",
+    });
+}
+
+fn push_payload_text_expression(query: &mut QueryBuilder<'_, Postgres>, field: &str) {
+    query.push("(payload ->> '");
+    query.push(field.replace('\'', "''"));
+    query.push("')");
+}
+
+fn contains_pattern(value: &str) -> String {
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_");
+    format!("%{escaped}%")
 }
 
 impl EngineExecutor {
@@ -741,22 +855,37 @@ impl EngineExecutor {
         self.evaluate_record_page(model_name, &fields, raw).await
     }
 
-    /// 按模型字段精确筛选记录并执行集合化计算字段。
-    pub async fn list_records_by_field(
+    /// 按结构化条件查询记录并执行集合化计算字段。
+    pub async fn list_records_with_criteria(
         &self,
         model_name: &str,
-        field_name: &str,
-        field_value: &str,
+        criteria: &RecordCriteria,
         page: PageParams,
     ) -> anyhow::Result<PageData<DataRecordView>> {
         self.store.ensure_model(model_name).await?;
         let fields = self.store.list_fields(model_name).await?;
-        if !fields.iter().any(|field| field.name == field_name) {
-            bail!("筛选字段不存在: {model_name}.{field_name}");
+        for filter in criteria.all.iter().chain(&criteria.any) {
+            if !fields.iter().any(|field| field.name == filter.field) {
+                bail!("筛选字段不存在: {model_name}.{}", filter.field);
+            }
+            if filter.value.is_empty() {
+                bail!("筛选值不能为空: {model_name}.{}", filter.field);
+            }
         }
+        let sort_field_type = match &criteria.sort {
+            Some(sort) => Some(
+                fields
+                    .iter()
+                    .find(|field| field.name == sort.field)
+                    .with_context(|| format!("排序字段不存在: {model_name}.{}", sort.field))?
+                    .field_type
+                    .as_str(),
+            ),
+            None => None,
+        };
         let raw = self
             .store
-            .list_raw_records_page_by_field(model_name, field_name, field_value, page)
+            .list_raw_records_page_with_criteria(model_name, criteria, sort_field_type, page)
             .await?;
         self.evaluate_record_page(model_name, &fields, raw).await
     }
@@ -1223,6 +1352,11 @@ mod tests {
 
         // 必填字段缺失时应在落库前阻断。
         assert!(validate_payload(&[field], &payload, false).is_err());
+    }
+
+    #[test]
+    fn escapes_literal_contains_patterns() {
+        assert_eq!(contains_pattern(r"50%_off\now"), r"%50\%\_off\\now%");
     }
 
     #[test]

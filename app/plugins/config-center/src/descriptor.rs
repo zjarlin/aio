@@ -1,5 +1,5 @@
 use az_plugin_core::plugin::{
-    BackendApiContribution, ContributionSet, PluginDescriptor,
+    BackendApiContribution, BackendPageContribution, ContributionSet, PluginDescriptor,
 };
 use az_plugin_core::{PluginActivation, PluginKind};
 
@@ -34,6 +34,11 @@ pub fn descriptor() -> PluginDescriptor {
 
 pub fn contributions() -> ContributionSet {
     ContributionSet {
+        backend_page: Some(BackendPageContribution {
+            name: "config".to_string(),
+            title: "配置中心".to_string(),
+            route: ROUTE.to_string(),
+        }),
         backend_apis: vec![
             backend_api(
                 "config-center.api.status",
@@ -74,6 +79,14 @@ pub fn contributions() -> ContributionSet {
                 "Save Config Entry",
                 "Creates or updates a config entry.",
                 50,
+            ),
+            backend_api(
+                "config-center.api.ui-action",
+                "POST",
+                "/api/config-center/ui-action",
+                "配置页面操作",
+                "接收配置工作台表单操作并返回页面跳转。",
+                60,
             ),
         ],
         ..ContributionSet::default()

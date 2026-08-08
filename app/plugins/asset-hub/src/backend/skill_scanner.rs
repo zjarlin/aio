@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::{Context, anyhow};
+use az_asset_hub_contract::ScannedSkillSummary;
 use az_str::sanitize::to_slug;
 
 const BUILT_IN_TAGS: &[&str] = &[
@@ -19,27 +20,11 @@ const BUILT_IN_TAGS: &[&str] = &[
     "api",
 ];
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ScannedSkillAsset {
-    pub id: String,
-    pub name: String,
-    #[serde(rename = "type")]
-    pub asset_type: String,
-    pub source: String,
-    pub origin: String,
-    pub tags: Vec<String>,
-    pub content: String,
-    pub status: String,
-    pub md5: Option<String>,
-    pub systems: Vec<String>,
-}
-
-pub fn scan_skill_assets() -> anyhow::Result<Vec<ScannedSkillAsset>> {
+pub fn scan_skill_assets() -> anyhow::Result<Vec<ScannedSkillSummary>> {
     scan_skill_assets_at(&skill_root()?)
 }
 
-pub(crate) fn scan_skill_assets_at(root: &Path) -> anyhow::Result<Vec<ScannedSkillAsset>> {
+pub(crate) fn scan_skill_assets_at(root: &Path) -> anyhow::Result<Vec<ScannedSkillSummary>> {
     if !root.exists() {
         return Ok(Vec::new());
     }
@@ -53,7 +38,7 @@ pub(crate) fn scan_skill_assets_at(root: &Path) -> anyhow::Result<Vec<ScannedSki
     Ok(assets)
 }
 
-fn scan_skill_dir(path: &Path) -> anyhow::Result<Option<ScannedSkillAsset>> {
+fn scan_skill_dir(path: &Path) -> anyhow::Result<Option<ScannedSkillSummary>> {
     let skill_path = path.join("SKILL.md");
     if !skill_path.is_file() {
         return Ok(None);
@@ -73,17 +58,14 @@ fn scan_skill_dir(path: &Path) -> anyhow::Result<Option<ScannedSkillAsset>> {
     tags.sort();
     tags.dedup();
 
-    Ok(Some(ScannedSkillAsset {
+    Ok(Some(ScannedSkillSummary {
         id: format!("skill-{}", to_slug(&name)),
         name,
         asset_type: "skill".to_string(),
         source: skill_path.to_string_lossy().into_owned(),
         origin: "Skill directory scan".to_string(),
         tags,
-        content,
         status: "synced".to_string(),
-        md5: None,
-        systems: Vec::new(),
     }))
 }
 

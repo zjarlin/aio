@@ -1,15 +1,7 @@
 use std::{env, fs, path::PathBuf};
 
 use anyhow::{Context, anyhow};
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ConfigCenterPaths {
-    pub data_dir: String,
-    pub config_dir: String,
-    pub state_dir: String,
-    pub cache_dir: String,
-}
+use az_config_center_contract::ConfigCenterPaths;
 
 pub fn resolve_config_center_paths() -> anyhow::Result<ConfigCenterPaths> {
     let data_dir = xdg_dir("XDG_DATA_HOME", ".local/share")?;

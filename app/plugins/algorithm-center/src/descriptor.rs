@@ -1,4 +1,6 @@
-use az_plugin_core::plugin::{BackendApiContribution, ContributionSet, PluginDescriptor};
+use az_plugin_core::plugin::{
+    BackendApiContribution, BackendPageContribution, ContributionSet, PluginDescriptor,
+};
 use az_plugin_core::{PluginActivation, PluginKind};
 
 const PLUGIN_ID: &str = "algorithm-center";
@@ -13,7 +15,10 @@ pub fn descriptor() -> PluginDescriptor {
         activation: PluginActivation::Eager,
         priority: 880,
         dependencies: Vec::new(),
-        capabilities: vec!["dioxus-ui-contract-page".to_string(), "axum-api".to_string()],
+        capabilities: vec![
+            "dioxus-ui-contract-page".to_string(),
+            "axum-api".to_string(),
+        ],
         permissions: vec!["read-algorithm-catalog".to_string()],
         kind: PluginKind::Native,
     }
@@ -21,6 +26,11 @@ pub fn descriptor() -> PluginDescriptor {
 
 pub fn contributions() -> ContributionSet {
     ContributionSet {
+        backend_page: Some(BackendPageContribution {
+            name: "algorithms".to_string(),
+            title: "算法中心".to_string(),
+            route: ROUTE.to_string(),
+        }),
         backend_apis: vec![
             BackendApiContribution {
                 id: "algorithm-center.api.status".to_string(),
@@ -58,6 +68,14 @@ pub fn contributions() -> ContributionSet {
                     "Accepts multipart video upload and returns a video URL for processing."
                         .to_string(),
                 order: 40,
+            },
+            BackendApiContribution {
+                id: "algorithm-center.api.ui-action".to_string(),
+                method: "POST".to_string(),
+                path: "/api/algorithm-center/ui-action".to_string(),
+                label: "算法页面操作".to_string(),
+                description: "接收算法工作台表单操作并返回页面跳转。".to_string(),
+                order: 50,
             },
         ],
         catalog_providers: Vec::new(),

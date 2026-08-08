@@ -7,19 +7,11 @@ use std::{
 };
 
 use anyhow::{Context, anyhow, bail};
+use az_config_center_contract::PairingLocalInfo;
 
 use crate::backend::paths::config_center_config_dir_path;
 
 const DEVICE_INFO_FILE_NAME: &str = "device-info.json";
-
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PairingLocalInfo {
-    pub device_name: String,
-    pub fingerprint: String,
-    pub home_path: String,
-    pub metadata_path: String,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

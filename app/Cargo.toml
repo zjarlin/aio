@@ -14,7 +14,11 @@ studio = { package = "az-studio", path = "plugins/studio" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 dioxus = { workspace = true, features = ["web", "launch"] }
+az-asset-hub-contract.workspace = true
+az-config-center-contract.workspace = true
+icons.workspace = true
 rudi.workspace = true
+urlencoding.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -35,7 +39,6 @@ rudi.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
-system-admin = { package = "az-system-admin", path = "plugins/system-admin" }
 tokio.workspace = true
 tower-http.workspace = true
 

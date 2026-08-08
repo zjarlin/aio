@@ -1,7 +1,8 @@
 //! engine PostgreSQL 集成测试。
 
 use az_plugin_core::{
-    ComputedDependency, FieldInput, ModelInput, PageParams, RecordStore, verify_database_url,
+    ComputedDependency, FieldInput, ModelInput, PageParams, RecordCriteria, RecordFilter,
+    RecordFilterOperator, RecordSort, RecordSortDirection, RecordStore, verify_database_url,
 };
 use serde_json::json;
 
@@ -104,7 +105,14 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
         .await?;
     store
         .executor()
-        .insert_record(&order_model, json!({ "user_id": user.id, "amount": 30 }))
+        .insert_record(
+            &order_model,
+            json!({ "user_id": user.id.clone(), "amount": 30 }),
+        )
+        .await?;
+    store
+        .executor()
+        .insert_record(&order_model, json!({ "user_id": user.id, "amount": 80 }))
         .await?;
 
     let page = store
@@ -113,9 +121,64 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
         .await?;
 
     // 查询路径应批量加载外部模型依赖并只在返回 payload 中注入计算结果。
-    assert_eq!(page.t, 1);
+    assert_eq!(page.t, 2);
     assert_eq!(page.p, PageParams { o: 0, s: 10 });
-    assert_eq!(page.d[0].payload["vip_amount"], json!(37));
+    assert!(
+        page.d
+            .iter()
+            .any(|record| record.payload["vip_amount"] == json!(37))
+    );
+
+    let filtered = store
+        .executor()
+        .list_records_with_criteria(
+            &order_model,
+            &RecordCriteria {
+                all: vec![RecordFilter {
+                    field: "amount".to_string(),
+                    operator: RecordFilterOperator::Contains,
+                    value: "3".to_string(),
+                }],
+                any: Vec::new(),
+                sort: Some(RecordSort {
+                    field: "amount".to_string(),
+                    direction: RecordSortDirection::Descending,
+                }),
+            },
+            PageParams { o: 0, s: 10 },
+        )
+        .await?;
+    assert_eq!(filtered.t, 1);
+    assert_eq!(filtered.d[0].payload["amount"], json!(30));
+
+    let searched = store
+        .executor()
+        .list_records_with_criteria(
+            &order_model,
+            &RecordCriteria {
+                all: Vec::new(),
+                any: vec![
+                    RecordFilter {
+                        field: "amount".to_string(),
+                        operator: RecordFilterOperator::Contains,
+                        value: "3".to_string(),
+                    },
+                    RecordFilter {
+                        field: "amount".to_string(),
+                        operator: RecordFilterOperator::Contains,
+                        value: "8".to_string(),
+                    },
+                ],
+                sort: Some(RecordSort {
+                    field: "amount".to_string(),
+                    direction: RecordSortDirection::Descending,
+                }),
+            },
+            PageParams { o: 0, s: 10 },
+        )
+        .await?;
+    assert_eq!(searched.t, 2);
+    assert_eq!(searched.d[0].payload["amount"], json!(80));
 
     store.delete_model(&order_model).await?;
     store.delete_model(&user_model).await?;

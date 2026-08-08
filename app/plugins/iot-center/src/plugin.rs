@@ -5,8 +5,9 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use az_plugin_core::RecordStore;
 use az_plugin_core::plugin::{
-    AdminCliContribution, BackendApiContribution, ContributionSet, DynAdminPluginProvider,
-    NativePluginContext, NativePluginProvider, NativePluginRuntime, PluginDescriptor,
+    AdminCliContribution, BackendApiContribution, BackendPageContribution, ContributionSet,
+    DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
+    PluginDescriptor,
 };
 use az_plugin_core::{PluginActivation, PluginKind};
 use rudi::Singleton;
@@ -14,7 +15,7 @@ use rudi::Singleton;
 use crate::{
     contract::{
         APPLY_TEMPLATE_PATH, DEVICES_PATH, FIXTURE_TELEMETRY_PATH, OP_DEVICES_CREATE,
-        OP_FIXTURE_TELEMETRY_INGEST, OP_TEMPLATE_APPLY, STATUS_PATH,
+        OP_FIXTURE_TELEMETRY_INGEST, OP_TEMPLATE_APPLY, ROUTE, STATUS_PATH, UI_ACTION_PATH,
     },
     routes::{IotApiState, iot_router},
     service::IotService,
@@ -49,6 +50,11 @@ impl NativePluginProvider for IotCenterPlugin {
 
     fn contributions(&self) -> anyhow::Result<ContributionSet> {
         Ok(ContributionSet {
+            backend_page: Some(BackendPageContribution {
+                name: "iot".to_string(),
+                title: "物联网中心".to_string(),
+                route: ROUTE.to_string(),
+            }),
             backend_apis: vec![
                 api("iot.status", "GET", STATUS_PATH, "物联网状态", 10),
                 api(
@@ -65,6 +71,13 @@ impl NativePluginProvider for IotCenterPlugin {
                     FIXTURE_TELEMETRY_PATH,
                     "接收模拟遥测",
                     40,
+                ),
+                api(
+                    "iot.ui-action",
+                    "POST",
+                    UI_ACTION_PATH,
+                    "物联网页面操作",
+                    50,
                 ),
             ],
             ..ContributionSet::default()

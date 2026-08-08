@@ -10,6 +10,7 @@ authors.workspace = true
 [dependencies]
 anyhow.workspace = true
 axum.workspace = true
+az-config-center-contract.workspace = true
 az-plugin-core = { path = "../../../crates/plugin/core" }
 automod.workspace = true
 az-str.workspace = true

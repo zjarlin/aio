@@ -5,8 +5,9 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use az_plugin_core::RecordStore;
 use az_plugin_core::plugin::{
-    AdminCliContribution, BackendApiContribution, ContributionSet, DynAdminPluginProvider,
-    NativePluginContext, NativePluginProvider, NativePluginRuntime, PluginDescriptor,
+    AdminCliContribution, BackendApiContribution, BackendPageContribution, ContributionSet,
+    DynAdminPluginProvider, NativePluginContext, NativePluginProvider, NativePluginRuntime,
+    PluginDescriptor,
 };
 use az_plugin_core::{PluginActivation, PluginKind};
 use rudi::Singleton;
@@ -14,8 +15,8 @@ use rudi::Singleton;
 use crate::{
     contract::{
         APPLY_TEMPLATE_PATH, COLLECT_PATH, COMMANDS_PATH, EXECUTE_PATH, OP_COLLECT,
-        OP_COMMAND_UPSERT, OP_EXECUTE, OP_TARGET_UPSERT, OP_TEMPLATE_APPLY, STATUS_PATH,
-        TARGETS_PATH,
+        OP_COMMAND_UPSERT, OP_EXECUTE, OP_TARGET_UPSERT, OP_TEMPLATE_APPLY, ROUTE, STATUS_PATH,
+        TARGETS_PATH, UI_ACTION_PATH,
     },
     routes::{SshApiState, ssh_router},
     service::SshService,
@@ -55,6 +56,11 @@ impl NativePluginProvider for SshPlugin {
 
     fn contributions(&self) -> anyhow::Result<ContributionSet> {
         Ok(ContributionSet {
+            backend_page: Some(BackendPageContribution {
+                name: "ssh".to_string(),
+                title: "SSH 服务器运维".to_string(),
+                route: ROUTE.to_string(),
+            }),
             backend_apis: vec![
                 api("ssh.status", "GET", STATUS_PATH, "SSH 运维状态", 10),
                 api(
@@ -74,6 +80,7 @@ impl NativePluginProvider for SshPlugin {
                 ),
                 api(OP_COLLECT, "POST", COLLECT_PATH, "采集目标监测项", 50),
                 api(OP_EXECUTE, "POST", EXECUTE_PATH, "执行指定 SSH 命令", 60),
+                api("ssh.ui-action", "POST", UI_ACTION_PATH, "SSH 页面操作", 70),
             ],
             ..ContributionSet::default()
         })

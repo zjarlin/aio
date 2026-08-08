@@ -8,16 +8,19 @@ use anyhow::{Context, anyhow};
 use az_plugin_core::http::{
     ApiError, ApiForm, ApiJson, ApiQuery, ApiResponse, ok_json,
 };
-use serde::{Deserialize, Serialize};
+use az_config_center_contract::{
+    ConfigCenterStatus, ConfigEntrySummary, ConfigEntryUpsertInput, DotfilesMonitorStatus,
+    PairingLocalInfo,
+};
+use serde::Deserialize;
 
 use crate::{
     backend::{
         dotfiles_monitor::scan_dotfiles_status,
-        dotfiles_monitor_types::DotfilesMonitorStatus,
-        model::{ConfigEntrySummary, TABLE_NAME_PREFIX},
-        pairing::{PairingLocalInfo, ensure_local_pairing_device_info, local_pairing_info},
-        paths::{ConfigCenterPaths, resolve_config_center_paths},
-        store::{ConfigCenterStore, ConfigEntryInput},
+        model::TABLE_NAME_PREFIX,
+        pairing::{ensure_local_pairing_device_info, local_pairing_info},
+        paths::resolve_config_center_paths,
+        store::ConfigCenterStore,
     },
 };
 
@@ -42,9 +45,9 @@ impl ConfigCenterApiState {
         }
     }
 
-    pub fn status(&self) -> anyhow::Result<ConfigCenterStatusResponse> {
+    pub fn status(&self) -> anyhow::Result<ConfigCenterStatus> {
         let paths = resolve_config_center_paths()?;
-        Ok(ConfigCenterStatusResponse {
+        Ok(ConfigCenterStatus {
             ok: true,
             database_configured: self.database_url.as_ref().is_some_and(|value| !value.is_empty()),
             store_connected: self.store.is_some(),
@@ -71,8 +74,11 @@ pub fn config_center_router(state: ConfigCenterApiState) -> Router {
 
 async fn status_handler(
     State(state): State<ConfigCenterApiState>,
-) -> Result<Json<ConfigCenterStatusResponse>, Response> {
-    state.status().map(Json).map_err(config_center_error_response)
+) -> Result<Json<ApiResponse<ConfigCenterStatus>>, Response> {
+    state
+        .status()
+        .map(ok_json)
+        .map_err(config_center_error_response)
 }
 
 async fn dotfiles_handler(
@@ -106,19 +112,14 @@ async fn list_entries_handler(
 
 async fn upsert_entry_handler(
     State(state): State<ConfigCenterApiState>,
-    ApiJson(request): ApiJson<UpsertConfigEntryRequest>,
+    ApiJson(request): ApiJson<ConfigEntryUpsertInput>,
 ) -> Result<Json<ApiResponse<ConfigEntrySummary>>, Response> {
     let store = state
         .store
         .ok_or_else(|| anyhow!("missing config-center database url"))
         .map_err(config_center_error_response)?;
     store
-        .upsert_entry(ConfigEntryInput {
-            id: request.id,
-            namespace: request.namespace.unwrap_or_else(|| "az-aio".to_string()),
-            key: request.key,
-            value: request.value,
-        })
+        .upsert_entry(request)
         .await
         .map(ok_json)
         .map_err(config_center_error_response)
@@ -126,7 +127,7 @@ async fn upsert_entry_handler(
 
 async fn ui_action_handler(
     State(state): State<ConfigCenterApiState>,
-    ApiForm(form): ApiForm<UpsertConfigEntryRequest>,
+    ApiForm(form): ApiForm<ConfigEntryUpsertInput>,
 ) -> Response {
     let redirect = match apply_ui_action(state, form).await {
         Ok(()) => "/app/config".to_string(),
@@ -140,42 +141,18 @@ async fn ui_action_handler(
 
 async fn apply_ui_action(
     state: ConfigCenterApiState,
-    request: UpsertConfigEntryRequest,
+    request: ConfigEntryUpsertInput,
 ) -> anyhow::Result<()> {
     let store = state
         .store
         .context("missing config-center database url")?;
-    store
-        .upsert_entry(ConfigEntryInput {
-            id: request.id,
-            namespace: request.namespace.unwrap_or_else(|| "az-aio".to_string()),
-            key: request.key,
-            value: request.value,
-        })
-        .await?;
+    store.upsert_entry(request).await?;
     Ok(())
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct ConfigCenterStatusResponse {
-    pub ok: bool,
-    pub database_configured: bool,
-    pub store_connected: bool,
-    pub table_prefix: String,
-    pub paths: ConfigCenterPaths,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListEntriesQuery {
     pub namespace: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpsertConfigEntryRequest {
-    pub id: Option<String>,
-    pub namespace: Option<String>,
-    pub key: String,
-    pub value: String,
 }
 
 fn config_center_error_response(error: anyhow::Error) -> Response {

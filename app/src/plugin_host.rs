@@ -253,6 +253,7 @@ fn merge_snapshot_admin_contribution(
 
 fn sort_snapshot(snapshot: &mut HostSnapshot) {
     let mut contributions = ContributionSet {
+        backend_page: None,
         backend_apis: std::mem::take(&mut snapshot.backend_apis),
         catalog_providers: Vec::new(),
     };

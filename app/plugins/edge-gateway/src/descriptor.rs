@@ -1,4 +1,6 @@
-use az_plugin_core::plugin::{BackendApiContribution, ContributionSet, PluginDescriptor};
+use az_plugin_core::plugin::{
+    BackendApiContribution, BackendPageContribution, ContributionSet, PluginDescriptor,
+};
 use az_plugin_core::{PluginActivation, PluginKind};
 
 pub const PLUGIN_ID: &str = "edge-gateway";
@@ -9,8 +11,9 @@ pub fn descriptor() -> PluginDescriptor {
         id: PLUGIN_ID.to_string(),
         name: "边缘网关".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        description: "Gateway flow editor, plan generation, runtime execution, and helper references."
-            .to_string(),
+        description:
+            "Gateway flow editor, plan generation, runtime execution, and helper references."
+                .to_string(),
         activation: PluginActivation::Eager,
         priority: 890,
         dependencies: Vec::new(),
@@ -32,6 +35,11 @@ pub fn descriptor() -> PluginDescriptor {
 
 pub fn contributions() -> ContributionSet {
     ContributionSet {
+        backend_page: Some(BackendPageContribution {
+            name: "gateway".to_string(),
+            title: "边缘网关".to_string(),
+            route: ROUTE.to_string(),
+        }),
         backend_apis: vec![
             backend_api(
                 "edge-gateway.api.status",
@@ -96,6 +104,14 @@ pub fn contributions() -> ContributionSet {
                 "Save Managed API Route",
                 "Creates or updates a Toasty-backed route definition and script draft.",
                 48,
+            ),
+            backend_api(
+                "edge-gateway.api.ui-route",
+                "POST",
+                "/api/edge-gateway/ui-route",
+                "网关路由页面操作",
+                "接收网关路由工作台表单操作并返回页面跳转。",
+                49,
             ),
             backend_api(
                 "edge-gateway.api.flows",

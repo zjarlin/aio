@@ -1,4 +1,5 @@
 use az_plugin_core::ToastyModelContribution;
+use az_asset_hub_contract::AssetSummary;
 use serde::{Deserialize, Serialize};
 
 pub const TABLE_NAME_PREFIX: &str = "biz_asset_hub_";
@@ -21,15 +22,6 @@ pub fn asset_hub_model_contribution() -> ToastyModelContribution {
     ToastyModelContribution::new(toasty::models!(AssetRecord))
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AssetSummary {
-    pub id: String,
-    pub kind: String,
-    pub title: String,
-    pub status: String,
-    pub source: String,
-}
-
 impl From<AssetRecord> for AssetSummary {
     fn from(record: AssetRecord) -> Self {
         Self {
@@ -38,6 +30,7 @@ impl From<AssetRecord> for AssetSummary {
             title: record.title,
             status: record.status,
             source: record.source,
+            updated_at: record.updated_at,
         }
     }
 }

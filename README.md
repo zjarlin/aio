@@ -34,7 +34,7 @@ crates/
 ```text
 az-aio-app
   -> az-studio
-  -> az-system-admin / az-asset-hub / az-iot-center / ...
+  -> az-asset-hub / az-iot-center / ...
   -> az-plugin-core
 
 各功能插件 -> az-plugin-core

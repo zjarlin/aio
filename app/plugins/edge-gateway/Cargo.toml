@@ -23,7 +23,6 @@ rudi.workspace = true
 tokio.workspace = true
 toasty.workspace = true
 urlencoding.workspace = true
-system-admin = { package = "az-system-admin", path = "../system-admin" }
 
 [lints.rust]
 unsafe_code = "forbid"

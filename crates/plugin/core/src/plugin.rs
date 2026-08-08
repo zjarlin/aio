@@ -31,6 +31,8 @@ pub struct PluginDescriptor {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ContributionSet {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backend_page: Option<BackendPageContribution>,
     #[serde(default)]
     pub backend_apis: Vec<BackendApiContribution>,
     #[serde(default)]
@@ -127,6 +129,9 @@ pub struct AdminCliContribution {
 
 impl ContributionSet {
     pub fn merge(&mut self, other: Self) {
+        if self.backend_page.is_none() {
+            self.backend_page = other.backend_page;
+        }
         self.backend_apis.extend(other.backend_apis);
         self.catalog_providers.extend(other.catalog_providers);
     }
@@ -195,6 +200,13 @@ pub fn sort_menu_nodes(nodes: &mut [AdminMenuNode]) {
     for node in nodes {
         sort_menu_nodes(&mut node.children);
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct BackendPageContribution {
+    pub name: String,
+    pub title: String,
+    pub route: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

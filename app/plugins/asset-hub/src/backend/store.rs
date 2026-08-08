@@ -1,11 +1,12 @@
 use anyhow::bail;
+use az_asset_hub_contract::{AssetSummary, AssetUpsertInput};
 use az_plugin_core as db;
 use az_str::transformation::normalized_id_or_else;
 use rudi::{Context, DynProvider, Module, modules, providers, singleton};
 use std::sync::Arc;
 use toasty::stmt::{List, Query};
 
-use crate::backend::model::{AssetRecord, AssetSummary, TABLE_NAME_PREFIX};
+use crate::backend::model::{AssetRecord, TABLE_NAME_PREFIX};
 
 #[derive(Clone)]
 pub struct AssetHubStore {
@@ -23,7 +24,7 @@ impl AssetHubStore {
         Ok(records.into_iter().map(Into::into).collect())
     }
 
-    pub async fn upsert_asset(&self, input: AssetInput) -> anyhow::Result<AssetSummary> {
+    pub async fn upsert_asset(&self, input: AssetUpsertInput) -> anyhow::Result<AssetSummary> {
         validate_asset_input(&input)?;
         let id = normalized_id_or_else(input.id, db::new_uuid_id);
         let now = db::timestamp_secs();
@@ -62,15 +63,6 @@ impl AssetHubStore {
         };
         Ok(record.into())
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AssetInput {
-    pub id: Option<String>,
-    pub kind: String,
-    pub title: String,
-    pub status: String,
-    pub source: String,
 }
 
 pub trait AssetHubService: Send + Sync {
@@ -112,12 +104,18 @@ pub fn build_asset_hub_context_with_db(shared_db: db::Db) -> Context {
         .create(modules![AssetHubModule])
 }
 
-pub fn validate_asset_input(input: &AssetInput) -> anyhow::Result<()> {
+pub fn validate_asset_input(input: &AssetUpsertInput) -> anyhow::Result<()> {
+    if input.kind.trim().is_empty() {
+        bail!("asset kind must not be blank");
+    }
     if input.title.trim().is_empty() {
         bail!("asset title must not be blank");
     }
     if input.status.trim().is_empty() {
         bail!("asset status must not be blank");
+    }
+    if input.source.trim().is_empty() {
+        bail!("asset source must not be blank");
     }
     Ok(())
 }
@@ -128,7 +126,7 @@ mod tests {
 
     #[test]
     fn rejects_blank_asset_input() {
-        let input = AssetInput {
+        let input = AssetUpsertInput {
             id: None,
             kind: "skill".to_string(),
             title: " ".to_string(),

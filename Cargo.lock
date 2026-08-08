@@ -292,17 +292,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "az-admin-plugin-registry"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
- "az-str",
- "inventory",
- "strum",
-]
-
-[[package]]
 name = "az-aio-app"
 version = "2026.5.10"
 dependencies = [
@@ -310,8 +299,10 @@ dependencies = [
  "axum",
  "az-algorithm-center",
  "az-asset-hub",
+ "az-asset-hub-contract",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-config-center",
+ "az-config-center-contract",
  "az-drive-center",
  "az-edge-gateway",
  "az-iot-center",
@@ -320,16 +311,17 @@ dependencies = [
  "az-software-center",
  "az-ssh-plugin",
  "az-studio",
- "az-system-admin",
  "dioxus",
  "dirs",
  "dotenvy",
+ "icons",
  "rudi",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
  "tower-http",
+ "urlencoding",
 ]
 
 [[package]]
@@ -381,6 +373,7 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-asset-hub-contract",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-plugin-core",
  "az-str",
@@ -388,6 +381,14 @@ dependencies = [
  "serde",
  "toasty",
  "tokio",
+]
+
+[[package]]
+name = "az-asset-hub-contract"
+version = "2026.5.10"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -417,6 +418,7 @@ dependencies = [
  "anyhow",
  "axum",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
+ "az-config-center-contract",
  "az-plugin-core",
  "az-str",
  "rudi",
@@ -425,6 +427,14 @@ dependencies = [
  "toasty",
  "tokio",
  "urlencoding",
+]
+
+[[package]]
+name = "az-config-center-contract"
+version = "2026.5.10"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -475,7 +485,6 @@ dependencies = [
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-plugin-core",
  "az-str",
- "az-system-admin",
  "handlebars",
  "reqwest 0.12.28",
  "rudi",
@@ -556,7 +565,6 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
- "az-admin-plugin-registry",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-str",
  "evalexpr",
@@ -620,51 +628,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "az-starter-audit"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
-]
-
-[[package]]
-name = "az-starter-dictionary"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
-]
-
-[[package]]
-name = "az-starter-identity"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
-]
-
-[[package]]
-name = "az-starter-menu"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
-]
-
-[[package]]
-name = "az-starter-organization"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
-]
-
-[[package]]
 name = "az-str"
 version = "2026.5.10"
 source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
@@ -695,7 +658,9 @@ dependencies = [
  "gloo-timers",
  "hex",
  "icons",
+ "js-sys",
  "matchit",
+ "md5",
  "regex",
  "rig-core",
  "rudi",
@@ -706,47 +671,14 @@ dependencies = [
  "sqlx",
  "toasty",
  "tokio",
+ "tower",
  "tracing",
  "tw_merge",
  "urlencoding",
  "uuid",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
-]
-
-[[package]]
-name = "az-system-admin"
-version = "2026.5.10"
-dependencies = [
- "anyhow",
- "axum",
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
- "az-plugin-core",
- "az-system-starters",
- "rudi",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "toasty",
- "tokio",
- "tower",
- "urlencoding",
- "uuid",
-]
-
-[[package]]
-name = "az-system-starters"
-version = "2026.5.10"
-source = "git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19#e9c3235ba2b3e72026de004bc16da382e8ac1a19"
-dependencies = [
- "az-admin-plugin-registry",
- "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
- "az-starter-audit",
- "az-starter-dictionary",
- "az-starter-identity",
- "az-starter-menu",
- "az-starter-organization",
 ]
 
 [[package]]

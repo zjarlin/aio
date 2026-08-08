@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc, time::Instant};
 
 use axum::{
     Json, Router,
-    extract::{Extension, State},
+    extract::State,
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -13,7 +13,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
-use system_admin::model::SystemApiKeySummary;
 
 use crate::{
     backend::{
@@ -205,18 +204,11 @@ async fn apply_ui_route_action(
 
 async fn weather_current_handler(
     State(state): State<EdgeGatewayApiState>,
-    system_api_key: Option<Extension<SystemApiKeySummary>>,
     headers: HeaderMap,
     ApiJson(request): ApiJson<WeatherCurrentRequest>,
 ) -> Result<Json<ApiResponse<WeatherCurrentResponse>>, Response> {
     let started = Instant::now();
-    let authorized = authorize_asset_call(
-        &state,
-        WEATHER_CURRENT_ROUTE,
-        &headers,
-        system_api_key.map(|Extension(value)| value),
-    )
-    .await?;
+    let authorized = authorize_asset_call(&state, WEATHER_CURRENT_ROUTE, &headers).await?;
     match query_current_weather(&state.http, request).await {
         Ok(response) => {
             record_asset_usage(&state, &authorized.token_id, WEATHER_CURRENT_ROUTE, 200, started).await;
@@ -233,15 +225,7 @@ async fn authorize_asset_call(
     state: &EdgeGatewayApiState,
     route: &str,
     headers: &HeaderMap,
-    system_api_key: Option<SystemApiKeySummary>,
 ) -> Result<crate::backend::auth::EdgeAuthorizedToken, Response> {
-    if let Some(api_key) = system_api_key {
-        return Ok(crate::backend::auth::EdgeAuthorizedToken {
-            token_id: format!("system:{}", api_key.id),
-            token_name: api_key.name,
-        });
-    }
-
     let authorization = headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok());

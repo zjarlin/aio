@@ -1,25 +1,21 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::{Context as _, Result};
-use axum::{Json, Router, extract::State, middleware, response::Redirect, routing::get};
+use axum::{Json, Router, extract::State, response::Redirect, routing::get};
 use az_plugin_core::{
-    Db, PluginState, RecordStore,
+    Db, RecordStore,
     database::{collect_toasty_models, install_shared_db_singleton},
     http::{ApiResponse, ok_json},
     plugin::NativePluginContext,
 };
 use rudi::Context;
 use studio::{
-    AdminWorkbenchState, ProgramPatchAgent, PublishedProgram, WorkbenchBootstrap,
+    AdminWorkbenchState, CompiledArtifactWriter, ConventionContractManager,
+    ConventionEndpointIndex, NativeContractCatalog, ProgramPatchAgent, PublishedProgram,
+    WorkbenchBootstrap,
     capability::{CapabilityCatalog, DynCapabilityProvider},
     program_runtime::ProgramRuntime,
     program_store::ProgramStore,
-};
-use system_admin::{
-    api_key_auth::{SystemApiKeyAuthState, optional_system_api_key_auth},
-    app_state::resolve_admin_app_state,
-    catalog::SYSTEM_DOMAIN_ID,
-    store::SystemAdminStore,
 };
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -65,20 +61,9 @@ pub fn run() -> Result<()> {
         let _runtime_guard = runtime.enter();
         plugin_host::load_native_snapshot(native_context, &mut di)
     };
-    let admin = snapshot
-        .plugins
-        .iter()
-        .any(|plugin| {
-            plugin.descriptor.id == SYSTEM_DOMAIN_ID && plugin.state == PluginState::Active
-        })
-        .then(|| resolve_admin_app_state(&mut di))
-        .flatten()
-        .map(|state| AdminWorkbenchState {
-            can_add_scene: state.can_add_scene,
-            can_add_menu: state.can_add_menu,
-            can_edit_page: state.can_edit_page,
-        });
+    let admin = studio::resolve_admin_workbench_state(&mut di);
     let capabilities = CapabilityCatalog::new(di.resolve_by_type::<DynCapabilityProvider>())?;
+    let convention_endpoints = ConventionEndpointIndex::from_context(&mut di)?;
 
     runtime.block_on(run_server(
         snapshot,
@@ -87,6 +72,7 @@ pub fn run() -> Result<()> {
         shared_db,
         capabilities,
         admin,
+        convention_endpoints,
     ))
 }
 
@@ -97,16 +83,38 @@ async fn run_server(
     shared_db: Option<Db>,
     capabilities: CapabilityCatalog,
     admin: Option<AdminWorkbenchState>,
+    convention_endpoints: ConventionEndpointIndex,
 ) -> Result<()> {
+    let native_contracts = NativeContractCatalog::from_contributions(
+        snapshot
+            .plugin_contributions
+            .iter()
+            .map(|record| (record.plugin_id.as_str(), &record.contributions)),
+    )?;
     let record_store = shared_db
         .as_ref()
         .map(|database| RecordStore::from_shared_db(database.shared_handle(), database.pg_pool()));
-    let program_runtime = match (database_url.as_deref(), record_store) {
-        (Some(database_url), Some(record_store)) => {
-            let store = ProgramStore::connect(database_url).await?;
-            let runtime = ProgramRuntime::new(store, record_store, capabilities);
+    let program_runtime = match (database_url.as_deref(), shared_db.as_ref(), record_store) {
+        (Some(database_url), Some(database), Some(record_store)) => {
+            let store = ProgramStore::from_pool(database.pg_pool());
+            let runtime = ProgramRuntime::new(
+                store,
+                record_store,
+                capabilities,
+                CompiledArtifactWriter::workspace_target(),
+            );
+            let _native_report = runtime
+                .store()
+                .reconcile_native_contracts(&native_contracts)
+                .await
+                .context("同步插件 API 元数据到 Studio 失败")?;
             runtime.restore_active_image().await?;
-            runtime.publish_unactivated_program().await?;
+            if let Err(error) = runtime.publish_draft_if_changed("migration").await {
+                if runtime.active_image().await.is_none() {
+                    return Err(error).context("发布原生接口元数据 Revision 失败");
+                }
+                eprintln!("发布最新 Studio Draft 失败，继续使用活动 Revision: {error:#}");
+            }
             runtime.spawn_postgres_listener(database_url).await?;
             Some(runtime)
         }
@@ -116,21 +124,21 @@ async fn run_server(
         program_runtime: program_runtime.clone(),
         admin,
     };
-    let api_key_auth_state = if database_url
-        .as_ref()
-        .is_some_and(|value| !value.trim().is_empty())
-    {
-        SystemApiKeyAuthState::from_store(shared_db.map(SystemAdminStore::from_shared))
-    } else {
-        SystemApiKeyAuthState::degraded()
+    let convention_contracts = ConventionContractManager::workspace_app();
+    let convention_router = match &program_runtime {
+        Some(runtime) => {
+            let draft = runtime.store().draft().await?;
+            convention_contracts
+                .reconcile(&draft.definition)
+                .context("同步 Studio 约定接口文件失败")?;
+            match runtime.active_image().await {
+                Some(image) => convention_endpoints.router(image.image())?,
+                None => Router::new(),
+            }
+        }
+        None => Router::new(),
     };
-    let native_router = snapshot
-        .native_router
-        .clone()
-        .layer(middleware::from_fn_with_state(
-            api_key_auth_state,
-            optional_system_api_key_auth,
-        ));
+    let native_router = snapshot.native_router.clone();
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let assets_dir = manifest_dir.join("assets");
     let web_dist_dir = web_dist_dir();
@@ -154,10 +162,13 @@ async fn run_server(
                 program_runtime,
                 ProgramPatchAgent::from_env()?,
                 studio::FormStateExtractor::from_env()?,
+                convention_contracts,
             ),
         ));
 
-    let app = page_router.merge(native_router.with_state(()));
+    let app = page_router
+        .merge(native_router.with_state(()))
+        .merge(convention_router);
     let address = listener.local_addr().context("读取 AIO 监听地址失败")?;
     println!("AIO listening on http://{address}");
     axum::serve(
@@ -207,10 +218,8 @@ impl PageState {
         });
         bootstrap.default_route = bootstrap
             .program
-            .iter()
-            .flat_map(|program| &program.routes)
-            .map(|route| route.path.clone())
-            .next()
+            .as_ref()
+            .and_then(PublishedProgram::default_route)
             .unwrap_or_else(|| "/studio".to_owned());
         bootstrap
     }
@@ -236,8 +245,8 @@ async fn health() -> &'static str {
 }
 
 fn enable_plugin_providers() {
+    crate::contracts::enable();
     studio::enable();
-    system_admin::enable();
     algorithm_center::enable();
     asset_hub::enable();
     config_center::enable();

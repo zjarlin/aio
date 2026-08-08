@@ -6,12 +6,13 @@ use axum::{
     routing::{get, post},
 };
 use az_plugin_core::http::{ApiError, ApiJson, ApiResponse, ok_json};
+use az_asset_hub_contract::{AssetSummary, AssetUpsertInput, ScannedSkillSummary};
 use serde::{Deserialize, Serialize};
 
 use crate::backend::{
-    model::{AssetSummary, TABLE_NAME_PREFIX},
-    skill_scanner::{ScannedSkillAsset, scan_skill_assets},
-    store::{AssetHubStore, AssetInput},
+    model::TABLE_NAME_PREFIX,
+    skill_scanner::scan_skill_assets,
+    store::AssetHubStore,
 };
 
 #[derive(Clone)]
@@ -65,7 +66,7 @@ async fn status_handler(State(state): State<AssetHubApiState>) -> Json<AssetHubS
     Json(state.status())
 }
 
-async fn scan_skills_handler() -> Result<Json<ApiResponse<Vec<ScannedSkillAsset>>>, Response> {
+async fn scan_skills_handler() -> Result<Json<ApiResponse<Vec<ScannedSkillSummary>>>, Response> {
     scan_skill_assets()
         .map(ok_json)
         .map_err(asset_hub_error_response)
@@ -87,20 +88,14 @@ async fn list_assets_handler(
 
 async fn upsert_asset_handler(
     State(state): State<AssetHubApiState>,
-    ApiJson(request): ApiJson<UpsertAssetRequest>,
+    ApiJson(request): ApiJson<AssetUpsertInput>,
 ) -> Result<Json<ApiResponse<AssetSummary>>, Response> {
     let store = state
         .store
         .ok_or_else(|| anyhow!("missing asset-hub database url"))
         .map_err(asset_hub_error_response)?;
     store
-        .upsert_asset(AssetInput {
-            id: request.id,
-            kind: request.kind,
-            title: request.title,
-            status: request.status.unwrap_or_else(|| "active".to_string()),
-            source: request.source.unwrap_or_else(|| "asset-hub".to_string()),
-        })
+        .upsert_asset(request)
         .await
         .map(ok_json)
         .map_err(asset_hub_error_response)
@@ -112,15 +107,6 @@ pub struct AssetHubStatusResponse {
     pub database_configured: bool,
     pub store_connected: bool,
     pub table_prefix: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpsertAssetRequest {
-    pub id: Option<String>,
-    pub kind: String,
-    pub title: String,
-    pub status: Option<String>,
-    pub source: Option<String>,
 }
 
 fn asset_hub_error_response(error: anyhow::Error) -> Response {

@@ -1,11 +1,12 @@
 use anyhow::bail;
+use az_config_center_contract::{ConfigEntrySummary, ConfigEntryUpsertInput};
 use az_plugin_core as db;
 use az_str::transformation::normalized_id_or_else;
 use rudi::{Context, DynProvider, Module, modules, providers, singleton};
 use std::sync::Arc;
 use toasty::stmt::{List, Query};
 
-use crate::backend::model::{ConfigEntry, ConfigEntrySummary, TABLE_NAME_PREFIX};
+use crate::backend::model::{ConfigEntry, TABLE_NAME_PREFIX};
 
 #[derive(Clone)]
 pub struct ConfigCenterStore {
@@ -32,7 +33,7 @@ impl ConfigCenterStore {
 
     pub async fn upsert_entry(
         &self,
-        input: ConfigEntryInput,
+        input: ConfigEntryUpsertInput,
     ) -> anyhow::Result<ConfigEntrySummary> {
         validate_config_entry_input(&input)?;
         let id = normalized_id_or_else(input.id, db::new_uuid_id);
@@ -70,14 +71,6 @@ impl ConfigCenterStore {
         };
         Ok(entry.into())
     }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ConfigEntryInput {
-    pub id: Option<String>,
-    pub namespace: String,
-    pub key: String,
-    pub value: String,
 }
 
 pub trait ConfigCenterService: Send + Sync {
@@ -119,7 +112,10 @@ pub fn build_config_center_context_with_db(shared_db: db::Db) -> Context {
         .create(modules![ConfigCenterModule])
 }
 
-pub fn validate_config_entry_input(input: &ConfigEntryInput) -> anyhow::Result<()> {
+pub fn validate_config_entry_input(input: &ConfigEntryUpsertInput) -> anyhow::Result<()> {
+    if input.namespace.trim().is_empty() {
+        bail!("config namespace must not be blank");
+    }
     if input.key.trim().is_empty() {
         bail!("config key must not be blank");
     }
@@ -144,7 +140,7 @@ mod tests {
 
     #[test]
     fn rejects_blank_config_entry_input() {
-        let input = ConfigEntryInput {
+        let input = ConfigEntryUpsertInput {
             id: None,
             namespace: "az-aio".to_string(),
             key: "".to_string(),

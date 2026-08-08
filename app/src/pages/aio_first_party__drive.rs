@@ -3,7 +3,7 @@ use std::sync::Arc;
 use dioxus::prelude::*;
 use rudi::Singleton;
 use studio::{
-    ConventionPageContext, ConventionPageProvider, DynConventionPageProvider,
+    ConventionPageContext, ConventionPageProvider, DynConventionPageProvider, EndpointWorkbench,
 };
 
 #[derive(Clone, Debug, Default)]
@@ -16,9 +16,7 @@ impl ConventionPageProvider for Page {
 
     fn render(&self, context: ConventionPageContext) -> Element {
         rsx! {
-            section { class: "p-6",
-                h2 { class: "text-lg font-semibold", "{context.page.title}" }
-            }
+            EndpointWorkbench { context }
         }
     }
 }

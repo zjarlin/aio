@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "app",
     "app/plugins/studio",
-    "app/plugins/system-admin",
     "app/plugins/asset-hub",
     "app/plugins/algorithm-center",
     "app/plugins/config-center",
@@ -14,6 +13,8 @@ members = [
     "app/plugins/ssh",
     "app/plugins/linux",
     "crates/plugin/core",
+    "crates/asset-hub-contract",
+    "crates/config-center-contract",
 ]
 
 [workspace.package]
@@ -34,7 +35,6 @@ arc-swap = "1.7.1"
 async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 axum = { version = "0.8.6", features = ["http1", "json", "tokio", "multipart"] }
-az-admin-plugin-registry = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-config-center-client = "=2026.6.13"
 az-dict-macros = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 az-dict-spec = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
@@ -42,8 +42,9 @@ dioxus = { version = "0.7.9", default-features = false, features = ["macro", "ht
 dioxus-ssr = "0.7.9"
 tw-merge = { package = "tw_merge", version = "0.1.21", features = ["debug"] }
 az-plugin-core = { version = "=2026.5.10", path = "crates/plugin/core" }
+az-asset-hub-contract = { version = "=2026.5.10", path = "crates/asset-hub-contract" }
+az-config-center-contract = { version = "=2026.5.10", path = "crates/config-center-contract" }
 az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
-az-system-starters = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-ssh = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 base64 = "0.22.1"
 convert_case = "0.8.0"

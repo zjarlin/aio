@@ -3,6 +3,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod config;
 #[cfg(not(target_arch = "wasm32"))]
+mod contracts;
+#[cfg(not(target_arch = "wasm32"))]
 mod migration;
 #[cfg(target_arch = "wasm32")]
 mod pages;

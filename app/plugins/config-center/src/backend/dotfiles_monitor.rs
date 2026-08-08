@@ -6,14 +6,16 @@ use std::{
 };
 
 use anyhow::{Context, anyhow, bail};
+use az_config_center_contract::{
+    DotfilesConflict, DotfilesMonitorStatus, DotfilesPeerDevice, DotfilesWatchedFile,
+};
 use az_str::sanitize::{to_slash_path, to_slug};
 
 use crate::{
     backend::{
         dotfiles_monitor_diff::{changed_ranges, first_overlap, snippet},
         dotfiles_monitor_types::{
-            DotfilesBaselineEntry, DotfilesConflict, DotfilesDevicesRequest, DotfilesMonitorStatus,
-            DotfilesPeerDevice, DotfilesPeerDeviceInput, DotfilesWatchedFile,
+            DotfilesBaselineEntry, DotfilesDevicesRequest, DotfilesPeerDeviceInput,
             ResolveDotfilesConflictRequest,
         },
         paths::config_center_state_dir_path,
