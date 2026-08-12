@@ -66,6 +66,7 @@ pub struct MetaModel {
     #[index]
     pub name: String,
     pub display_name: String,
+    pub primary_key_generation: String,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
 }
@@ -193,6 +194,26 @@ impl From<DataRecord> for DataRecordView {
 pub struct ModelInput {
     pub name: String,
     pub display_name: String,
+    #[serde(default)]
+    pub primary_key_generation: RecordIdGeneration,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecordIdGeneration {
+    #[default]
+    Uuid,
+    AutoIncrement,
+}
+
+impl RecordIdGeneration {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Uuid => "uuid",
+            Self::AutoIncrement => "auto_increment",
+        }
+    }
 }
 
 /// 新建或更新字段输入。
@@ -280,6 +301,7 @@ impl RecordStore {
             id: uuid::Uuid::new_v4().to_string(),
             name: input.name,
             display_name: input.display_name,
+            primary_key_generation: input.primary_key_generation.as_str().to_owned(),
             created_at_ms: now,
             updated_at_ms: now,
         };
@@ -288,6 +310,7 @@ impl RecordStore {
             .id(&model.id)
             .name(&model.name)
             .display_name(&model.display_name)
+            .primary_key_generation(&model.primary_key_generation)
             .created_at_ms(model.created_at_ms)
             .updated_at_ms(model.updated_at_ms)
             .exec(&mut *db)
@@ -338,12 +361,26 @@ impl RecordStore {
                 input.name
             );
         }
+        let existing = self.ensure_model(model_name).await?;
+        if existing.primary_key_generation != input.primary_key_generation.as_str() {
+            let has_records = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM engine_data_records WHERE model_name = $1)",
+            )
+            .bind(model_name)
+            .fetch_one(&self.pool)
+            .await
+            .context("检查 engine 模型历史记录失败")?;
+            if has_records {
+                bail!("模型 {model_name} 已存在业务记录，不能切换主键生成策略");
+            }
+        }
         let now = timestamp_ms();
         {
             let mut db = self.db.lock().await;
             MetaModel::filter(MetaModel::fields().name().eq(model_name))
                 .update()
                 .display_name(&input.display_name)
+                .primary_key_generation(input.primary_key_generation.as_str())
                 .updated_at_ms(now)
                 .exec(&mut *db)
                 .await
@@ -622,7 +659,18 @@ impl RecordStore {
 
     async fn persist_record(&self, model_name: &str, payload: Value) -> anyhow::Result<DataRecord> {
         let now = timestamp_ms();
-        let id = uuid::Uuid::new_v4().to_string();
+        let model = self.ensure_model(model_name).await?;
+        let id = match model.primary_key_generation.as_str() {
+            "uuid" => uuid::Uuid::new_v4().to_string(),
+            "auto_increment" => {
+                sqlx::query_scalar::<_, i64>("SELECT nextval('engine_data_record_auto_id_seq')")
+                    .fetch_one(&self.pool)
+                    .await
+                    .context("分配 engine 记录自增主键失败")?
+                    .to_string()
+            }
+            value => bail!("模型主键生成策略无效: {value}"),
+        };
         sqlx::query(
             "INSERT INTO engine_data_records
              (id, model_name, payload, created_at_ms, updated_at_ms)

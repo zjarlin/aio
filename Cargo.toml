@@ -42,6 +42,10 @@ dioxus = { version = "0.7.9", default-features = false, features = ["macro", "ht
 dioxus-ssr = "0.7.9"
 tw-merge = { package = "tw_merge", version = "0.1.21", features = ["debug"] }
 az-plugin-core = { version = "=2026.5.10", path = "crates/plugin/core" }
+az-admin-shell-core = { version = "=2026.8.13", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
+az-dioxus-admin-extension-crud = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
+az-dioxus-admin-shell = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
+az-ui-components = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
 az-asset-hub-contract = { version = "=2026.5.10", path = "crates/asset-hub-contract" }
 az-config-center-contract = { version = "=2026.5.10", path = "crates/config-center-contract" }
 az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }

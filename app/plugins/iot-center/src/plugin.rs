@@ -112,7 +112,6 @@ impl NativePluginProvider for IotCenterPlugin {
         install_service(service.clone());
         Ok(NativePluginRuntime {
             router: iot_router(IotApiState::new(service)),
-            startup: None,
         })
     }
 }

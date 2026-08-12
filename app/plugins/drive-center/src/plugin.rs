@@ -34,7 +34,6 @@ impl NativePluginProvider for DriveCenterPlugin {
         let state = DriveCenterApiState::from_store(context.database_url.clone(), store);
         Ok(NativePluginRuntime {
             router: drive_center_router(state),
-            startup: None,
         })
     }
 }

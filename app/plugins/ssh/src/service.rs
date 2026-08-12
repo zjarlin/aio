@@ -7,7 +7,9 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow, bail};
-use az_plugin_core::{DataRecordView, FieldInput, ModelInput, PageParams, RecordStore};
+use az_plugin_core::{
+    DataRecordView, FieldInput, ModelInput, PageParams, RecordIdGeneration, RecordStore,
+};
 use az_ssh::client::{SshConfig, SshSession};
 use serde_json::{Value, json};
 
@@ -138,6 +140,7 @@ impl SshService {
                 let input = ModelInput {
                     name: definition.name.to_string(),
                     display_name: definition.display_name.to_string(),
+                    primary_key_generation: RecordIdGeneration::Uuid,
                 };
                 self.store.create_model(input).await?;
                 created_models += 1;

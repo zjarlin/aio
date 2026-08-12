@@ -29,7 +29,6 @@ impl NativePluginProvider for AlgorithmCenterPlugin {
         let catalog = resolve_algorithm_catalog(&mut algorithm_context)?;
         Ok(NativePluginRuntime {
             router: algorithm_center_router(AlgorithmCenterApiState { catalog }),
-            startup: None,
         })
     }
 }

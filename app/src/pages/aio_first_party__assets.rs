@@ -1,22 +1,20 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use az_asset_hub_contract::{AssetSummary, AssetUpsertInput, ScannedSkillSummary};
+use az_ui_components::{
+    badge::{Badge, BadgeVariant},
+    button::{Button, ButtonSize, ButtonVariant},
+    data_table::{DataTable, DataTableCellContext, DataTableColumn, DataTableFixed},
+    dialog::{Dialog, DialogDescription, DialogTitle},
+    input::Input,
+};
 use dioxus::prelude::*;
 use icons::{Pencil, Plus, RefreshCw, Search, X};
 use rudi::Singleton;
-use studio::{
+use az_dioxus_admin_shell::{
     ConventionPageContext, ConventionPageProvider, DynConventionPageProvider,
-    browser_http::{format_unix_timestamp, get_api, post_api},
-    components::{
-        badge::{Badge, BadgeVariant},
-        button::{Button, ButtonSize, ButtonVariant},
-        data_table::{
-            DataTable, DataTableCellContext, DataTableColumn, DataTableFixed,
-        },
-        dialog::{Dialog, DialogDescription, DialogTitle},
-        input::Input,
-    },
 };
+use studio::browser_http::{format_unix_timestamp, get_api, post_api};
 
 #[derive(Clone, Debug, Default)]
 struct Page;

@@ -13,11 +13,18 @@ automod.workspace = true
 studio = { package = "az-studio", path = "plugins/studio" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+anyhow.workspace = true
+az-admin-shell-core.workspace = true
+az-dioxus-admin-extension-crud.workspace = true
+az-dioxus-admin-shell.workspace = true
+az-ui-components.workspace = true
 dioxus = { workspace = true, features = ["web", "launch"] }
 az-asset-hub-contract.workspace = true
 az-config-center-contract.workspace = true
 icons.workspace = true
 rudi.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 urlencoding.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

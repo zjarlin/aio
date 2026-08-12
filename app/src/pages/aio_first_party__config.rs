@@ -4,23 +4,21 @@ use az_config_center_contract::{
     ConfigCenterStatus, ConfigEntrySummary, ConfigEntryUpsertInput, DotfilesConflict,
     DotfilesMonitorStatus, DotfilesWatchedFile, PairingLocalInfo,
 };
+use az_ui_components::{
+    badge::{Badge, BadgeVariant},
+    button::{Button, ButtonSize, ButtonVariant},
+    data_table::{DataTable, DataTableCellContext, DataTableColumn, DataTableFixed},
+    dialog::{Dialog, DialogDescription, DialogTitle},
+    input::Input,
+    textarea::Textarea,
+};
 use dioxus::prelude::*;
 use icons::{Eye, EyeOff, Pencil, Plus, RefreshCw, Search, X};
 use rudi::Singleton;
-use studio::{
+use az_dioxus_admin_shell::{
     ConventionPageContext, ConventionPageProvider, DynConventionPageProvider,
-    browser_http::{format_unix_timestamp, get_api, post_api},
-    components::{
-        badge::{Badge, BadgeVariant},
-        button::{Button, ButtonSize, ButtonVariant},
-        data_table::{
-            DataTable, DataTableCellContext, DataTableColumn, DataTableFixed,
-        },
-        dialog::{Dialog, DialogDescription, DialogTitle},
-        input::Input,
-        textarea::Textarea,
-    },
 };
+use studio::browser_http::{format_unix_timestamp, get_api, post_api};
 
 const DOTFILES_PAGE_SIZE: usize = 50;
 

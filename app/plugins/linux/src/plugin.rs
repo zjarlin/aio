@@ -32,7 +32,6 @@ impl NativePluginProvider for LinuxPlugin {
         let state = LinuxApiState::new(install_base_url);
         Ok(NativePluginRuntime {
             router: linux_router(state),
-            startup: None,
         })
     }
 }

@@ -34,7 +34,6 @@ impl NativePluginProvider for SoftwareCenterPlugin {
         let state = SoftwareCenterApiState::from_store(context.database_url.clone(), store);
         Ok(NativePluginRuntime {
             router: software_center_router(state),
-            startup: None,
         })
     }
 }

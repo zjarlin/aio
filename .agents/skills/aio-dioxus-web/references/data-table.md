@@ -2,9 +2,9 @@
 
 ## 所有权
 
-- 组件入口：`app/plugins/studio/src/components/data_table/component.rs`
-- 纯布局内核：`app/plugins/studio/src/components/data_table/layout.rs`
-- 组件样式：`app/plugins/studio/src/components/data_table/style.css`
+- 组件入口：`az_ui_components::data_table::DataTable`
+- 纯布局内核：独立仓库 `dioxus-admin-workbench/crates/ui/components/src/data_table/layout.rs`
+- 组件样式：独立仓库 `dioxus-admin-workbench/crates/ui/components/src/data_table/style.css`
 - 当前使用者：Studio REST 功能定义、发布后的 CRUD/TreeTable 运行时
 
 DataTable 是上游 Dioxus Components 没有 Table 时的仓库级复合组件。它继续复用官方 Button、Input、Checkbox 等基础控件，不发展第二套基础设计系统。

@@ -275,14 +275,12 @@ impl Default for NativePluginContext {
 #[derive(Clone)]
 pub struct NativePluginRuntime {
     pub router: axum::Router,
-    pub startup: Option<fn(NativePluginContext) -> anyhow::Result<()>>,
 }
 
 impl Default for NativePluginRuntime {
     fn default() -> Self {
         Self {
             router: axum::Router::new(),
-            startup: None,
         }
     }
 }

@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use dioxus::prelude::*;
 use rudi::Singleton;
-use studio::{
-    ConventionPageContext, ConventionPageProvider, DynConventionPageProvider, EndpointWorkbench,
+use az_dioxus_admin_shell::{
+    ConventionPageContext, ConventionPageProvider, DynConventionPageProvider,
 };
+use studio::EndpointPage;
 
 #[derive(Clone, Debug, Default)]
 struct Page;
@@ -16,7 +17,7 @@ impl ConventionPageProvider for Page {
 
     fn render(&self, context: ConventionPageContext) -> Element {
         rsx! {
-            EndpointWorkbench { context }
+            EndpointPage { page_id: context.page.id.to_string() }
         }
     }
 }

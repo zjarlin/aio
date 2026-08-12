@@ -34,7 +34,6 @@ impl NativePluginProvider for AssetHubPlugin {
         let state = AssetHubApiState::from_store(context.database_url.clone(), store);
         Ok(NativePluginRuntime {
             router: asset_hub_router(state),
-            startup: None,
         })
     }
 }

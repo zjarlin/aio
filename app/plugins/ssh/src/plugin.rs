@@ -114,7 +114,6 @@ impl NativePluginProvider for SshPlugin {
         install_service(service.clone());
         Ok(NativePluginRuntime {
             router: ssh_router(SshApiState::new(service)),
-            startup: None,
         })
     }
 }

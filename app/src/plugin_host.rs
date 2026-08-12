@@ -4,17 +4,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use az_plugin_core::plugin::{
+    AdminCliContribution, AdminMenuTree, AdminResourceContract, BackendApiContribution,
+    CatalogItemContribution, ContributionSet, DynAdminPluginProvider, NativePluginContext,
+    PluginDescriptor, merge_menu_tree,
+};
 use az_plugin_core::{CatalogItemKind, CatalogSource, PluginState};
 #[cfg(test)]
 use az_plugin_core::{PluginActivation, PluginKind};
-use az_plugin_core::{
-    http::with_global_api_error_layer,
-    plugin::{
-        AdminCliContribution, AdminMenuTree, AdminResourceContract, BackendApiContribution,
-        CatalogItemContribution, ContributionSet, DynAdminPluginProvider, NativePluginContext,
-        PluginDescriptor, merge_menu_tree,
-    },
-};
 use serde::{Deserialize, Serialize};
 
 const PLUGIN_STATE_FILE: &str = "plugin-state.json";
@@ -114,19 +111,6 @@ impl NativePluginHost {
                 }
             };
 
-            if let Some(startup) = runtime.startup
-                && let Err(error) = startup(self.context.clone())
-            {
-                snapshot.plugins.push(failed_record(
-                    descriptor.clone(),
-                    format!(
-                        "plugin `{}` failed during startup: {}",
-                        descriptor.id, error
-                    ),
-                ));
-                continue;
-            }
-
             if let Some((method, path)) =
                 first_duplicate_backend_route(&contributions.backend_apis, &mut seen_routes)
             {
@@ -154,7 +138,6 @@ impl NativePluginHost {
         }
 
         sort_snapshot(&mut snapshot);
-        snapshot.native_router = with_global_api_error_layer(snapshot.native_router);
         snapshot
     }
 }

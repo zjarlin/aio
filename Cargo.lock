@@ -292,17 +292,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "az-admin-shell-core"
+version = "2026.8.13"
+source = "git+https://github.com/zjarlin/dioxus-admin-workbench.git?rev=3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6#3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6"
+dependencies = [
+ "anyhow",
+ "convert_case 0.8.0",
+ "deunicode",
+ "pinyin",
+ "rudi",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "az-aio-app"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
  "axum",
+ "az-admin-shell-core",
  "az-algorithm-center",
  "az-asset-hub",
  "az-asset-hub-contract",
  "az-automod 2026.6.15 (git+https://github.com/zjarlin/addzero-lib-rust.git?rev=e9c3235ba2b3e72026de004bc16da382e8ac1a19)",
  "az-config-center",
  "az-config-center-contract",
+ "az-dioxus-admin-extension-crud",
+ "az-dioxus-admin-shell",
  "az-drive-center",
  "az-edge-gateway",
  "az-iot-center",
@@ -311,6 +329,7 @@ dependencies = [
  "az-software-center",
  "az-ssh-plugin",
  "az-studio",
+ "az-ui-components",
  "dioxus",
  "dirs",
  "dotenvy",
@@ -459,6 +478,38 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
+]
+
+[[package]]
+name = "az-dioxus-admin-extension-crud"
+version = "2026.8.17"
+source = "git+https://github.com/zjarlin/dioxus-admin-workbench.git?rev=3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6#3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6"
+dependencies = [
+ "anyhow",
+ "az-admin-shell-core",
+ "az-dioxus-admin-shell",
+ "az-ui-components",
+ "dioxus",
+ "icons",
+ "rudi",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "az-dioxus-admin-shell"
+version = "2026.8.17"
+source = "git+https://github.com/zjarlin/dioxus-admin-workbench.git?rev=3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6#3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6"
+dependencies = [
+ "anyhow",
+ "az-admin-shell-core",
+ "az-ui-components",
+ "dioxus",
+ "futures-util",
+ "icons",
+ "manganis",
+ "rudi",
+ "serde_json",
 ]
 
 [[package]]
@@ -648,10 +699,10 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
+ "az-admin-shell-core",
  "az-plugin-core",
+ "az-ui-components",
  "dioxus",
- "dioxus-icons",
- "dioxus-primitives",
  "dioxus-web",
  "futures-util",
  "gloo-net",
@@ -673,12 +724,21 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
- "tw_merge",
  "urlencoding",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "az-ui-components"
+version = "2026.8.17"
+source = "git+https://github.com/zjarlin/dioxus-admin-workbench.git?rev=3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6#3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6"
+dependencies = [
+ "dioxus",
+ "dioxus-icons",
+ "manganis",
 ]
 
 [[package]]
@@ -1466,17 +1526,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dioxus-attributes"
-version = "0.1.0"
-source = "git+https://github.com/DioxusLabs/components?rev=bf007c15d0cf4d04d3181cc46cf12325aa773955#bf007c15d0cf4d04d3181cc46cf12325aa773955"
-dependencies = [
- "dioxus-rsx",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "dioxus-cli-config"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1791,22 +1840,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dioxus-primitives"
-version = "0.0.1"
-source = "git+https://github.com/DioxusLabs/components?rev=bf007c15d0cf4d04d3181cc46cf12325aa773955#bf007c15d0cf4d04d3181cc46cf12325aa773955"
-dependencies = [
- "dioxus",
- "dioxus-attributes",
- "dioxus-sdk-time",
- "lazy-js-bundle",
- "num-integer",
- "palette",
- "serde",
- "time",
- "tracing",
-]
-
-[[package]]
 name = "dioxus-router"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1852,18 +1885,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "dioxus-sdk-time"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c25ae93a3f72e734873b97fbd09d9b1b6adff97205fb0ffd8543e3564fb78e"
-dependencies = [
- "dioxus",
- "futures",
- "gloo-timers",
- "tokio",
 ]
 
 [[package]]
@@ -3895,15 +3916,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_threads"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "objc2"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4033,36 +4045,6 @@ checksum = "36820e9051aca1014ddc75770aab4d68bc1e9e632f0f5627c4086bc216fb583b"
 dependencies = [
  "ttf-parser",
 ]
-
-[[package]]
-name = "palette"
-version = "0.7.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddeed8580d347d2abf3dcf06a5f0b3dc020258338526b277847cd4248a70fc64"
-dependencies = [
- "approx",
- "palette_derive",
- "palette_math",
- "phf",
-]
-
-[[package]]
-name = "palette_derive"
-version = "0.7.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88537020289b719d81be994ccf1bbf4990f477e2f69ee52fe3e45f43a02e56be"
-dependencies = [
- "by_address",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "palette_math"
-version = "0.7.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e6eb142958d64335fb0e345c5b9ead2ecd6fc438c307e9d7d3c4fd428dbaf12"
 
 [[package]]
 name = "parking"
@@ -4216,6 +4198,12 @@ name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+
+[[package]]
+name = "pinyin"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e225f595052d9c46045755be4b8d7950b6d9f3c33e0c0b74ba58f11bbfa8c64b"
 
 [[package]]
 name = "pkcs1"
@@ -6040,9 +6028,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711a53c2d47bbd818258c498c8dbfe186a2526c631495cfe7e078567f86b8469"
 dependencies = [
  "deranged",
- "libc",
  "num-conv",
- "num_threads",
  "powerfmt",
  "serde_core",
  "time-core",
@@ -7039,7 +7025,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

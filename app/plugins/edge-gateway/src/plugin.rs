@@ -28,13 +28,9 @@ impl NativePluginProvider for EdgeGatewayPlugin {
 
     fn runtime(&self, context: NativePluginContext) -> anyhow::Result<NativePluginRuntime> {
         let store = edge_gateway_store(context.shared_db.clone());
-        if let Some(store) = &store {
-            seed_edge_gateway_store(store.clone());
-        }
         let state = EdgeGatewayApiState::from_store(context.database_url.clone(), store);
         Ok(NativePluginRuntime {
             router: edge_gateway_router(state),
-            startup: None,
         })
     }
 }
@@ -52,23 +48,13 @@ fn edge_gateway_store(shared_db: Option<az_plugin_core::Db>) -> Option<EdgeGatew
     })
 }
 
-fn seed_edge_gateway_store(store: EdgeGatewayStore) {
-    let runtime = match tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-    {
-        Ok(runtime) => runtime,
-        Err(error) => {
-            eprintln!("edge-gateway Toasty startup degraded: {error:#}");
-            return;
-        }
-    };
-    if let Err(error) = runtime.block_on(async {
+/// 初始化边缘网关内置天气令牌和路由。
+pub async fn seed_builtin_data(shared_db: Option<az_plugin_core::Db>) -> anyhow::Result<()> {
+    if let Some(store) = edge_gateway_store(shared_db) {
         store.ensure_demo_weather_token().await?;
-        store.ensure_builtin_weather_route().await
-    }) {
-        eprintln!("edge-gateway Toasty startup degraded: {error:#}");
+        store.ensure_builtin_weather_route().await?;
     }
+    Ok(())
 }
 
 

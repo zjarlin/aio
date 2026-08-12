@@ -2,7 +2,8 @@
 
 use az_plugin_core::{
     ComputedDependency, FieldInput, ModelInput, PageParams, RecordCriteria, RecordFilter,
-    RecordFilterOperator, RecordSort, RecordSortDirection, RecordStore, verify_database_url,
+    RecordFilterOperator, RecordIdGeneration, RecordSort, RecordSortDirection, RecordStore,
+    verify_database_url,
 };
 use serde_json::json;
 
@@ -15,17 +16,27 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
     let suffix = unique_suffix();
     let user_model = format!("it_user_{suffix}");
     let order_model = format!("it_order_{suffix}");
+    let sequence_model = format!("it_sequence_{suffix}");
 
     store
         .create_model(ModelInput {
             name: user_model.clone(),
             display_name: "集成用户".to_string(),
+            primary_key_generation: RecordIdGeneration::Uuid,
+        })
+        .await?;
+    store
+        .create_model(ModelInput {
+            name: sequence_model.clone(),
+            display_name: "集成自增记录".to_string(),
+            primary_key_generation: RecordIdGeneration::AutoIncrement,
         })
         .await?;
     store
         .create_model(ModelInput {
             name: order_model.clone(),
             display_name: "集成订单".to_string(),
+            primary_key_generation: RecordIdGeneration::Uuid,
         })
         .await?;
 
@@ -103,6 +114,30 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
         .executor()
         .insert_record(&user_model, json!({ "vip_level": 7 }))
         .await?;
+    uuid::Uuid::parse_str(&user.id)?;
+    let primary_key_change = store
+        .update_model(
+            &user_model,
+            ModelInput {
+                name: user_model.clone(),
+                display_name: "集成用户".to_string(),
+                primary_key_generation: RecordIdGeneration::AutoIncrement,
+            },
+        )
+        .await
+        .expect_err("已有记录的模型不能切换主键生成策略");
+    assert!(primary_key_change.to_string().contains("不能切换"));
+    let first_sequence = store
+        .executor()
+        .insert_record(&sequence_model, json!({}))
+        .await?;
+    let second_sequence = store
+        .executor()
+        .insert_record(&sequence_model, json!({}))
+        .await?;
+    let first_sequence_id = first_sequence.id.parse::<i64>()?;
+    let second_sequence_id = second_sequence.id.parse::<i64>()?;
+    assert_eq!(second_sequence_id, first_sequence_id + 1);
     store
         .executor()
         .insert_record(
@@ -182,6 +217,7 @@ async fn postgres_record_pipeline_and_computed_query() -> anyhow::Result<()> {
 
     store.delete_model(&order_model).await?;
     store.delete_model(&user_model).await?;
+    store.delete_model(&sequence_model).await?;
     Ok(())
 }
 

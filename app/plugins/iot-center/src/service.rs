@@ -7,7 +7,7 @@ use std::{
 
 use crate::{online_status::IotOnlineStatus, telemetry::EnvironmentTelemetry};
 use anyhow::{Context, Result, bail};
-use az_plugin_core::{FieldInput, ModelInput, PageParams, RecordStore};
+use az_plugin_core::{FieldInput, ModelInput, PageParams, RecordIdGeneration, RecordStore};
 use serde_json::{Value, json};
 
 use crate::contract::{
@@ -145,6 +145,7 @@ impl IotService {
                 let input = ModelInput {
                     name: definition.name.to_string(),
                     display_name: definition.display_name.to_string(),
+                    primary_key_generation: RecordIdGeneration::Uuid,
                 };
                 self.store.create_model(input).await?;
                 created_models += 1;

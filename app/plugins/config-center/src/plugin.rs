@@ -34,7 +34,6 @@ impl NativePluginProvider for ConfigCenterPlugin {
         let state = ConfigCenterApiState::from_store(context.database_url.clone(), store);
         Ok(NativePluginRuntime {
             router: config_center_router(state),
-            startup: None,
         })
     }
 }
