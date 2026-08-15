@@ -1,6 +1,6 @@
 ---
 name: aio-dioxus-web
-description: 在 AIO 仓库中创建、迁移或调试 Dioxus Web 页面、Studio 工作台、运行时表格、表单和组件样式时使用。强制使用仓库内固定版本的 Dioxus Components 源码组件，遵守 AdminProvider、Rudi、PageDefinition 持久化边界，并完成 wasm、服务端和浏览器验证。
+description: 在 AIO 仓库中创建、迁移或调试 Dioxus Web 页面、Studio 工作台、运行时表格、表单和组件样式时使用。强制使用仓库内固定版本的 Dioxus Components 源码组件，遵守 Dill TypeId、PageDefinition 持久化边界，并完成 wasm、服务端和浏览器验证。
 ---
 
 # AIO Dioxus Web
@@ -13,7 +13,7 @@ description: 在 AIO 仓库中创建、迁移或调试 Dioxus Web 页面、Studi
 
 ## 组件规则
 
-- 基础交互控件只使用 `az-ui-components`；源码归属独立 `dioxus-admin-workbench/crates/ui/components`，AIO 通过同一远程 Git `rev` 固定 workbench 全部 crate。
+- 基础交互控件只使用 `az-ui-components`；源码归属 submodule `lib/dioxus-admin-workbench/crates/ui/components`，AIO 通过 workspace `path` 依赖消费同一 gitlink 下的 workbench crate。
 - AIO 不保存 CSS 文件或注入本地样式；主题、布局和控件样式全部由 `az-ui-components` 所有。
 - 页面代码禁止直接渲染原生 `button`、文本 `input`、`textarea` 或自行实现同名包装组件。
 - 不新增 `design_system.rs`，不增加旧组件 API 适配层；直接迁移所有调用点。
@@ -22,11 +22,11 @@ description: 在 AIO 仓库中创建、迁移或调试 Dioxus Web 页面、Studi
 - 完整业务 Form 由新增、编辑操作打开官方 Dialog，关闭后卸载；不得常驻在 DataTable `right_panel` 或页面内容流中。单元格内联编辑不受此限制。
 - 删除等破坏性表格操作必须先打开确认 Dialog。
 - 下拉选项使用 `az_ui_components::select`，组件负责隐藏表单字段、键盘交互、弹层方向和状态样式；页面不得再新增原生 `select`。
-- 组件开发提交并推送独立仓库后，直接更新 AIO 根 `Cargo.toml` 中四项 workbench 依赖的同一完整 `rev`；只有正式里程碑才发布 crates.io 版本。
+- 组件或壳层开发必须在 `lib/dioxus-admin-workbench` 内提交并推送独立仓库，再更新 AIO 的 submodule gitlink；AIO 根 `Cargo.toml` 只保留指向 submodule 的 `path` 依赖。只有正式里程碑才发布 crates.io 版本。
 - 只纳入实际使用的 registry 组件。需要新增时运行：
 
 ```bash
-cd ../dioxus-admin-workbench/crates/ui/components
+cd lib/dioxus-admin-workbench/crates/ui/components
 dx components add <name> \
   --module-path src \
   --global-assets-path ../../../app/assets \
@@ -44,7 +44,7 @@ dx components add <name> \
 3. 先复用现有官方组件；缺少组件时才用固定 registry 提取源码。图标继续使用仓库 `icons`，按钮必须提供可访问名称。
 4. 表格先声明列树和稳定 row key，再提供 renderer。可编辑列必须同时声明 `editable`、`can_edit` 和 `render_editor`；合并单元格只传 `DataTableSpan`；操作列只触发 Dialog 或明确命令。
 5. 元数据遵循可推导可省略：REST 方法与路径组成身份，显示名称等可从稳定字段推导的值不重复持久化。
-6. Admin shell 保持无头；业务页面由单一 AdminProvider 聚合，Provider 继续由 Rudi 编译期注册。
+6. 发布应用壳只消费 `ProgramImage` 和生成页面函数；Controller 与 Service 由 Dill 按 `TypeId` 聚合，禁止字符串插件身份。
 7. PostgreSQL 只保存 `PageDefinition` 等正式定义，不保存渲染阶段 `UiOp`、Dioxus `Element`、HTML、CSS 或 JavaScript。
 8. 修改运行时行为后重建 wasm，停止旧 8080 进程再启动新服务，避免旧二进制读取新 schema。
 

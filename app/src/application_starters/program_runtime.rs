@@ -1,56 +1,81 @@
 //! Studio ProgramRuntime 启动器。
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::Context as _;
-use az_plugin_core::{DynPlugin, Plugin, PluginFuture, PluginType, RecordStore};
+use az_plugin_core::{Plugin, PluginFuture, RecordStore};
+use dill::CatalogBuilder;
 use studio::{
-    CompiledArtifactWriter, NativeContractCatalog, program_runtime::ProgramRuntime,
+    CompiledArtifactWriter,
+    capability::{CapabilityCatalog, CapabilityProvider},
+    program_runtime::ProgramRuntime,
     program_store::ProgramStore,
 };
 
-use super::{
-    capabilities::CapabilityCatalogStarter, database::SharedDatabaseStarter,
-    native_plugins::NativePluginDiscoveryStarter,
-};
+use super::database::SharedDatabase;
 use crate::{application_startup::ApplicationStartup, config::AppConfig};
 
-/// 恢复数据库程序、同步原生契约并启动 PostgreSQL 监听。
-pub struct ProgramRuntimeStarter {
-    database_url: Option<String>,
+#[derive(Clone)]
+enum ProgramRuntimeState {
+    Disabled,
+    Ready(Arc<ProgramRuntime>),
+}
+
+/// Dill 管理的 Studio ProgramRuntime 生命周期。
+#[derive(Default)]
+pub(super) struct SharedProgramRuntime {
+    state: OnceLock<ProgramRuntimeState>,
+}
+
+impl SharedProgramRuntime {
+    fn initialize(&self, runtime: Option<ProgramRuntime>) -> anyhow::Result<()> {
+        let state = runtime.map_or(ProgramRuntimeState::Disabled, |runtime| {
+            ProgramRuntimeState::Ready(Arc::new(runtime))
+        });
+        anyhow::ensure!(
+            self.state.set(state).is_ok(),
+            "Studio ProgramRuntime 被重复初始化"
+        );
+        Ok(())
+    }
+
+    pub(super) fn current(&self) -> anyhow::Result<Option<Arc<ProgramRuntime>>> {
+        let state = self
+            .state
+            .get()
+            .context("Studio ProgramRuntime 启动器尚未执行")?;
+        match state {
+            ProgramRuntimeState::Disabled => Ok(None),
+            ProgramRuntimeState::Ready(runtime) => Ok(Some(Arc::clone(runtime))),
+        }
+    }
+}
+
+/// 恢复数据库程序并启动 PostgreSQL 监听。
+#[dill::component]
+#[dill::interface(dyn Plugin<ApplicationStartup>)]
+#[dill::scope(dill::Singleton)]
+pub(super) struct ProgramRuntimeStarter {
+    config: Arc<AppConfig>,
+    shared_database: Arc<SharedDatabase>,
+    shared_runtime: Arc<SharedProgramRuntime>,
+    capability_providers: Vec<Arc<dyn CapabilityProvider>>,
+    compiled_artifacts: Arc<CompiledArtifactWriter>,
 }
 
 impl Plugin<ApplicationStartup> for ProgramRuntimeStarter {
-    fn order(&self) -> i32 {
-        40
-    }
-
-    fn dependencies(&self) -> Vec<PluginType<ApplicationStartup>> {
-        vec![
-            PluginType::of::<SharedDatabaseStarter>(),
-            PluginType::of::<NativePluginDiscoveryStarter>(),
-            PluginType::of::<CapabilityCatalogStarter>(),
-        ]
-    }
-
-    fn install<'a>(&'a self, target: &'a mut ApplicationStartup) -> PluginFuture<'a> {
+    fn build<'a>(&'a self, _target: &'a mut ApplicationStartup) -> PluginFuture<'a> {
         Box::pin(async move {
-            let Some(database_url) = self.database_url.as_deref() else {
-                target.set_program_runtime(None);
+            let Some(database) = self.shared_database.current()? else {
+                self.shared_runtime.initialize(None)?;
                 return Ok(());
             };
-            let database = target
-                .shared_db()?
-                .cloned()
-                .context("已配置 PostgreSQL，但共享数据库启动器未建立连接")?;
-            let native_contracts = NativeContractCatalog::from_contributions(
-                target
-                    .native_snapshot()?
-                    .plugin_contributions
-                    .iter()
-                    .map(|record| (record.plugin_id.as_str(), &record.contributions)),
-            )?;
-            let capabilities = target.take_capabilities()?;
+            let database_url = self
+                .config
+                .database_url
+                .as_deref()
+                .context("共享数据库已连接但 PostgreSQL 配置缺失")?;
+            let capabilities = CapabilityCatalog::new(self.capability_providers.clone())?;
             let record_store =
                 RecordStore::from_shared_db(database.shared_handle(), database.pg_pool());
             let store = ProgramStore::from_pool(database.pg_pool());
@@ -58,31 +83,48 @@ impl Plugin<ApplicationStartup> for ProgramRuntimeStarter {
                 store,
                 record_store,
                 capabilities,
-                CompiledArtifactWriter::workspace_target(),
+                self.compiled_artifacts.as_ref().clone(),
             );
 
-            let _native_report = runtime
-                .store()
-                .reconcile_native_contracts(&native_contracts)
-                .await
-                .context("同步插件 API 元数据到 Studio 失败")?;
             runtime.restore_active_image().await?;
             if let Err(error) = runtime.publish_draft_if_changed("migration").await {
                 if runtime.active_image().await.is_none() {
-                    return Err(error).context("发布原生接口元数据 Revision 失败");
+                    return Err(error).context("发布最新 Studio Draft 失败");
                 }
                 eprintln!("发布最新 Studio Draft 失败，继续使用活动 Revision: {error:#}");
             }
             runtime.spawn_postgres_listener(database_url).await?;
-            target.set_program_runtime(Some(runtime));
-            Ok(())
+            self.shared_runtime.initialize(Some(runtime))
         })
     }
 }
 
-#[rudi::Singleton(name = std::any::type_name::<ProgramRuntimeStarter>())]
-pub fn program_runtime_starter(config: AppConfig) -> DynPlugin<ApplicationStartup> {
-    Arc::new(ProgramRuntimeStarter {
-        database_url: config.database_url,
-    })
+pub(super) fn register(builder: &mut CatalogBuilder) {
+    builder
+        .add_value(SharedProgramRuntime::default())
+        .add_value(CompiledArtifactWriter::workspace_target())
+        .add::<ProgramRuntimeStarter>();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disabled_runtime_is_an_initialized_dill_resource() -> anyhow::Result<()> {
+        let runtime = SharedProgramRuntime::default();
+        runtime.initialize(None)?;
+
+        assert!(runtime.current()?.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn runtime_resource_rejects_duplicate_initialization() -> anyhow::Result<()> {
+        let runtime = SharedProgramRuntime::default();
+        runtime.initialize(None)?;
+
+        assert!(runtime.initialize(None).is_err());
+        Ok(())
+    }
 }

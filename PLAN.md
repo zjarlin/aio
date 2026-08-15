@@ -34,8 +34,8 @@ AIO 不定位为传统拖拽式低代码平台，而是一个由中文领域建�
 5. 运行时解释和代码生成是消费同一 `ResolvedProgram` 的两个并列后端。
 6. `ProgramImage` 是运行时产物，不是持久化源；`UiOp`、Dioxus `Element`、HTML、CSS 和 JavaScript 不进入正式定义。
 7. 生成代码是可重建产物，不允许与正式模型形成双向同步。
-8. 无法声明表达的能力通过 Rudi Provider 扩展，不无限扩张 DSL。
-9. Admin shell 保持无头，AIO 只提供一个聚合 `AdminProvider`。
+8. 无法声明表达的能力通过 Dill 类型扩展，不无限扩张 DSL。
+9. 发布应用壳只消费 `ProgramImage` 和生成页面函数，不持久化运行时组件身份。
 10. 不为旧 DSL、旧生成目录或旧协议增加兼容层，迁移时直接更新调用点和持久化版本。
 
 ## 语言与身份模型
@@ -119,79 +119,37 @@ AIO 不定位为传统拖拽式低代码平台，而是一个由中文领域建�
 
 开发预览优先使用 Runtime Image；需要编译检查、性能、外部集成、离线构建或代码审查时生成源码和契约。二者必须通过同一组语义一致性测试。
 
-## 功能包结构
+## 功能定义结构
 
-第一方功能按领域纵向组织，不拆成全局 frontend/backend 两棵目录。一个功能使用一个领域插件，插件内部区分 `ui` 和 `server`，共享类型放入独立 contract crate：
+第一方功能不再按领域建立 Rust 插件。正式结构由 PostgreSQL `ProgramDefinition` 保存，工作区只承载从定义生成的薄扩展点：
 
 ```text
-app/plugins/asset-hub/
-├── Cargo.toml
-└── src/
-    ├── lib.rs
-    ├── descriptor.rs
-    ├── ui/
-    │   ├── mod.rs
-    │   ├── asset_workspace.rs
-    │   ├── asset_table.rs
-    │   └── asset_dialog.rs
-    └── server/
-        ├── mod.rs
-        ├── asset_routes.rs
-        ├── asset_store.rs
-        └── skill_scanner.rs
-
-crates/asset-hub-contract/
-└── src/
-    ├── lib.rs
-    ├── asset.rs
-    └── endpoints.rs
+app/
+└── plugins/studio/       ProgramDefinition、编译器和运行时
+generated/apps/<application-id>/ 可删除重建的 ConventionFile 页面函数与发布入口
+lib/biz/<application-id>/ Service 契约、生成 Controller 与人工实现
 ```
 
-- `ui` 仅在 `wasm32` 编译，负责页面、交互状态和类型化请求。
-- `server` 仅在 native 编译，负责路由、业务服务、Repository 和外部资源。
-- contract 不依赖 Dioxus、Axum、SQLx，拥有 DTO 和 endpoint 声明。
-- `descriptor.rs` 只声明插件元数据、菜单、Capability 和贡献。
-- `lib.rs`、`ui/mod.rs`、`server/mod.rs` 只负责声明、导出和顶层编排。
-- 具体源码按职责命名，不新增 `api.rs`、`common.rs`、`utils.rs` 等泛化文件。
+- 页面、菜单、模型、权限、method/path 和输入输出只在 `ProgramDefinition` 定义。
+- 页面生成文件复用 Studio 通用运行时，不复制领域页面实现。
+- 生成 Controller 以 endpoint `SymbolId` 绑定业务契约，人工实现位于独立 Service 文件。
+- Dill 只按具体 Rust 类型注册，运行时扩展身份只允许 `TypeId`。
+- 生成器保留仍有效的人工实现，删除定义中已经不存在的文件。
 
 ## 接口契约
 
-第一方原生接口由 contract crate 提供唯一声明：
+`PageDefinition.endpoints` 是唯一接口真源，保存稳定 `SymbolId`、HTTP method/path、Path/Query/Header/Body 输入和结构化输出。编译器生成 `ProgramImage` 路由，`BusinessModuleManager` 生成领域 Service 契约与 Controller，禁止再建立 Native endpoint 或 `app/src/contracts` 分支。
 
-- 稳定接口标识。
-- HTTP method 和 path。
-- Path、Query、Header、Body 输入类型。
-- 成功响应 `data` 类型。
-- 错误响应和权限要求。
-
-UI client、Axum Router、插件 Contribution 和 OpenAPI 后端共同消费该声明，禁止分别硬编码路径。
-
-Studio 动态接口继续以 `PageDefinition.endpoints` 为真源。`method + path` 构成接口身份，输入输出使用结构化类型；Rudi 后端 Provider 使用稳定 endpoint `SymbolId` 绑定具体实现。
-
-## 约定文件与原生扩展
+## 约定文件
 
 约定文件是显式源码扩展点，不是第二份页面或接口定义。
 
-建议把同一页面的扩展源码聚合到同一功能目录：
-
-```text
-app/src/features/<application>/<page>/
-├── ui/
-│   ├── mod.rs
-│   ├── page.rs
-│   └── result_table.rs
-└── server/
-    ├── mod.rs
-    ├── submit_order.rs
-    └── query_orders.rs
-```
-
-- UI 文件实现 `ConventionPageProvider` 或正式页面扩展 Provider。
-- server 文件实现 `ConventionEndpointProvider`。
-- Provider 统一由 Rudi 编译期注册，不引入第二套 DI 或手写注册表。
+- UI 文件位于 `generated/apps/<application-id>/src/pages` 并导出普通 `render()` 函数。
+- server 生成文件位于 `lib/biz/<application-id>/src/generated`，人工实现位于 `src/service`。
+- Controller 和 Service 统一通过 Dill 注册，不声明字符串 `key`、`name` 或等价身份。
 - 页面标题、接口 method/path 和输入输出仍来自 `PageDefinition`。
 - 约定源码不得被反向解析后覆盖 `ProgramDefinition`。
-- 生成源码与手写扩展分目录保存，重新生成不得覆盖人工实现。
+- 重新生成不得覆盖仍在正式定义中的人工实现。
 
 ## 生成物与版本
 
@@ -202,15 +160,9 @@ app/src/features/<application>/<page>/
 - 所有生成结果排序稳定、换行规范化，相同输入、编译器版本和 Capability 集合必须产生相同哈希。
 - schema 不兼容时执行显式迁移或失效旧快照，不在运行时增加兼容分支。
 
-## 逃生边界
+## 实现边界
 
-DSL 只覆盖可稳定声明和验证的能力，不尝试表达任意程序。
-
-- 通用模型、CRUD、表单、列表、树表、权限和常见流程进入正式定义。
-- 可复用的复杂能力实现为带类型契约的标准 Provider。
-- 特殊算法、工业协议、设备驱动和复杂交互实现为原生扩展。
-- AI 可以生成扩展实现和测试，但生成代码必须经过正常编译、测试和人工审查。
-- 不建立生成源码到语义模型的通用双向同步；源码导入只能形成待确认的结构化候选。
+通用模型、CRUD、表单、列表、树表、权限和流程进入正式定义。无法由运行时直接解释的业务逻辑只能实现到生成的约定 Provider 中；它仍消费同一份页面或接口契约，不得反向修改或覆盖 `ProgramDefinition`。
 
 ## 实施阶段
 
@@ -236,13 +188,12 @@ DSL 只覆盖可稳定声明和验证的能力，不尝试表达任意程序。
 - [ ] 让现有 `ProgramImage` 后端只消费 `ResolvedProgram`。
 - [ ] 建立诊断定位，所有错误关联稳定 `SymbolId` 和 compiler stage。
 
-### 阶段四：收敛功能包和接口契约
+### 阶段四：收敛低代码契约
 
-- [ ] 将资产中心、配置中心等业务 UI 移回对应领域插件的 `ui/`。
-- [ ] 将现有 `backend/` 直接迁移为 `server/`，不保留兼容转发层。
-- [ ] 调整插件 Cargo target 依赖，阻止 Dioxus 进入 server 构建、Axum 进入 wasm 构建。
-- [ ] 在各 contract crate 中收敛 DTO 和 endpoint 声明。
-- [ ] 消除 UI、Router 和 Contribution 中重复的 method/path 字符串。
+- [x] 删除资产、配置、IoT、SSH 等第一方领域插件和 contract crate。
+- [x] 删除 Native endpoint 协议，统一由 `PageDefinition.endpoints` 生成契约。
+- [x] 页面与后端约定文件按正式定义自动同步。
+- [x] 服务端启动迁移为 Bevy 风格 `App + Plugin + PluginGroup`。
 
 ### 阶段五：增加确定性代码生成后端
 
@@ -254,18 +205,18 @@ DSL 只覆盖可稳定声明和验证的能力，不尝试表达任意程序。
 
 ### 阶段六：重组约定扩展
 
-- [ ] 将约定页面和约定接口生成到同一功能目录的 `ui/server` 子目录。
-- [ ] 保留 `PageDefinition` 和 endpoint `SymbolId` 作为绑定真源。
-- [ ] 增加重新生成不覆盖人工实现的测试。
-- [ ] 删除旧 `app/src/pages`、`app/src/contracts` 生成路径及全部调用点。
+- [x] 将接口 Service 与 Controller 生成到 `lib/biz/<application-id>`。
+- [x] 保留 `PageDefinition` 和 endpoint `SymbolId` 作为绑定真源。
+- [x] 增加重新生成不覆盖人工实现的测试。
+- [x] 删除旧 `app/src/contracts` 生成路径及全部调用点。
 
 ### 阶段七：Application Linker
 
 - [ ] 聚合多个领域的 `ResolvedProgram`。
 - [ ] 保留无关领域模型和产物，不再用单个生成任务覆盖整个应用。
 - [ ] 解析跨领域模型、权限、Capability 和接口引用。
-- [ ] 检测重复类型、路径、Provider key 和数据库对象冲突。
-- [ ] 输出一个可部署的应用镜像和多目标生成包。
+- [ ] 检测重复类型、路径和数据库对象冲突。
+- [x] 输出一个可部署的应用镜像和 Web、Desktop、Server 多目标生成包。
 
 ## 完成标准
 
@@ -276,7 +227,7 @@ DSL 只覆盖可稳定声明和验证的能力，不尝试表达任意程序。
 - 第一方功能的 UI、server 和 contract 可以在一个领域包边界内定位。
 - 生成代码可删除并从 Revision 完整重建，人工扩展不会被覆盖。
 - 多领域链接不会丢失无关模型，并能拒绝跨领域冲突。
-- 发布仍遵守单一 `AdminProvider`、Rudi 编译期注册和 PostgreSQL 正式持久化边界。
+- 发布仍遵守 Dill `TypeId` 注册和 PostgreSQL 正式持久化边界。
 
 ## 非目标
 

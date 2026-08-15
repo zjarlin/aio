@@ -7,8 +7,6 @@ const REPOSITORY_ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../.env"
 const DATABASE_URL_ENV: &str = "AZ_AIO_DATABASE_URL";
 const DATABASE_URL_OVERRIDE_ENV: &str = "AZ_AIO_DATABASE_URL_OVERRIDE";
 const DATABASE_MIGRATIONS_ENABLED_ENV: &str = "AZ_AIO_DATABASE_MIGRATIONS_ENABLED";
-const CONFIG_DIR_ENV: &str = "AZ_AIO_CONFIG_DIR";
-const DATA_DIR_ENV: &str = "AZ_AIO_DATA_DIR";
 const WEB_DIST_ENV: &str = "AZ_AIO_WEB_DIST";
 
 /// 应用启动配置。
@@ -17,8 +15,6 @@ pub struct AppConfig {
     pub port: u16,
     pub database_url: Option<String>,
     pub database_migrations_enabled: bool,
-    pub config_dir: PathBuf,
-    pub data_dir: PathBuf,
     pub web_dist_dir: Option<PathBuf>,
 }
 
@@ -43,26 +39,14 @@ impl AppConfig {
             .map(|value| parse_bool(DATABASE_MIGRATIONS_ENABLED_ENV, &value))
             .transpose()?
             .unwrap_or(true);
-        let config_dir = optional_env(CONFIG_DIR_ENV)?
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        let data_dir = optional_env(DATA_DIR_ENV)?
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
         let web_dist_dir = optional_env(WEB_DIST_ENV)?.map(PathBuf::from);
 
         Ok(Self {
             port,
             database_url,
             database_migrations_enabled,
-            config_dir,
-            data_dir,
             web_dist_dir,
         })
-    }
-
-    pub fn api_base_url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
     }
 
     #[cfg(test)]
@@ -71,8 +55,6 @@ impl AppConfig {
             port: 0,
             database_url: None,
             database_migrations_enabled: true,
-            config_dir: PathBuf::from("."),
-            data_dir: PathBuf::from("."),
             web_dist_dir: None,
         }
     }

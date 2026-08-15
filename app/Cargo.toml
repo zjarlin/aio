@@ -8,45 +8,29 @@ authors.workspace = true
 description = "AIO single-package full-stack Dioxus application."
 workspace = ".."
 
-[dependencies]
-automod.workspace = true
-studio = { package = "az-studio", path = "plugins/studio" }
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-anyhow.workspace = true
-az-admin-shell-core.workspace = true
-az-dioxus-admin-extension-crud.workspace = true
-az-dioxus-admin-shell.workspace = true
 az-ui-components.workspace = true
 dioxus = { workspace = true, features = ["web", "launch"] }
-az-asset-hub-contract.workspace = true
-az-config-center-contract.workspace = true
 icons.workspace = true
-rudi.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+studio = { package = "az-studio", path = "plugins/studio", default-features = false, features = ["web"] }
 urlencoding.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
+automod.workspace = true
 axum.workspace = true
 az-plugin-core.workspace = true
-asset-hub = { package = "az-asset-hub", path = "plugins/asset-hub" }
-config-center = { package = "az-config-center", path = "plugins/config-center" }
-drive-center = { package = "az-drive-center", path = "plugins/drive-center" }
-edge-gateway = { package = "az-edge-gateway", path = "plugins/edge-gateway" }
-iot-center = { package = "az-iot-center", path = "plugins/iot-center" }
-algorithm-center = { package = "az-algorithm-center", path = "plugins/algorithm-center" }
-software-center = { package = "az-software-center", path = "plugins/software-center" }
-ssh-plugin = { package = "az-ssh-plugin", path = "plugins/ssh" }
-az-linux = { path = "plugins/linux" }
-dirs = "6"
+business = { package = "az-biz-aio-first-party", path = "../lib/biz/aio-first-party" }
+dill.workspace = true
 dotenvy.workspace = true
-rudi.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true
+studio = { package = "az-studio", path = "plugins/studio", default-features = false, features = ["server"] }
 tokio.workspace = true
+toasty.workspace = true
 tower-http.workspace = true
 
 [lints]

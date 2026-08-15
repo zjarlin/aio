@@ -1,0 +1,33 @@
+[package]
+name = "az-app-aio-first-party"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "AIO跨平台 generated application"
+workspace = "../../.."
+
+[features]
+default = []
+client = [
+    "dep:az-ui-components",
+    "dep:dioxus",
+    "dep:studio",
+]
+web = ["client", "dioxus/web", "dioxus/launch", "studio/web"]
+desktop = ["client", "dioxus/desktop", "dioxus/launch", "studio/desktop"]
+server = ["dep:anyhow", "dep:az-aio-app", "dep:business"]
+
+[dependencies]
+anyhow = { workspace = true, optional = true }
+az-ui-components = { workspace = true, optional = true }
+dioxus = { workspace = true, optional = true }
+studio = { package = "az-studio", path = "../../../app/plugins/studio", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+az-aio-app = { path = "../../../app", optional = true }
+business = { package = "az-biz-aio-first-party", path = "../../../lib/biz/aio-first-party", optional = true }
+
+[lints]
+workspace = true

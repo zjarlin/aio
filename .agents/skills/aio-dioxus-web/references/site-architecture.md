@@ -5,7 +5,7 @@
 | 职责 | 文件 | 约束 |
 | --- | --- | --- |
 | HTTP 服务、静态资源 | `app/src/server.rs` | 启动时先绑定端口，再执行数据库初始化；`/app/*` 服务 wasm 产物 |
-| AIO 壳层接入 | `app/src/admin_shell` | 只实现单一 AdminProvider 与消费方扩展，通用壳来自已发布 crate |
+| AIO 壳层接入 | `app/src/admin_shell.rs` | 只组合图标、生成页面分发与 `PublishedApplication` |
 | Studio 元数据编辑 | `app/plugins/studio/src/ui.rs` | 编辑 `ProgramDefinition`、`PageDefinition`，通过 Graph Patch 保存 |
 | 发布后页面运行时 | `app/plugins/studio/src/page_runtime.rs` | 解释编译后的页面声明，渲染 CRUD、树表和 REST 表单 |
 | 页面与接口定义 | `app/plugins/studio/src/definition.rs` | 只保存稳定、不可推导的定义数据 |
@@ -28,7 +28,7 @@ registry 固定为 DioxusLabs/dioxus-components 提交 `bf007c15d0cf4d04d3181cc4
 | 集合与树目录 | `az_ui_components::collection_tree` | 同一组件渲染扁平集合或可折叠树，领域内容通过 renderer 提供 |
 | 数据表格 | `az_ui_components::data_table` | 仓库复合组件；支持编辑、固定表头/列、右侧面板、合并单元格和树形表头 |
 
-主题、布局、工具类和控件样式全部由固定 Git 提交的 `az-ui-components::UiStylesheets` 加载。AIO 不保存 CSS 文件，不注入本地样式，也不复制或覆盖组件样式。
+主题、布局、工具类和控件样式全部由 submodule 固定 gitlink 下的 `az-ui-components::UiStylesheets` 加载。AIO 不保存 CSS 文件，不注入本地样式，也不复制或覆盖组件样式。
 
 ## 数据流
 
@@ -36,9 +36,8 @@ registry 固定为 DioxusLabs/dioxus-components 提交 `bf007c15d0cf4d04d3181cc4
 PostgreSQL ProgramDefinition/PageDefinition
   -> ProgramCompiler
   -> ApplicationImage/ProgramImage
-  -> Rudi Provider 索引
-  -> AdminProvider
-  -> az-dioxus-admin-shell / 页面扩展渲染
+  -> 页面 `SymbolId` 分发 / Dill Controller `TypeId` 聚合
+  -> PublishedApplication / 页面运行时
 ```
 
 REST 功能定义以 `method + path` 作为身份。标题为空时从路径末段推导；需求文本只用于一次性生成，不进入持久化元数据。功能列表用表格展示，编辑与删除操作绑定稳定 `SymbolId`。

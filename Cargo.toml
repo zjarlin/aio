@@ -2,20 +2,12 @@
 resolver = "2"
 members = [
     "app",
+    "generated/apps/*",
     "app/plugins/studio",
-    "app/plugins/asset-hub",
-    "app/plugins/algorithm-center",
-    "app/plugins/config-center",
-    "app/plugins/drive-center",
-    "app/plugins/edge-gateway",
-    "app/plugins/iot-center",
-    "app/plugins/software-center",
-    "app/plugins/ssh",
-    "app/plugins/linux",
-    "crates/plugin/core",
-    "crates/asset-hub-contract",
-    "crates/config-center-contract",
+    "lib/biz/*",
+    "lib/plugin/core",
 ]
+exclude = ["lib/dioxus-admin-workbench"]
 
 [workspace.package]
 version = "2026.5.10"
@@ -27,69 +19,36 @@ homepage = "https://github.com/zjarlin/aio"
 repository = "https://github.com/zjarlin/aio"
 
 [workspace.dependencies]
-ab_glyph = "0.2.32"
-az-algorithm = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 az-str = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 anyhow = "1.0.99"
 arc-swap = "1.7.1"
 async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 axum = { version = "0.8.6", features = ["http1", "json", "tokio", "multipart"] }
-az-config-center-client = "=2026.6.13"
-az-dict-macros = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
-az-dict-spec = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
 dioxus = { version = "0.7.9", default-features = false, features = ["macro", "html", "signals", "router"] }
-dioxus-ssr = "0.7.9"
-tw-merge = { package = "tw_merge", version = "0.1.21", features = ["debug"] }
-az-plugin-core = { version = "=2026.5.10", path = "crates/plugin/core" }
-az-admin-shell-core = { version = "=2026.8.13", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
-az-dioxus-admin-extension-crud = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
-az-dioxus-admin-shell = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
-az-ui-components = { version = "=2026.8.17", git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "3dc7072b27d6e659f56f8f35bb0c4ef43b8fa1e6" }
-az-asset-hub-contract = { version = "=2026.5.10", path = "crates/asset-hub-contract" }
-az-config-center-contract = { version = "=2026.5.10", path = "crates/config-center-contract" }
-az-micro-dict = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "0209ab56aa57a4aa6102ce497cb5d82b6266e5ec" }
-az-ssh = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
-base64 = "0.22.1"
 convert_case = "0.8.0"
 deunicode = "1.6.2"
-derive_more = { version = "2.1.1", features = ["display"] }
+derive_more = { version = "2.1.1", default-features = false, features = ["debug"] }
+az-plugin-core = { version = "=2026.5.10", path = "lib/plugin/core" }
+az-dioxus-admin-shell = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/admin-shell/dioxus", default-features = false }
+az-ui-components = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/ui/components" }
 dotenvy = "0.15.7"
 evalexpr = "13.1.0"
-half = "2.7.1"
-image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
-imageproc = "0.25.0"
 icons = { version = "0.18.3", features = ["dioxus"] }
-inventory = "0.3.21"
-ndarray = "0.17.1"
-ort = "2.0.0-rc.12"
-proc-macro2 = "1.0.103"
-quote = "1.0.41"
 regex = "1.12.2"
-rudi = "0.8.3"
-rqrr = { version = "0.10.1", default-features = false, features = ["img"] }
-rusty-tesseract = "1.1.10"
+dill = "0.15.0"
 schemars = "1.2.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
 hex = "0.4.3"
-ssh2 = "0.9.5"
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio-rustls", "migrate", "macros", "json"] }
-strum = { version = "0.27.2", features = ["derive"] }
-tempfile = "3.23.0"
 tokio = { version = "1.47.1", features = ["macros", "net", "rt", "sync", "time"] }
 tracing = "0.1.44"
 toasty = { version = "0.7.0", features = ["postgresql", "serde"] }
-trybuild = "1.0.112"
 uuid = { version = "1.23.1", features = ["v4", "serde", "js"] }
-handlebars = "6.4.1"
-md5 = "0.8.0"
 matchit = "0.8.4"
-reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "cookies", "json", "multipart", "rustls-tls"] }
-prettyplease = "0.2.37"
-serde_json_path = "0.7.2"
-syn = { version = "2.0.108", features = ["full", "parsing"] }
+pinyin = { version = "0.11.0", default-features = false, features = ["plain"] }
 tower = { version = "0.5.2", features = ["timeout", "util"] }
 tower-http = { version = "0.6.2", features = ["fs"] }
 urlencoding = "2"

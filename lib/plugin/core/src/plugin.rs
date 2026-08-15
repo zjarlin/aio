@@ -1,0 +1,231 @@
+//! Bevy 风格的应用插件与 Dill 聚合入口。
+
+use std::{
+    any::{Any, TypeId},
+    collections::{HashMap, HashSet},
+    future::Future,
+    marker::PhantomData,
+    pin::Pin,
+    sync::Arc,
+};
+
+use anyhow::{Context as _, Result, ensure};
+use dill::{AllOf, Catalog};
+
+/// 插件构建过程。
+pub type PluginFuture<'a> = Pin<Box<dyn Future<Output = Result<()>> + 'a>>;
+
+/// 指定应用状态的动态插件。
+pub type DynPlugin<T> = Arc<dyn Plugin<T>>;
+
+/// 通过修改应用状态安装一组能力。
+pub trait Plugin<T>: Any + Send + Sync {
+    /// 构建插件；异步返回用于覆盖数据库和文件系统初始化。
+    fn build<'a>(&'a self, app: &'a mut T) -> PluginFuture<'a>;
+
+    /// 可选的人类可读说明，只用于日志和诊断。
+    fn comment(&self) -> &'static str {
+        ""
+    }
+}
+
+/// 按插件组顺序构建应用状态。
+pub struct App<T> {
+    state: T,
+    unique_plugin_types: HashSet<TypeId>,
+}
+
+impl<T: 'static> App<T> {
+    #[must_use]
+    pub fn new(state: T) -> Self {
+        Self {
+            state,
+            unique_plugin_types: HashSet::new(),
+        }
+    }
+
+    pub async fn add_plugins(
+        &mut self,
+        plugins: impl IntoIterator<Item = DynPlugin<T>>,
+    ) -> Result<()> {
+        let plugins = plugins.into_iter().collect::<Vec<_>>();
+        self.validate_plugins(&plugins)?;
+
+        for plugin in plugins {
+            let type_id = plugin.as_ref().type_id();
+            plugin.build(&mut self.state).await.with_context(|| {
+                let comment = plugin.comment();
+                if comment.is_empty() {
+                    format!("构建插件失败: {type_id:?}")
+                } else {
+                    format!("构建插件失败: {comment} ({type_id:?})")
+                }
+            })?;
+            self.unique_plugin_types.insert(type_id);
+        }
+        Ok(())
+    }
+
+    fn validate_plugins(&self, plugins: &[DynPlugin<T>]) -> Result<()> {
+        let mut pending_unique_types = HashSet::new();
+        for plugin in plugins {
+            let type_id = plugin.as_ref().type_id();
+            ensure!(
+                !self.unique_plugin_types.contains(&type_id),
+                "插件类型已添加到应用: {type_id:?}"
+            );
+            ensure!(
+                pending_unique_types.insert(type_id),
+                "插件组包含重复插件类型: {type_id:?}"
+            );
+        }
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn into_inner(self) -> T {
+        self.state
+    }
+}
+
+/// 声明一组有确定顺序的应用插件。
+pub trait PluginGroup<T: 'static> {
+    fn build(self) -> PluginGroupBuilder<T>;
+}
+
+/// 使用具体 Rust 类型构建插件组。
+pub struct PluginGroupBuilder<T> {
+    plugin_types: Vec<TypeId>,
+    marker: PhantomData<fn(&mut T)>,
+}
+
+impl<T: 'static> Default for PluginGroupBuilder<T> {
+    fn default() -> Self {
+        Self {
+            plugin_types: Vec::new(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T: 'static> PluginGroupBuilder<T> {
+    #[must_use]
+    pub fn add<P>(mut self) -> Self
+    where
+        P: Plugin<T>,
+    {
+        self.plugin_types.push(TypeId::of::<P>());
+        self
+    }
+
+    pub fn resolve(self, catalog: &Catalog) -> Result<Vec<DynPlugin<T>>> {
+        let mut expected = HashSet::new();
+        for type_id in &self.plugin_types {
+            ensure!(expected.insert(*type_id), "插件组包含重复类型: {type_id:?}");
+        }
+
+        let registrations = catalog
+            .get::<AllOf<dyn Plugin<T>>>()
+            .context("从 Dill 聚合应用插件失败")?;
+        let mut resolved = HashMap::new();
+        for plugin in registrations {
+            let type_id = plugin.as_ref().type_id();
+            ensure!(
+                resolved.insert(type_id, plugin).is_none(),
+                "Dill 中重复注册插件类型: {type_id:?}"
+            );
+        }
+        let registered_types = resolved.keys().copied().collect::<HashSet<_>>();
+        ensure!(
+            registered_types == expected,
+            "Dill 插件集合与 PluginGroup 不一致: 注册={registered_types:?}, 分组={expected:?}"
+        );
+
+        self.plugin_types
+            .into_iter()
+            .map(|type_id| {
+                resolved
+                    .remove(&type_id)
+                    .with_context(|| format!("插件组解析结果缺少类型: {type_id:?}"))
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use dill::Catalog;
+
+    use super::*;
+
+    #[derive(Default)]
+    struct TestState {
+        builds: Vec<&'static str>,
+    }
+
+    struct First;
+    struct Second;
+
+    impl Plugin<TestState> for First {
+        fn build<'a>(&'a self, app: &'a mut TestState) -> PluginFuture<'a> {
+            Box::pin(async move {
+                app.builds.push("first");
+                Ok(())
+            })
+        }
+    }
+
+    impl Plugin<TestState> for Second {
+        fn build<'a>(&'a self, app: &'a mut TestState) -> PluginFuture<'a> {
+            Box::pin(async move {
+                app.builds.push("second");
+                Ok(())
+            })
+        }
+    }
+
+    struct TestPlugins;
+
+    impl PluginGroup<TestState> for TestPlugins {
+        fn build(self) -> PluginGroupBuilder<TestState> {
+            PluginGroupBuilder::default().add::<Second>().add::<First>()
+        }
+    }
+
+    fn catalog() -> Catalog {
+        Catalog::builder()
+            .add_value(First)
+            .bind::<dyn Plugin<TestState>, First>()
+            .add_value(Second)
+            .bind::<dyn Plugin<TestState>, Second>()
+            .build()
+    }
+
+    #[tokio::test]
+    async fn resolves_plugins_in_group_order_by_type_id() -> Result<()> {
+        let catalog = catalog();
+        let plugins = TestPlugins.build().resolve(&catalog)?;
+        let mut app = App::new(TestState::default());
+
+        app.add_plugins(plugins).await?;
+
+        assert_eq!(app.into_inner().builds, ["second", "first"]);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_duplicate_unique_plugin_before_build() -> Result<()> {
+        let plugin = Arc::new(First) as DynPlugin<TestState>;
+        let mut app = App::new(TestState::default());
+
+        let error = app
+            .add_plugins([Arc::clone(&plugin), plugin])
+            .await
+            .err()
+            .context("重复插件必须被拒绝")?;
+
+        assert!(error.to_string().contains("重复插件"));
+        assert!(app.into_inner().builds.is_empty());
+        Ok(())
+    }
+}

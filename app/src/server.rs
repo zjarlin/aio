@@ -1,20 +1,30 @@
 use std::net::SocketAddr;
 
 use anyhow::{Context as _, Result};
-use az_plugin_core::{DynPlugin, discover_plugins, install_plugins};
-use rudi::Context;
+use az_plugin_core::{App, PluginGroup};
+use dill::Catalog;
+use studio::{FormStateExtractor, ProgramPatchAgent};
 
-use crate::{application_startup::ApplicationStartup, config::AppConfig};
+use crate::{
+    application_starters::AioPlugins, application_startup::ApplicationStartup, config::AppConfig,
+};
 
-pub fn run() -> Result<()> {
-    crate::application_starters::enable();
-
-    let mut di = Context::auto_register();
+pub fn run(register_business: fn(&mut dill::CatalogBuilder)) -> Result<()> {
     let config = AppConfig::load().context("加载 AIO 应用配置失败")?;
-    di.insert_singleton(config.clone());
-    let starters =
-        discover_plugins::<ApplicationStartup>(&mut di).context("发现 AIO 应用启动器失败")?;
-    let startup = ApplicationStartup::new(di);
+    let mut builder = Catalog::builder();
+    builder
+        .add_value(config.clone())
+        .add_value(ProgramPatchAgent::from_env()?)
+        .add_value(FormStateExtractor::from_env()?);
+    crate::application_starters::register(&mut builder);
+    register_business(&mut builder);
+    builder.validate().context("校验 AIO Dill 依赖图失败")?;
+    let catalog = builder.build();
+    let plugins = AioPlugins
+        .build()
+        .resolve(&catalog)
+        .context("解析 AIO 默认插件组失败")?;
+    let app = App::new(ApplicationStartup::default());
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -24,23 +34,23 @@ pub fn run() -> Result<()> {
         .block_on(tokio::net::TcpListener::bind(address))
         .with_context(|| format!("绑定 AIO 监听地址失败: {address}"))?;
 
-    runtime.block_on(serve(listener, startup, starters))
+    runtime.block_on(serve(listener, app, plugins))
 }
 
 async fn serve(
     listener: tokio::net::TcpListener,
-    mut startup: ApplicationStartup,
-    starters: Vec<DynPlugin<ApplicationStartup>>,
+    mut app: App<ApplicationStartup>,
+    plugins: Vec<az_plugin_core::DynPlugin<ApplicationStartup>>,
 ) -> Result<()> {
-    install_plugins(&mut startup, starters)
+    app.add_plugins(plugins)
         .await
-        .context("执行 AIO 应用启动器失败")?;
-    let app = startup.into_router();
+        .context("构建 AIO 默认插件组失败")?;
+    let router = app.into_inner().into_router();
     let address = listener.local_addr().context("读取 AIO 监听地址失败")?;
     println!("AIO listening on http://{address}");
     axum::serve(
         listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
+        router.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await?;
     Ok(())

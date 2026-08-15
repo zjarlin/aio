@@ -1,0 +1,19 @@
+[package]
+name = "az-biz-aio-first-party"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Metadata-generated business services and controllers for aio-first-party."
+workspace = "../../.."
+
+[dependencies]
+anyhow.workspace = true
+derive_more.workspace = true
+dill.workspace = true
+serde_json.workspace = true
+studio = { package = "az-studio", path = "../../../app/plugins/studio", default-features = false, features = ["server"] }
+
+[lints]
+workspace = true
