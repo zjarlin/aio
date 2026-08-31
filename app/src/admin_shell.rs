@@ -1,7 +1,17 @@
+use az_ui_components::UiStylesheets;
 use dioxus::prelude::*;
 
 #[allow(non_snake_case)]
 pub fn App() -> Element {
+    if is_studio_editor_route() {
+        return rsx! {
+            UiStylesheets {}
+            studio::StudioPage {
+                api_base_url: String::new(),
+                published_scene: None,
+            }
+        };
+    }
     rsx! {
         document::Link {
             rel: "icon",
@@ -34,4 +44,10 @@ pub fn App() -> Element {
             },
         }
     }
+}
+
+fn is_studio_editor_route() -> bool {
+    web_sys::window()
+        .and_then(|window| window.location().pathname().ok())
+        .is_some_and(|path| path == "/app/designer" || path.starts_with("/app/designer/"))
 }

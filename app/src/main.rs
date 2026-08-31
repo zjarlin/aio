@@ -2,7 +2,7 @@
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    az_aio_app::launch_studio();
+    az_aio_app::launch_application();
 }
 
 #[cfg(not(target_arch = "wasm32"))]

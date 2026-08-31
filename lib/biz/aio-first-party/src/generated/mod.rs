@@ -8,6 +8,8 @@ pub(crate) mod linux;
 pub(crate) mod software;
 pub(crate) mod ssh;
 
+pub const ENDPOINT_COUNT: usize = 51;
+
 use dill::CatalogBuilder;
 
 pub fn register(builder: &mut CatalogBuilder) {

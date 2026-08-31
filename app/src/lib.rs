@@ -14,7 +14,7 @@ mod migration;
 mod server;
 
 #[cfg(target_arch = "wasm32")]
-pub fn launch_studio() {
+pub fn launch_application() {
     dioxus::launch(admin_shell::App);
 }
 

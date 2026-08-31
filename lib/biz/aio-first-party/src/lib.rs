@@ -3,4 +3,4 @@
 mod generated;
 mod service;
 
-pub use generated::register;
+pub use generated::{ENDPOINT_COUNT, register};

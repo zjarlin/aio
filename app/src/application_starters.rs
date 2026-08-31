@@ -98,16 +98,7 @@ mod tests {
             .iter()
             .map(|controller| controller.as_ref().type_id())
             .collect::<HashSet<_>>();
-        let definition = serde_json::from_str::<studio::ProgramDefinition>(include_str!(
-            "../../generated/apps/aio-first-party/program-definition.json"
-        ))?;
-        let expected = definition
-            .pages
-            .iter()
-            .map(|page| page.endpoints.len())
-            .sum::<usize>();
-
-        assert_eq!(controllers.len(), expected);
+        assert_eq!(controllers.len(), business::ENDPOINT_COUNT);
         assert_eq!(type_ids.len(), controllers.len());
         Ok(())
     }

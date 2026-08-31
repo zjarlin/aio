@@ -112,7 +112,7 @@ impl From<anyhow::Error> for ApiError {
     }
 }
 
-impl std::fmt::Display for ApiError {
+impl Display for ApiError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter.write_str(&self.message)
     }

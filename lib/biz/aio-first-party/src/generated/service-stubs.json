@@ -1,0 +1,13 @@
+{
+  "files": {
+    "src/service/algorithms.rs": "74b16aed317e19063fddc85222fc213ff0f48df44977609c679c6d4f78700271",
+    "src/service/assets.rs": "1b1eca2e5340a89f150742b07f9216b58fdd76db044f35fb2c708b07d7954756",
+    "src/service/config.rs": "b44894c1640fb8f2363ee7a1715fb401a9bbe03aac7e19a4808bd3ecc1fa296f",
+    "src/service/drive.rs": "6cc8a7fabbf2ca3687d7db014481db7e660c9074843ac083065b40f79a5f44f1",
+    "src/service/gateway.rs": "d95c08a07d6b72e3c2e6ae8627426eedd66f0fe7c6f925628fdec8bcc1b327bc",
+    "src/service/iot.rs": "5917171950697754bc2005cc1a132cb964d56a97b7061041cfee650271de44af",
+    "src/service/linux.rs": "1584e854b83e686a4449a9066bdd804a91fdcfaea1dff021416b3be7474c3c11",
+    "src/service/software.rs": "45a950c2bfda00b348a66bbe54b48b5889e897feecdf4c76730055e95bf5e878",
+    "src/service/ssh.rs": "7198b9ad6cc7af70a514bcd502747847487d17111b9f2b6a6d25bdd4cc640cd6"
+  }
+}

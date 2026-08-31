@@ -6,7 +6,7 @@ Cargo 工件：`az-aio-app`
 
 服务端能力统一实现 `az-plugin-core::Plugin<ApplicationStartup>`。`AioPlugins` 显式声明 Bevy 风格的构建顺序；Dill 直接向每个 Starter 注入配置、Provider、数据库与运行时资源，`ApplicationStartup` 只保留 Router。唯一性只按 `TypeId` 校验，不声明字符串 `key` 或 `name`。
 
-Studio 宿主不保存业务页面函数。页面函数只随独立应用生成到 `generated/apps/<application-id>/src/pages`。业务接口由 Studio 同步到 `lib/biz/<application-id>`：`src/generated` 保存契约和 Controller，`src/service` 保存首次创建后不覆盖的人工实现。
+Studio 宿主不保存业务页面函数。页面函数只随独立应用生成到 `generated/apps/<application-id>/src/pages`。业务接口由 Studio 同步到 `lib/biz/<application-id>`：`src/generated` 保存契约、Controller 和 Service 骨架所有权清单；`src/service` 中未修改的骨架由生成器更新和删除，人工修改后的实现不再由生成器覆盖。
 
 生成应用位于 `generated/apps/<application-id>`，每次生成按当前元数据原子替换，旧页面文件不会残留。Web 与 Desktop 共享 `studio::PublishedApplication`，Server 通过 `az_aio_app::run_server_with(business::register)` 注入同名业务模块。
 

@@ -1,3 +1,4 @@
+// AIO 根据元数据生成的 Service 骨架；内容修改后自动转为人工所有。
 use anyhow::bail;
 use studio::{ConventionEndpointFuture, ConventionEndpointRequest};
 

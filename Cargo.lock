@@ -340,6 +340,7 @@ dependencies = [
  "tokio",
  "tower-http",
  "urlencoding",
+ "web-sys",
 ]
 
 [[package]]
