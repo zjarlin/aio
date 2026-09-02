@@ -15,7 +15,7 @@ pub(crate) struct GetStatusController {
 
 impl ConventionEndpointProvider for GetStatusController {
     fn endpoint_id(&self) -> &'static str {
-        "71ffa22a-0124-8037-c9b5-7a720422137f"
+        super::util::endpoint_id("71ffa22a-0124-8037-c9b5-7a720422137f")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -32,7 +32,7 @@ pub(crate) struct GetInstallersController {
 
 impl ConventionEndpointProvider for GetInstallersController {
     fn endpoint_id(&self) -> &'static str {
-        "3b8b34b9-5518-fcc6-9182-ec0af247b2b5"
+        super::util::endpoint_id("3b8b34b9-5518-fcc6-9182-ec0af247b2b5")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -49,7 +49,7 @@ pub(crate) struct GetPackagesController {
 
 impl ConventionEndpointProvider for GetPackagesController {
     fn endpoint_id(&self) -> &'static str {
-        "6ed53d73-7729-420d-092d-4f48b03a968c"
+        super::util::endpoint_id("6ed53d73-7729-420d-092d-4f48b03a968c")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -66,7 +66,7 @@ pub(crate) struct PostOrganizeController {
 
 impl ConventionEndpointProvider for PostOrganizeController {
     fn endpoint_id(&self) -> &'static str {
-        "9ac74b1e-0466-f39a-f5d7-cad2d7d69351"
+        super::util::endpoint_id("9ac74b1e-0466-f39a-f5d7-cad2d7d69351")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -83,7 +83,7 @@ pub(crate) struct PostPackageController {
 
 impl ConventionEndpointProvider for PostPackageController {
     fn endpoint_id(&self) -> &'static str {
-        "bc6b003c-2fc4-0e60-3865-65764e52830b"
+        super::util::endpoint_id("bc6b003c-2fc4-0e60-3865-65764e52830b")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {

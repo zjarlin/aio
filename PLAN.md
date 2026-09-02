@@ -145,7 +145,7 @@ lib/biz/<application-id>/ Service 契约、生成 Controller 与人工实现
 约定文件是显式源码扩展点，不是第二份页面或接口定义。
 
 - UI 文件位于 `generated/apps/<application-id>/src/pages` 并导出普通 `render()` 函数。
-- server 生成文件位于 `lib/biz/<application-id>/src/generated`，人工实现位于 `src/service`。
+- server 生成文件位于 `lib/biz/<application-id>/src/generated`，每个 feature 固定拆分为 `controller.rs`、`service.rs`、`service_impl.rs`、`model.rs` 和 `util.rs`；人工修改后的 `service_impl.rs` 由生成器保留。
 - Controller 和 Service 统一通过 Dill 注册，不声明字符串 `key`、`name` 或等价身份。
 - 页面标题、接口 method/path 和输入输出仍来自 `PageDefinition`。
 - 约定源码不得被反向解析后覆盖 `ProgramDefinition`。

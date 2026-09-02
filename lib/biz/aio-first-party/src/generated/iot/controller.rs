@@ -15,7 +15,7 @@ pub(crate) struct PostDevicesController {
 
 impl ConventionEndpointProvider for PostDevicesController {
     fn endpoint_id(&self) -> &'static str {
-        "7efe301d-7330-fb65-ca3c-b1d626374a7f"
+        super::util::endpoint_id("7efe301d-7330-fb65-ca3c-b1d626374a7f")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -32,7 +32,7 @@ pub(crate) struct GetStatusController {
 
 impl ConventionEndpointProvider for GetStatusController {
     fn endpoint_id(&self) -> &'static str {
-        "214dd5da-d598-c3e1-f03f-79bc97888824"
+        super::util::endpoint_id("214dd5da-d598-c3e1-f03f-79bc97888824")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -49,7 +49,7 @@ pub(crate) struct PostTemplatesDefaultApplyController {
 
 impl ConventionEndpointProvider for PostTemplatesDefaultApplyController {
     fn endpoint_id(&self) -> &'static str {
-        "7778cd07-5953-0ac7-1c98-a83f34916792"
+        super::util::endpoint_id("7778cd07-5953-0ac7-1c98-a83f34916792")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -66,7 +66,7 @@ pub(crate) struct PostDevicesDeviceCodeFixtureTelemetryController {
 
 impl ConventionEndpointProvider for PostDevicesDeviceCodeFixtureTelemetryController {
     fn endpoint_id(&self) -> &'static str {
-        "7659e936-1339-4447-7c6d-829aa40bf56d"
+        super::util::endpoint_id("7659e936-1339-4447-7c6d-829aa40bf56d")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -84,7 +84,7 @@ pub(crate) struct PostUiActionController {
 
 impl ConventionEndpointProvider for PostUiActionController {
     fn endpoint_id(&self) -> &'static str {
-        "bb197142-aa68-d99b-08ff-22fbaf229b5b"
+        super::util::endpoint_id("bb197142-aa68-d99b-08ff-22fbaf229b5b")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {

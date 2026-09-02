@@ -47,7 +47,7 @@ az-aio-app
 az-studio -> az-plugin-core
 ```
 
-模型、页面、菜单与 REST 契约进入 PostgreSQL `ProgramDefinition`。`ApplicationCompiler` 只在 `generated/apps/<application-id>` 生成普通页面函数与发布应用壳；`BusinessModuleManager` 在 `lib/biz/<application-id>` 生成 Service trait 和 Controller，并只在缺失时创建 `src/service` 人工实现槽。Controller 由 Dill 按 `TypeId` 聚合，endpoint `SymbolId` 只用于连接业务元数据。
+模型、页面、菜单与 REST 契约进入 PostgreSQL `ProgramDefinition`。`ApplicationCompiler` 只在 `generated/apps/<application-id>` 生成普通页面函数与发布应用壳；`BusinessModuleManager` 在 `lib/biz/<application-id>` 生成 Service trait 和 Controller，并只在缺失时创建 `src/generated/<feature>/service_impl.rs` 人工实现槽。Controller 由 Dill 按 `TypeId` 聚合，endpoint `SymbolId` 只用于连接业务元数据。
 
 `lib/biz/<application-id>` 是业务 Service 与 Controller 库，`generated/apps/<application-id>` 是引用该业务库的可执行发布装配，两者不是重复实现。Service 骨架由内容哈希跟踪：未修改的骨架随接口元数据删除，人工修改后立即脱离生成器所有权。Studio 的“应用”视图通过 `ApplicationCompiler` 预览并原子替换生成目录；普通 GraphPatch、Vibe 和回滚都会同步清理失效页面源码。生成目录只包含可编译源码、Cargo/Dioxus 配置、Dockerfile 和部署说明；正式元数据继续以 PostgreSQL 为唯一来源。Web 与 Desktop 共享 `PublishedApplication`；Web 使用浏览器同源 HTTP，Desktop 读取 `AIO_API_BASE_URL`，Server feature 通过 `run_server_with` 注入对应业务模块。
 
@@ -64,7 +64,7 @@ cargo run -p az-app-aio-first-party --no-default-features --features desktop
 cargo run -p az-app-aio-first-party --no-default-features --features server
 ```
 
-应用启动配置以明文保存在仓库根目录 `.env`。`AZ_AIO_DATABASE_URL` 配置正式 PostgreSQL，`AZ_AIO_DATABASE_MIGRATIONS_ENABLED` 控制 SQLx 迁移并默认启用，`AZ_AIO_WEB_PORT` 默认是 `8080`，`AZ_AIO_WEB_DIST` 可覆盖 Web 产物目录。`scripts/preview.zsh` 会先验证直连数据库；直连不可用时，经本机 SOCKS relay 回退到同一数据库，且不会修改 `.env`。启动后访问 `http://127.0.0.1:8080/`。
+应用启动配置以明文保存在仓库根目录 `.env`。`AZ_AIO_DATABASE_URL` 配置正式 PostgreSQL，`AZ_AIO_DATABASE_MIGRATIONS_ENABLED` 控制 SQLx 迁移并默认启用，`AZ_AIO_WEB_PORT` 配置 Web 监听端口（未配置时默认为 `8080`），`AZ_AIO_WEB_DIST` 可覆盖 Web 产物目录。当前仓库 `.env` 将 Web 端口配置为 `3000`。`scripts/preview.zsh` 会先验证直连数据库；直连不可用时，经本机 SOCKS relay 回退到同一数据库，且不会修改 `.env`。启动后访问 `http://127.0.0.1:3000/`。
 
 服务端 starter 统一实现 `Plugin<ApplicationStartup>`。`AioPlugins` 像 Bevy 的 `PluginGroup` 一样显式声明构建顺序，`App` 负责按 `TypeId` 做唯一性校验和逐个构建；Dill 负责 Starter 及其全部服务依赖的构造和 `AllOf` 聚合，`ApplicationStartup` 只保存最终顺序合并的 Router。
 

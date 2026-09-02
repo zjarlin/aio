@@ -15,7 +15,7 @@ pub(crate) struct GetStatusController {
 
 impl ConventionEndpointProvider for GetStatusController {
     fn endpoint_id(&self) -> &'static str {
-        "f210d29c-eca2-993f-31b8-b4c91e0de229"
+        super::util::endpoint_id("f210d29c-eca2-993f-31b8-b4c91e0de229")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -32,7 +32,7 @@ pub(crate) struct GetDotfilesController {
 
 impl ConventionEndpointProvider for GetDotfilesController {
     fn endpoint_id(&self) -> &'static str {
-        "2fbe4186-c333-5c78-7ee9-66c5bc2737a7"
+        super::util::endpoint_id("2fbe4186-c333-5c78-7ee9-66c5bc2737a7")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -49,7 +49,7 @@ pub(crate) struct GetPairingController {
 
 impl ConventionEndpointProvider for GetPairingController {
     fn endpoint_id(&self) -> &'static str {
-        "4e007025-2296-b4ee-c7f4-d3ab00af574e"
+        super::util::endpoint_id("4e007025-2296-b4ee-c7f4-d3ab00af574e")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -66,7 +66,7 @@ pub(crate) struct GetEntriesController {
 
 impl ConventionEndpointProvider for GetEntriesController {
     fn endpoint_id(&self) -> &'static str {
-        "77ec27e2-49c4-c79a-57e3-8049d500866c"
+        super::util::endpoint_id("77ec27e2-49c4-c79a-57e3-8049d500866c")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -83,7 +83,7 @@ pub(crate) struct PostEntryController {
 
 impl ConventionEndpointProvider for PostEntryController {
     fn endpoint_id(&self) -> &'static str {
-        "eb0e4d1f-70d5-2dcb-d6a5-7820e5d6efd3"
+        super::util::endpoint_id("eb0e4d1f-70d5-2dcb-d6a5-7820e5d6efd3")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -100,7 +100,7 @@ pub(crate) struct PostUiActionController {
 
 impl ConventionEndpointProvider for PostUiActionController {
     fn endpoint_id(&self) -> &'static str {
-        "9d6f0625-8f13-b23b-d6fb-b2c6053cc9e6"
+        super::util::endpoint_id("9d6f0625-8f13-b23b-d6fb-b2c6053cc9e6")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {

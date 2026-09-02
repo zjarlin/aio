@@ -15,7 +15,7 @@ pub(crate) struct GetStatusController {
 
 impl ConventionEndpointProvider for GetStatusController {
     fn endpoint_id(&self) -> &'static str {
-        "c6961230-f0b2-25a6-e4cc-19fc2700490b"
+        super::util::endpoint_id("c6961230-f0b2-25a6-e4cc-19fc2700490b")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -32,7 +32,7 @@ pub(crate) struct GetSkillsController {
 
 impl ConventionEndpointProvider for GetSkillsController {
     fn endpoint_id(&self) -> &'static str {
-        "b26fcd61-739d-dbb4-8cd4-690674c2b1a2"
+        super::util::endpoint_id("b26fcd61-739d-dbb4-8cd4-690674c2b1a2")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -49,7 +49,7 @@ pub(crate) struct GetAssetsController {
 
 impl ConventionEndpointProvider for GetAssetsController {
     fn endpoint_id(&self) -> &'static str {
-        "a35d8703-ea30-3dd2-7e35-82045cf0a33e"
+        super::util::endpoint_id("a35d8703-ea30-3dd2-7e35-82045cf0a33e")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
@@ -66,7 +66,7 @@ pub(crate) struct PostAssetController {
 
 impl ConventionEndpointProvider for PostAssetController {
     fn endpoint_id(&self) -> &'static str {
-        "7fa4bf16-b191-b898-b60a-18cc8f99a6de"
+        super::util::endpoint_id("7fa4bf16-b191-b898-b60a-18cc8f99a6de")
     }
 
     fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {

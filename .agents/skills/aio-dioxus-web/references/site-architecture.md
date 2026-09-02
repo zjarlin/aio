@@ -7,10 +7,10 @@
 | HTTP 服务、静态资源 | `app/src/server.rs` | 启动时先绑定端口，再执行数据库初始化；`/app/*` 服务 wasm 产物 |
 | AIO 壳层接入 | `app/src/admin_shell.rs` | 只组合图标、生成页面分发与 `PublishedApplication` |
 | Studio 元数据编辑 | `app/plugins/studio/src/ui.rs` | 编辑 `ProgramDefinition`、`PageDefinition`，通过 Graph Patch 保存 |
-| 发布后页面运行时 | `app/plugins/studio/src/page_runtime.rs` | 解释编译后的页面声明，渲染 CRUD、树表和 REST 表单 |
-| 页面与接口定义 | `app/plugins/studio/src/definition.rs` | 只保存稳定、不可推导的定义数据 |
-| 编译校验 | `app/plugins/studio/src/compiler.rs` | 从页面、模型和权限推导运行时结构与诊断 |
-| PostgreSQL 存储 | `app/plugins/studio/src/program_store.rs` | 正式程序真源；schema 变更必须有直接迁移 |
+| 发布后页面运行时 | `app/plugins/studio/src/runtime/page_runtime.rs` | 解释编译后的页面声明，渲染 CRUD、树表和 REST 表单 |
+| 页面与接口定义 | `app/plugins/studio/src/domain/definition.rs` | 只保存稳定、不可推导的定义数据 |
+| 编译校验 | `app/plugins/studio/src/compiler/compiler.rs` | 从页面、模型和权限推导运行时结构与诊断 |
+| PostgreSQL 存储 | `app/plugins/studio/src/storage/program_store.rs` | 正式程序真源；schema 变更必须有直接迁移 |
 
 ## 官方组件
 

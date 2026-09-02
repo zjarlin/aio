@@ -18,18 +18,15 @@ Use this rule when the user supplies one concrete file or directory path for ref
 
 ## Role boundaries
 
-Use feature-first directories with only roles that contain real code:
+Use feature-first directories with only roles that contain real code. In AIO business modules, the generated feature layout is fixed to `controller.rs`, `service.rs`, `service_impl.rs`, `model.rs`, and `util.rs`, with `mod.rs` limited to declarations, Dill registration, and top-level orchestration:
 
-- `controller`: transport orchestration only; parse input, call a service, and prepare output.
-- `model`: DTOs, requests, responses, value objects, and domain data; no I/O or orchestration.
-- `service`: boundary interfaces consumed by another boundary or host.
-- `service/impl`: service implementations; keep implementation visibility narrow.
-- `assist`: independently meaningful stateless parsing, mapping, rendering, normalization, or algorithm collaborators.
-- `constants`: actively referenced constants only.
-- `enums`: enum declarations.
-- `adapter`: database, network, framework, filesystem, and external-system integration.
+- `controller.rs`: transport orchestration only; parse input, call a service, and prepare output.
+- `model.rs`: DTOs, requests, responses, value objects, and domain data; no I/O or orchestration.
+- `service.rs`: boundary interfaces consumed by another boundary or host.
+- `service_impl.rs`: service implementations; keep implementation visibility narrow. It is generated only as an initial stub and becomes human-owned after modification.
+- `util.rs`: feature-local helpers that do not warrant a separate boundary.
 
-Keep models, service interfaces, and implementations in separate files. Keep private one-use helpers with their owner. Controllers must not own persistence, conversion, or domain decisions. Do not add generic `api`, `common`, or `utils` buckets.
+For other feature directories, use explicit responsibility names such as `adapter`, `constants`, or `enums` only when they contain real code. Keep private one-use helpers with their owner. Controllers must not own persistence, conversion, or domain decisions. Do not add generic `api`, `common`, or `utils` buckets.
 
 ## Dependency and extension rules
 
