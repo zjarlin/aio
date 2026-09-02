@@ -15,39 +15,27 @@ use studio::{
 use super::database::SharedDatabase;
 use crate::{application_startup::ApplicationStartup, config::AppConfig};
 
-#[derive(Clone)]
-enum ProgramRuntimeState {
-    Disabled,
-    Ready(Arc<ProgramRuntime>),
-}
-
 /// Dill 管理的 Studio ProgramRuntime 生命周期。
 #[derive(Default)]
 pub(super) struct SharedProgramRuntime {
-    state: OnceLock<ProgramRuntimeState>,
+    state: OnceLock<Option<Arc<ProgramRuntime>>>,
 }
 
 impl SharedProgramRuntime {
     fn initialize(&self, runtime: Option<ProgramRuntime>) -> anyhow::Result<()> {
-        let state = runtime.map_or(ProgramRuntimeState::Disabled, |runtime| {
-            ProgramRuntimeState::Ready(Arc::new(runtime))
-        });
+        let runtime = runtime.map(Arc::new);
         anyhow::ensure!(
-            self.state.set(state).is_ok(),
+            self.state.set(runtime).is_ok(),
             "Studio ProgramRuntime 被重复初始化"
         );
         Ok(())
     }
 
     pub(super) fn current(&self) -> anyhow::Result<Option<Arc<ProgramRuntime>>> {
-        let state = self
-            .state
+        self.state
             .get()
-            .context("Studio ProgramRuntime 启动器尚未执行")?;
-        match state {
-            ProgramRuntimeState::Disabled => Ok(None),
-            ProgramRuntimeState::Ready(runtime) => Ok(Some(Arc::clone(runtime))),
-        }
+            .context("Studio ProgramRuntime 启动器尚未执行")
+            .cloned()
     }
 }
 
@@ -88,12 +76,12 @@ impl Plugin<ApplicationStartup> for ProgramRuntimeStarter {
 
             runtime.restore_active_image().await?;
             if let Err(error) = runtime.publish_draft_if_changed("migration").await {
-                if runtime.active_image().await.is_none() {
+                if runtime.image().is_none() {
                     return Err(error).context("发布最新 Studio Draft 失败");
                 }
                 eprintln!("发布最新 Studio Draft 失败，继续使用活动 Revision: {error:#}");
             }
-            runtime.spawn_postgres_listener(database_url).await?;
+            runtime.spawn_postgres_listener(database_url);
             self.shared_runtime.initialize(Some(runtime))
         })
     }

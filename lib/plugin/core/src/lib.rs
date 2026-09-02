@@ -6,7 +6,6 @@ pub mod http;
 pub mod plugin;
 mod record_validation;
 mod records;
-pub mod upload;
 
 pub use database::*;
 pub use plugin::*;

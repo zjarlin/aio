@@ -4,38 +4,30 @@ use std::sync::{Arc, OnceLock};
 
 use anyhow::{Context as _, Result, ensure};
 use az_plugin_core::{
-    Db, Plugin, PluginFuture, ToastyModelProvider,
-    database::{collect_toasty_models, connect_shared_db},
+    Db, Plugin, PluginFuture, engine_models,
+    database::connect_shared_db,
 };
 use dill::CatalogBuilder;
 
 use crate::{application_startup::ApplicationStartup, config::AppConfig, migration};
 
-#[derive(Clone, Debug)]
-enum DatabaseState {
-    Disabled,
-    Ready(Db),
-}
-
 /// Dill 管理的共享数据库生命周期。
 #[derive(Debug, Default)]
 pub(super) struct SharedDatabase {
-    state: OnceLock<DatabaseState>,
+    state: OnceLock<Option<Db>>,
 }
 
 impl SharedDatabase {
     fn initialize(&self, database: Option<Db>) -> Result<()> {
-        let state = database.map_or(DatabaseState::Disabled, DatabaseState::Ready);
-        ensure!(self.state.set(state).is_ok(), "共享数据库被重复初始化");
+        ensure!(self.state.set(database).is_ok(), "共享数据库被重复初始化");
         Ok(())
     }
 
     pub(super) fn current(&self) -> Result<Option<Db>> {
-        let state = self.state.get().context("共享数据库启动器尚未执行")?;
-        match state {
-            DatabaseState::Disabled => Ok(None),
-            DatabaseState::Ready(database) => Ok(Some(database.clone())),
-        }
+        self.state
+            .get()
+            .context("共享数据库启动器尚未执行")
+            .cloned()
     }
 }
 
@@ -61,21 +53,20 @@ impl Plugin<ApplicationStartup> for DatabaseMigrationStarter {
     }
 }
 
-/// 汇总 Toasty 模型并注册共享 PostgreSQL 连接。
+/// 注册内置 Toasty 模型并建立共享 PostgreSQL 连接。
 #[dill::component]
 #[dill::interface(dyn Plugin<ApplicationStartup>)]
 #[dill::scope(dill::Singleton)]
 pub(super) struct SharedDatabaseStarter {
     config: Arc<AppConfig>,
     shared_database: Arc<SharedDatabase>,
-    model_providers: Vec<Arc<dyn ToastyModelProvider>>,
 }
 
 impl Plugin<ApplicationStartup> for SharedDatabaseStarter {
     fn build<'a>(&'a self, _target: &'a mut ApplicationStartup) -> PluginFuture<'a> {
         Box::pin(async move {
-            let models = collect_toasty_models(&self.model_providers);
-            let database = connect_shared_db(self.config.database_url.as_deref(), models).await?;
+            let database =
+                connect_shared_db(self.config.database_url.as_deref(), engine_models()).await?;
             self.shared_database.initialize(database)
         })
     }

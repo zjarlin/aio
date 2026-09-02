@@ -8,17 +8,11 @@ use super::contract::LinuxService;
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
 #[dill::scope(dill::Singleton)]
-#[derive(derive_more::Debug)]
 pub(crate) struct GetStatusController {
-    #[debug(skip)]
     service: Arc<dyn LinuxService>,
 }
 
 impl ConventionEndpointProvider for GetStatusController {
-    fn comment(&self) -> &'static str {
-        "Linux Status"
-    }
-
     fn endpoint_id(&self) -> &'static str {
         "df69e1c1-8687-b7ea-05f8-9048ea1ffbdc"
     }
@@ -31,17 +25,11 @@ impl ConventionEndpointProvider for GetStatusController {
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
 #[dill::scope(dill::Singleton)]
-#[derive(derive_more::Debug)]
 pub(crate) struct GetProfilesController {
-    #[debug(skip)]
     service: Arc<dyn LinuxService>,
 }
 
 impl ConventionEndpointProvider for GetProfilesController {
-    fn comment(&self) -> &'static str {
-        "Linux Profiles"
-    }
-
     fn endpoint_id(&self) -> &'static str {
         "627b86a2-22ec-0663-4a03-2d73a1619b31"
     }
@@ -54,17 +42,11 @@ impl ConventionEndpointProvider for GetProfilesController {
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
 #[dill::scope(dill::Singleton)]
-#[derive(derive_more::Debug)]
 pub(crate) struct GetSetupCatalogController {
-    #[debug(skip)]
     service: Arc<dyn LinuxService>,
 }
 
 impl ConventionEndpointProvider for GetSetupCatalogController {
-    fn comment(&self) -> &'static str {
-        "Setup Catalog"
-    }
-
     fn endpoint_id(&self) -> &'static str {
         "7e960357-1d77-07df-c7ee-04dd00a99aa9"
     }
@@ -77,17 +59,11 @@ impl ConventionEndpointProvider for GetSetupCatalogController {
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
 #[dill::scope(dill::Singleton)]
-#[derive(derive_more::Debug)]
 pub(crate) struct PostBootstrapPlanController {
-    #[debug(skip)]
     service: Arc<dyn LinuxService>,
 }
 
 impl ConventionEndpointProvider for PostBootstrapPlanController {
-    fn comment(&self) -> &'static str {
-        "Bootstrap Plan"
-    }
-
     fn endpoint_id(&self) -> &'static str {
         "8da2e6e5-d447-3dc1-be0d-5415ae113725"
     }
@@ -100,17 +76,11 @@ impl ConventionEndpointProvider for PostBootstrapPlanController {
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
 #[dill::scope(dill::Singleton)]
-#[derive(derive_more::Debug)]
 pub(crate) struct GetBootstrapScriptController {
-    #[debug(skip)]
     service: Arc<dyn LinuxService>,
 }
 
 impl ConventionEndpointProvider for GetBootstrapScriptController {
-    fn comment(&self) -> &'static str {
-        "Bootstrap Script"
-    }
-
     fn endpoint_id(&self) -> &'static str {
         "e0712a36-4e78-d1a8-e666-ea45dff2fd02"
     }

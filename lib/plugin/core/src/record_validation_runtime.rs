@@ -1,13 +1,3 @@
-/// 创建 API 成功响应。
-pub fn ok_response<T: Serialize>(data: T) -> Value {
-    json!({ "code": 200, "data": data })
-}
-
-/// 创建 API 错误响应。
-pub fn error_response(code: u16, message: impl Into<String>) -> Value {
-    json!({ "code": code, "msg": message.into() })
-}
-
 /// 返回动态数据运行时的 Toasty 模型集合。
 pub fn engine_models() -> toasty::ModelSet {
     toasty::models!(MetaModel, MetaField, DataRecord)

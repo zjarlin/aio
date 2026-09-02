@@ -10,9 +10,7 @@ workspace = "../../.."
 
 [dependencies]
 anyhow.workspace = true
-derive_more.workspace = true
 dill.workspace = true
-serde_json.workspace = true
 studio = { package = "az-studio", path = "../../../app/plugins/studio", default-features = false, features = ["server"] }
 
 [lints]

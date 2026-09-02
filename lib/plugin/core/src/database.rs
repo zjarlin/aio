@@ -3,21 +3,11 @@
 //! 为所有 插件提供统一的 `toasty::Db` 连接管理与工具函数，
 //! 消除每个插件各自重复的 `Arc<Mutex<Db>>`、URL 校验、UUID 和时间戳逻辑。
 
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::{Context, anyhow};
 use toasty::ModelSet;
 use tokio::sync::Mutex;
-
-/// 由 Dill 按具体 Rust 类型聚合的 Toasty 模型贡献者。
-pub trait ToastyModelProvider: Any + Send + Sync {
-    fn models(&self) -> ModelSet;
-
-    /// 可选的人类可读说明，只用于日志和诊断。
-    fn comment(&self) -> &'static str {
-        ""
-    }
-}
 
 /// 共享数据库柄。
 ///
@@ -90,17 +80,6 @@ pub async fn connect_shared_db(
     Ok(Some(db))
 }
 
-/// 把 Dill 注入的全部 Toasty 模型贡献合并为一个模型集合。
-pub fn collect_toasty_models(providers: &[Arc<dyn ToastyModelProvider>]) -> ModelSet {
-    let mut models = crate::records::engine_models();
-    for provider in providers {
-        for model in provider.models() {
-            models.add(model);
-        }
-    }
-    models
-}
-
 /// 校验并规范化数据库连接串。
 pub fn verify_database_url(value: &str) -> anyhow::Result<&str> {
     let value = value.trim();
@@ -140,21 +119,6 @@ pub fn timestamp_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn shared_model_collection_contains_engine_models() {
-        let engine_model_ids = crate::records::engine_models()
-            .iter()
-            .map(|model| model.id())
-            .collect::<Vec<_>>();
-        let models = collect_toasty_models(&[]);
-
-        assert!(
-            engine_model_ids
-                .into_iter()
-                .all(|model_id| models.contains(model_id))
-        );
-    }
 
     #[test]
     fn rejects_empty_url() {

@@ -30,7 +30,7 @@ impl Plugin<ApplicationStartup> for ConventionRoutesStarter {
                     self.business_modules
                         .reconcile(&draft.definition)
                         .context("同步 Studio 业务 Service 与 Controller 失败")?;
-                    match runtime.active_image().await {
+                    match runtime.image() {
                         Some(image) => endpoints.router(image.image())?,
                         None => Router::new(),
                     }

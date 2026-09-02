@@ -1,4 +1,5 @@
 use super::*;
+use serde_json::json;
 
 fn computed_field(name: &str, expression: &str) -> MetaField {
     MetaField {

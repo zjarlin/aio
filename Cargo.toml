@@ -19,16 +19,14 @@ homepage = "https://github.com/zjarlin/aio"
 repository = "https://github.com/zjarlin/aio"
 
 [workspace.dependencies]
-az-str = { version = "=2026.5.10", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 anyhow = "1.0.99"
 arc-swap = "1.7.1"
 async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
-axum = { version = "0.8.6", features = ["http1", "json", "tokio", "multipart"] }
+axum = { version = "0.8.6", features = ["http1", "json", "tokio"] }
 dioxus = { version = "0.7.9", default-features = false, features = ["macro", "html", "signals", "router"] }
 convert_case = "0.8.0"
 deunicode = "1.6.2"
-derive_more = { version = "2.1.1", default-features = false, features = ["debug"] }
 az-plugin-core = { version = "=2026.5.10", path = "lib/plugin/core" }
 az-dioxus-admin-shell = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/admin-shell/dioxus", default-features = false }
 az-ui-components = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/ui/components" }
@@ -41,7 +39,6 @@ schemars = "1.2.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 sha2 = "0.10.9"
-hex = "0.4.3"
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio-rustls", "migrate", "macros", "json"] }
 tokio = { version = "1.47.1", features = ["macros", "net", "rt", "sync", "time"] }
 tracing = "0.1.44"
@@ -49,7 +46,7 @@ toasty = { version = "0.7.0", features = ["postgresql", "serde"] }
 uuid = { version = "1.23.1", features = ["v4", "serde", "js"] }
 matchit = "0.8.4"
 pinyin = { version = "0.11.0", default-features = false, features = ["plain"] }
-tower = { version = "0.5.2", features = ["timeout", "util"] }
+tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = ["fs"] }
 urlencoding = "2"
 

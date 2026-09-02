@@ -1,6 +1,6 @@
 //! engine 公共 API。
 //!
-//! 本模块集中暴露低代码引擎的元数据模型、持久化 store、执行管道和 API 常量。
+//! 本模块集中暴露低代码引擎的元数据模型、持久化 store 和执行管道。
 
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
@@ -9,53 +9,11 @@ use anyhow::{Context, anyhow, bail};
 use evalexpr::{ContextWithMutableVariables, HashMapContext, Value as EvalValue};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 use sqlx::{PgPool, Postgres, QueryBuilder, Row, postgres::PgPoolOptions, types::Json as SqlJson};
 use toasty::stmt::{List, Query};
 
 use crate::database::{timestamp_ms, verify_database_url};
-
-/// engine Toasty 表名前缀。
-pub const TABLE_NAME_PREFIX: &str = "engine_";
-
-/// engine REST API 前缀。
-pub const API_PREFIX: &str = "/api/engine";
-
-/// 模型集合 API 路径。
-pub const MODELS_PATH: &str = "/api/engine/models";
-
-/// 字段集合 API 路径模板说明。
-pub const FIELDS_PATH_TEMPLATE: &str = "/api/engine/models/{model_name}/fields";
-
-/// 记录集合 API 路径模板说明。
-pub const RECORDS_PATH_TEMPLATE: &str = "/api/engine/models/{model_name}/records";
-
-/// 模型列表操作 ID。
-pub const OP_MODELS_LIST: &str = "engine.models.list";
-
-/// 模型创建操作 ID。
-pub const OP_MODELS_CREATE: &str = "engine.models.create";
-
-/// 模型更新操作 ID。
-pub const OP_MODELS_UPDATE: &str = "engine.models.update";
-
-/// 字段列表操作 ID。
-pub const OP_FIELDS_LIST: &str = "engine.fields.list";
-
-/// 字段创建操作 ID。
-pub const OP_FIELDS_CREATE: &str = "engine.fields.create";
-
-/// 字段更新操作 ID。
-pub const OP_FIELDS_UPDATE: &str = "engine.fields.update";
-
-/// 记录列表操作 ID。
-pub const OP_RECORDS_LIST: &str = "engine.records.list";
-
-/// 记录创建操作 ID。
-pub const OP_RECORDS_CREATE: &str = "engine.records.create";
-
-/// 记录更新操作 ID。
-pub const OP_RECORDS_UPDATE: &str = "engine.records.update";
 
 /// 元模型，描述一类动态业务记录。
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, toasty::Model)]

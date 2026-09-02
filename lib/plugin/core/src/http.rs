@@ -1,27 +1,21 @@
 //! Axum 统一错误边界。#{7}
 //!
 //! Rust 业务层继续使用 `anyhow::Result` 透明传播错误；本模块只在 HTTP
-//! 边界把业务错误、提取器拒绝和 Tower 中间件错误统一转换成 `{ code, msg, data }`
+//! 边界把业务错误和提取器拒绝统一转换成 `{ code, msg, data }`
 //! JSON 响应，承担类似 Spring `@RestControllerAdvice` 的出口职责。
 
-use std::{fmt::Display, time::Duration};
+use std::fmt::Display;
 
 use axum::{
-    BoxError, Form, Json, Router,
-    error_handling::HandleErrorLayer,
+    Json,
     extract::{
-        FromRequest, FromRequestParts, Multipart, Path, Query, Request,
-        multipart::MultipartRejection,
-        rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection},
+        FromRequest, FromRequestParts, Path, Query, Request,
+        rejection::{JsonRejection, PathRejection, QueryRejection},
     },
     http::{StatusCode, request::Parts},
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use tower::{ServiceBuilder, timeout::TimeoutLayer};
-
-/// 默认 API 超时时间，避免接口静默挂死。
-pub const DEFAULT_API_TIMEOUT_SECS: u64 = 10;
 
 /// 统一 API 响应体，错误时 `data` 固定为空。
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -140,38 +134,6 @@ pub fn ok_json<T>(data: T) -> Json<ApiResponse<T>> {
     Json(ApiResponse::ok(data))
 }
 
-/// 把 `anyhow::Result` 转换为统一 HTTP 响应。
-pub fn into_api_response<T: Serialize>(result: anyhow::Result<T>) -> Response {
-    match result {
-        Ok(data) => ok_json(data).into_response(),
-        Err(error) => ApiError::from_anyhow(error).into_response(),
-    }
-}
-
-/// 给 Axum Router 挂载全局兜底层。
-///
-/// 该层捕获 Tower service error，例如超时；业务错误和提取器错误需要通过
-/// [`ApiError`]、[`ApiJson`]、[`ApiQuery`] 等边界类型进入统一响应。
-pub fn with_global_api_error_layer(router: Router) -> Router {
-    router.layer(
-        ServiceBuilder::new()
-            .layer(HandleErrorLayer::new(handle_box_error))
-            .layer(TimeoutLayer::new(Duration::from_secs(
-                DEFAULT_API_TIMEOUT_SECS,
-            ))),
-    )
-}
-
-/// Tower 层错误兜底处理。
-pub async fn handle_box_error(error: BoxError) -> Response {
-    if error.is::<tower::timeout::error::Elapsed>() {
-        return ApiError::new(StatusCode::GATEWAY_TIMEOUT, "接口处理超时").into_response();
-    }
-
-    tracing::error!(error = ?error, "API 全局错误边界捕获 Tower 错误");
-    ApiError::internal("服务未知错误").into_response()
-}
-
 /// 使用统一错误响应的 Query 提取器。
 pub struct ApiQuery<T>(pub T);
 
@@ -226,53 +188,8 @@ where
     }
 }
 
-/// 使用统一错误响应的表单提取器。
-pub struct ApiForm<T>(pub T);
-
-impl<T, S> FromRequest<S> for ApiForm<T>
-where
-    T: DeserializeOwned,
-    S: Send + Sync,
-{
-    type Rejection = ApiError;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        Form::<T>::from_request(req, state)
-            .await
-            .map(|Form(value)| Self(value))
-            .map_err(form_rejection)
-    }
-}
-
-/// 使用统一错误响应的 multipart 提取器。
-pub struct ApiMultipart(pub Multipart);
-
-impl<S> FromRequest<S> for ApiMultipart
-where
-    S: Send + Sync,
-{
-    type Rejection = ApiError;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        Multipart::from_request(req, state)
-            .await
-            .map(Self)
-            .map_err(multipart_rejection)
-    }
-}
-
 /// 解析数字参数并生成接近 Java `NumberFormatException` 的友好提示。
 pub fn parse_i64_param(name: &str, value: &str) -> Result<i64, ApiError> {
-    parse_number_param(name, value)
-}
-
-/// 解析 32 位数字参数并生成统一参数错误。
-pub fn parse_i32_param(name: &str, value: &str) -> Result<i32, ApiError> {
-    parse_number_param(name, value)
-}
-
-/// 解析无符号分页数字参数并生成统一参数错误。
-pub fn parse_usize_param(name: &str, value: &str) -> Result<usize, ApiError> {
     parse_number_param(name, value)
 }
 
@@ -297,14 +214,6 @@ fn path_rejection(error: PathRejection) -> ApiError {
 
 fn json_rejection(error: JsonRejection) -> ApiError {
     ApiError::bad_request(format!("JSON 请求体解析失败: {}", error.body_text()))
-}
-
-fn form_rejection(error: FormRejection) -> ApiError {
-    ApiError::bad_request(format!("表单请求体解析失败: {}", error.body_text()))
-}
-
-fn multipart_rejection(error: MultipartRejection) -> ApiError {
-    ApiError::bad_request(format!("multipart 请求体解析失败: {}", error.body_text()))
 }
 
 fn api_status_for_message(message: &str) -> StatusCode {
@@ -354,7 +263,7 @@ fn api_status_for_message(message: &str) -> StatusCode {
 
 #[cfg(test)]
 mod tests {
-    use axum::{body::Body, routing::get};
+    use axum::{Router, body::Body, routing::get};
     use serde_json::Value;
     use tower::ServiceExt;
 
