@@ -1,13 +1,13 @@
 {
   "files": {
-    "src/service/algorithms.rs": "74b16aed317e19063fddc85222fc213ff0f48df44977609c679c6d4f78700271",
-    "src/service/assets.rs": "1b1eca2e5340a89f150742b07f9216b58fdd76db044f35fb2c708b07d7954756",
-    "src/service/config.rs": "b44894c1640fb8f2363ee7a1715fb401a9bbe03aac7e19a4808bd3ecc1fa296f",
-    "src/service/drive.rs": "6cc8a7fabbf2ca3687d7db014481db7e660c9074843ac083065b40f79a5f44f1",
-    "src/service/gateway.rs": "d95c08a07d6b72e3c2e6ae8627426eedd66f0fe7c6f925628fdec8bcc1b327bc",
-    "src/service/iot.rs": "5917171950697754bc2005cc1a132cb964d56a97b7061041cfee650271de44af",
-    "src/service/linux.rs": "1584e854b83e686a4449a9066bdd804a91fdcfaea1dff021416b3be7474c3c11",
-    "src/service/software.rs": "45a950c2bfda00b348a66bbe54b48b5889e897feecdf4c76730055e95bf5e878",
-    "src/service/ssh.rs": "7198b9ad6cc7af70a514bcd502747847487d17111b9f2b6a6d25bdd4cc640cd6"
+    "src/generated/algorithms/service_impl.rs": "1e77530c0a2dae89b7449d6c9a6c61a03a088536c63b8c32b1dc729dc7fca71f",
+    "src/generated/assets/service_impl.rs": "ea0eead2dd25f74b45cdc54fbc36549eef8ab2f4d2c8b8eab4474a379c18a49d",
+    "src/generated/config/service_impl.rs": "e7b1592a919cc56f51d628169278f11db07456fb805f5e2bb639658827cf562e",
+    "src/generated/drive/service_impl.rs": "4651d618b578c175a42111ee9213282bea8899278da9f5fe5c52afeef6b2ab90",
+    "src/generated/gateway/service_impl.rs": "224de9e4a4c196842acb6ccbd9764356314fcbbf7247c582c492d3c10dd71c9e",
+    "src/generated/iot/service_impl.rs": "62420dc9e1287a4c83fc022de171414e8169c9cc400d19f0a1d1a9ae8df0a802",
+    "src/generated/linux/service_impl.rs": "067edf16d227b0fb655aa52ca0b7dca5cb0ad7e889bfe4322270fe94646f37fd",
+    "src/generated/software/service_impl.rs": "0467ae5319d62a3647e2c808566825810ea8b75eb54c0da0e408b92e62e0e632",
+    "src/generated/ssh/service_impl.rs": "d533b56dd6f403cd000a1870be153b7c352ff7a0d6402e1f88686255fd492581"
   }
 }

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::LinuxService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::LinuxService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "df69e1c1-8687-b7ea-05f8-9048ea1ffbdc"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetProfilesController {
         "627b86a2-22ec-0663-4a03-2d73a1619b31"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_profiles(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for GetSetupCatalogController {
         "7e960357-1d77-07df-c7ee-04dd00a99aa9"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_setup_catalog(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for PostBootstrapPlanController {
         "8da2e6e5-d447-3dc1-be0d-5415ae113725"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_bootstrap_plan(request)
     }
 }
@@ -85,7 +86,7 @@ impl ConventionEndpointProvider for GetBootstrapScriptController {
         "e0712a36-4e78-d1a8-e666-ea45dff2fd02"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_bootstrap_script(request)
     }
 }

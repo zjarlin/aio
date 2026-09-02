@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::ConfigService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::ConfigService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "f210d29c-eca2-993f-31b8-b4c91e0de229"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetDotfilesController {
         "2fbe4186-c333-5c78-7ee9-66c5bc2737a7"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_dotfiles(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for GetPairingController {
         "4e007025-2296-b4ee-c7f4-d3ab00af574e"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_pairing(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for GetEntriesController {
         "77ec27e2-49c4-c79a-57e3-8049d500866c"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_entries(request)
     }
 }
@@ -85,7 +86,7 @@ impl ConventionEndpointProvider for PostEntryController {
         "eb0e4d1f-70d5-2dcb-d6a5-7820e5d6efd3"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_entry(request)
     }
 }
@@ -102,7 +103,7 @@ impl ConventionEndpointProvider for PostUiActionController {
         "9d6f0625-8f13-b23b-d6fb-b2c6053cc9e6"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_ui_action(request)
     }
 }

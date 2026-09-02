@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::IotService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::IotService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for PostDevicesController {
         "7efe301d-7330-fb65-ca3c-b1d626374a7f"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_devices(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "214dd5da-d598-c3e1-f03f-79bc97888824"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for PostTemplatesDefaultApplyController {
         "7778cd07-5953-0ac7-1c98-a83f34916792"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_templates_default_apply(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for PostDevicesDeviceCodeFixtureTelemetryControl
         "7659e936-1339-4447-7c6d-829aa40bf56d"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service
             .post_devices_device_code_fixture_telemetry(request)
     }
@@ -86,7 +87,7 @@ impl ConventionEndpointProvider for PostUiActionController {
         "bb197142-aa68-d99b-08ff-22fbaf229b5b"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_ui_action(request)
     }
 }

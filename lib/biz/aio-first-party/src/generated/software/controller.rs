@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::SoftwareService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::SoftwareService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "71ffa22a-0124-8037-c9b5-7a720422137f"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetInstallersController {
         "3b8b34b9-5518-fcc6-9182-ec0af247b2b5"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_installers(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for GetPackagesController {
         "6ed53d73-7729-420d-092d-4f48b03a968c"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_packages(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for PostOrganizeController {
         "9ac74b1e-0466-f39a-f5d7-cad2d7d69351"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_organize(request)
     }
 }
@@ -85,7 +86,7 @@ impl ConventionEndpointProvider for PostPackageController {
         "bc6b003c-2fc4-0e60-3865-65764e52830b"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_package(request)
     }
 }

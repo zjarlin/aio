@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::AssetsService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::AssetsService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "c6961230-f0b2-25a6-e4cc-19fc2700490b"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetSkillsController {
         "b26fcd61-739d-dbb4-8cd4-690674c2b1a2"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_skills(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for GetAssetsController {
         "a35d8703-ea30-3dd2-7e35-82045cf0a33e"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_assets(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for PostAssetController {
         "7fa4bf16-b191-b898-b60a-18cc8f99a6de"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_asset(request)
     }
 }

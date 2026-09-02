@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use dill::CatalogBuilder;
-use studio::{ConventionEndpointFuture, ConventionEndpointProvider, ConventionEndpointRequest};
+use studio::ConventionEndpointProvider;
 
-use super::contract::SshService;
+use super::model::{EndpointFuture, EndpointRequest};
+use super::service::SshService;
 
 #[dill::component]
 #[dill::interface(dyn ConventionEndpointProvider)]
@@ -17,7 +18,7 @@ impl ConventionEndpointProvider for PostTargetsController {
         "b20678bc-61b8-46fe-1606-67a2e94203a6"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_targets(request)
     }
 }
@@ -34,7 +35,7 @@ impl ConventionEndpointProvider for GetStatusController {
         "9f593fa9-3645-8d46-5354-21db32d84b69"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.get_status(request)
     }
 }
@@ -51,7 +52,7 @@ impl ConventionEndpointProvider for PostTemplatesDefaultApplyController {
         "57fcfe52-23ac-4392-8446-51956ed98ed3"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_templates_default_apply(request)
     }
 }
@@ -68,7 +69,7 @@ impl ConventionEndpointProvider for PostCommandsController {
         "c86b25af-dbce-78ab-9db8-1525bc284273"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_commands(request)
     }
 }
@@ -85,7 +86,7 @@ impl ConventionEndpointProvider for PostCollectController {
         "c84a2fda-677c-1717-3927-dfa061061b5e"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_collect(request)
     }
 }
@@ -102,7 +103,7 @@ impl ConventionEndpointProvider for PostExecuteController {
         "4982e318-c8f5-0a9b-4c16-47b7b07eabc8"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_execute(request)
     }
 }
@@ -119,7 +120,7 @@ impl ConventionEndpointProvider for PostUiActionController {
         "d357a2a1-0f03-b8e6-bb0c-6a13f3391905"
     }
 
-    fn handle(&self, request: ConventionEndpointRequest) -> ConventionEndpointFuture<'_> {
+    fn handle(&self, request: EndpointRequest) -> EndpointFuture<'_> {
         self.service.post_ui_action(request)
     }
 }
