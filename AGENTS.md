@@ -16,3 +16,6 @@
 - 所有新增代码注释使用中文。
 - 对象的新增、编辑 Form 必须由明确操作打开 Dialog，关闭后卸载；禁止把完整 Form 常驻列表旁或散落在页面内容流中。表格单元格内联编辑除外。
 - 删除等破坏性操作必须先打开确认 Dialog，不得在操作按钮点击后直接执行。
+- 业务模块每个 feature 必须集中在 `src/generated/<feature>/`，固定拆分为 `controller.rs`、`service.rs`、`service_impl.rs`、`model.rs` 和 `util.rs`；`mod.rs` 只负责模块声明、Dill 注册和顶层编排。
+- `controller.rs` 只负责 HTTP endpoint 到 Service 的转发，`service.rs` 只保存 Service trait 契约，`service_impl.rs` 是生成的实现起点并在人工修改后归人工所有，`model.rs` 保存该 feature 的请求/响应模型，`util.rs` 保存该 feature 的局部辅助逻辑。
+- 业务 feature 不得再使用 `src/service/<feature>.rs` 或 `src/generated/<feature>/contract.rs` 的旧布局；元数据迁移时直接更新生成器和调用点，不增加兼容转发层。

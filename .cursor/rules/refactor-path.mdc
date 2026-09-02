@@ -1,0 +1,42 @@
+---
+description: Apply the repository's behavior-preserving path refactoring workflow when a concrete file or directory is supplied.
+alwaysApply: false
+---
+
+# Refactor One Path
+
+Use this rule when the user supplies one concrete file or directory path for refactoring. Preserve observable behavior while making feature and role boundaries explicit.
+
+## Required workflow
+
+1. Resolve the supplied path, read every applicable `AGENTS.md`, inspect Git status, and preserve pre-existing edits.
+2. Inspect the complete target boundary: source roots, build manifests, generated-source boundaries, callers, callees, registrations, documentation, and focused tests.
+3. Run the smallest useful baseline check before editing and record failures that already exist.
+4. Refactor directly without pausing for ordinary design confirmation. Update all in-repository callers and configuration references in the same change.
+5. Delete only code proven unused by references, build analysis, or tests. Do not add deprecated wrappers, forwarding shells, aliases, or compatibility protocols.
+6. Keep a user-visible feature cohesive across transport, service, model, adapter, UI, tests, and documentation. Keep genuinely reusable infrastructure in its own boundary and document the relationship.
+
+## Role boundaries
+
+Use feature-first directories with only roles that contain real code:
+
+- `controller`: transport orchestration only; parse input, call a service, and prepare output.
+- `model`: DTOs, requests, responses, value objects, and domain data; no I/O or orchestration.
+- `service`: boundary interfaces consumed by another boundary or host.
+- `service/impl`: service implementations; keep implementation visibility narrow.
+- `assist`: independently meaningful stateless parsing, mapping, rendering, normalization, or algorithm collaborators.
+- `constants`: actively referenced constants only.
+- `enums`: enum declarations.
+- `adapter`: database, network, framework, filesystem, and external-system integration.
+
+Keep models, service interfaces, and implementations in separate files. Keep private one-use helpers with their owner. Controllers must not own persistence, conversion, or domain decisions. Do not add generic `api`, `common`, or `utils` buckets.
+
+## Dependency and extension rules
+
+Prefer `Controller -> Service/Model` and `ServiceImpl -> Assist/Adapter/SPI`. Extract an SPI only when implementations cross a module or discovery boundary. Name SPI contracts with an `Spi` suffix, concrete implementations with an `Impl` suffix, and place them in `spi-<feature>` and `impl-<feature>-<technology>` modules. Keep SPI modules framework-free and free of implementation dependencies.
+
+Respect generated-source boundaries: change generators, metadata, registrations, or compiler sources instead of repeatable output. Reduce visibility after moving code. Preserve the repository's explicit architecture and persistence contracts.
+
+## Verification
+
+Search for stale paths and names, unresolved callers, duplicate contracts, dependency cycles, missing feature documentation, mixed model/logic files, and unused declarations. Run focused tests, affected builds, `cargo fmt --all --check` where applicable, and `git diff --check`. Report exact blocked commands, pre-existing failures, and functional defects intentionally left unchanged.
