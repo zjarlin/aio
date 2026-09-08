@@ -102,4 +102,4 @@ path = "server"
 
 应用仓库只在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。生产发布器必须在隔离构建通过后切换整套版本；CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
 
-社区开发入口是仓库 Skill `.agents/skills/aio-plugin-development`。完整运行边界见 [`docs/plugin`](docs/plugin/README.md)，市场条目位于 [`marketplace/registry`](marketplace/registry/README.md)。公网壳已通过 Wasmtime 执行 `aio:plugin/page@1` Component，并用 PostgreSQL 保存每个租户的 Git 来源、提交、活动版本和生命周期事件。需要数据库、长任务或原生 SDK 的 Kotlin/TypeScript 插件可声明并校验 `process` 契约；隔离监督器激活前，公网宿主仍会明确拒绝安装该目标。
+社区开发入口是仓库 Skill `.agents/skills/aio-plugin-development`。完整运行边界见 [`docs/plugin`](docs/plugin/README.md)，市场条目位于 [`marketplace/registry`](marketplace/registry/README.md)。公网壳已通过 Wasmtime 执行 `aio:plugin/page@1` Component，并用 PostgreSQL 保存每个租户的 Git 来源、提交、活动版本和生命周期事件。Kotlin/TypeScript 可执行插件由容器监督器在线安装和回滚；当前只开放预置 digest 镜像与零额外能力档。

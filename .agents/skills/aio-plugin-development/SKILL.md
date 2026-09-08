@@ -20,7 +20,7 @@ description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 
 - 多语言插件优先使用稳定的 AIO WIT/PageDefinition 边界；需要数据库、长任务、网络监听或系统权限时使用隔离进程或容器，不把 WASI 权限扩大成宿主权限。
 - 在线 Wasm 插件必须使用 `docs/plugin/wit/page.wit`，在 `[plugin.runtime]` 声明 `kind = "wasm-component"` 与预构建 artifact，并验证 `definition`、`handle` 两个导出。
 - KMP 静态页面插件可以用 commonMain 模型和 JVM 生成器产出 `PageDefinition` JSON，声明 `kind = "page-definition"`；必须用仓库内 `kotlin` wrapper 同时编译 JVM 与 wasmJs，并提交生成产物。
-- 当前公网宿主尚未激活安全的 `process` 监督器；遇到 JVM、Node 或原生 SDK 插件时只生成符合规约的仓库和构建产物，不宣称可以在线安装。
+- 当前公网宿主已经激活容器化 `process` 监督器；只为预置 digest 镜像和零额外能力清单声明在线可安装，额外网络、文件系统或数据库能力仍必须标注为未开放。
 - 安装阶段不得执行未声明脚本。构建发生在隔离工作区，校验通过后才能原子切换；失败保留上一版本。
 
 ## 完成验证

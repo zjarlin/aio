@@ -64,7 +64,7 @@ shutdown_timeout_seconds = 10
 
 Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 返回包含 `status`、`content_type` 和 `body` 的 JSON。宿主为每次调用创建无默认 WASI 权限且带 fuel 上限的实例。
 
-源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已支持 `wasm-component` 在线安装、停用、启用、卸载和回滚。进程隔离监督器未激活前，`process` 清单会明确拒绝安装；不得把普通子进程伪装成已经具备网络、文件系统和资源隔离的正式运行时。
+源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已支持 `wasm-component` 和 `process` 在线安装、停用、启用、卸载和回滚。`process` 运行在按租户、来源和 revision 隔离的容器网络中，使用非 root 用户、只读根文件系统、资源配额与 capability 丢弃；当前只开放零额外能力档，非空网络、文件系统或数据库声明会在启动前被拒绝。
 
 当前 `PageDefinition.body` 支持以下稳定形态：
 

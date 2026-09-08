@@ -25,6 +25,20 @@
     ]
   },
   {
+    "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
+    "rev": "546d5471b7462181fd2b6c3f01859e6c2a7b627c",
+    "title": "Kotlin Multiplatform Service",
+    "summary": "使用 Kotlin Toolchain 构建 commonMain 模型和 JVM 可执行 JAR，并在隔离进程中同时贡献页面与后端路由。",
+    "license": "MIT",
+    "tags": [
+      "example",
+      "kotlin",
+      "kmp",
+      "process",
+      "full-stack"
+    ]
+  },
+  {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
     "rev": "8ffcfc12a43dcebac64782a09dc9a17d6631f2fb",
     "title": "TypeScript Wasm Component",

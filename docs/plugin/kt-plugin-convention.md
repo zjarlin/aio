@@ -12,7 +12,9 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 服务端
 
-纯计算、短请求处理可使用 `wasmWasi`，产物在 `[plugin.runtime]` 声明为 `wasm-component`。需要 JDBC、协程常驻任务、第三方 JVM SDK 或不受 WASI 支持的系统能力时，应构建可执行 JAR 并使用 `process`；公网宿主在进程隔离监督器完成前会拒绝该目标，不允许插件自行守护或退化成未隔离子进程。
+纯计算、短请求处理可使用 `wasmWasi`，产物在 `[plugin.runtime]` 声明为 `wasm-component`。需要 JDBC、协程常驻任务、第三方 JVM SDK 或不受 WASI 支持的系统能力时，应构建可执行 JAR 并使用 `process`，不允许插件自行守护或退化成未隔离子进程。
+
+公网宿主已经通过容器监督器支持 `process` 在线安装、停用、启用、卸载和回滚。当前稳定权限档只接受预置且锁定 digest 的镜像，以及空 `network`、空 `filesystem`、`database = false` 的清单；声明额外能力会在启动前被拒绝。JVM 服务监听 `AIO_PLUGIN_PORT`，并提供清单中的健康检查、`GET /aio/definition` 和业务路由。
 
 ## 目录与验证
 
@@ -28,4 +30,12 @@ jq . dist/pages.json
 aio plugin validate
 ```
 
-只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。可安装示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)。
+可执行 JAR 使用 Toolchain 原生产物：
+
+```bash
+./kotlin package -m service -p jvm -f executable-jar
+cp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar
+aio plugin validate
+```
+
+只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。
