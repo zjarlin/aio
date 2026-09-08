@@ -52,10 +52,13 @@ routes = ["hello"]
 kind = "process"
 artifact = "dist/plugin.jar"
 host_version = ">=2026.5.10"
-entrypoint = ["java", "-jar", "dist/plugin.jar"]
+container_image = "eclipse-temurin:21-jre@sha256:5c67d24ee8e3dd810b2a0cb6c3827ced2ac5d22729538f90b36c2b9d77678bb8"
+entrypoint = ["java", "-jar", "{artifact}"]
 health_check = "/health"
 shutdown_timeout_seconds = 10
 ```
+
+`container_image` 必须锁定 digest，宿主仅使用预置镜像且不在安装期拉取。`{artifact}` 由监督器替换为容器内只读产物路径。进程在固定 `8080` 端口提供 `health_check`、`GET /aio/definition` 和清单声明的业务路由；端口不映射到公网，只由宿主代理。
 
 只贡献静态页面定义的 Kotlin/TypeScript 插件可以声明 `kind = "page-definition"`，artifact 是 `PageDefinition` JSON 数组。它适合由跨平台 common 模型生成页面；需要动态后端请求处理时再升级为 Component。
 

@@ -86,6 +86,11 @@ pub fn validate_host_compatibility(
 
 fn validate_runtime_options(runtime: &crate::RuntimeManifest) -> Result<()> {
     if runtime.kind == PluginRuntime::Process {
+        let image = runtime
+            .container_image
+            .as_deref()
+            .context("process 插件必须声明 container_image")?;
+        validate_container_image(image)?;
         ensure!(
             !runtime.entrypoint.is_empty(),
             "process 插件必须声明 entrypoint"
@@ -94,6 +99,15 @@ fn validate_runtime_options(runtime: &crate::RuntimeManifest) -> Result<()> {
             validate_name(argument, "process 启动参数")?;
             ensure!(!argument.contains('\0'), "process 启动参数不能包含 NUL");
         }
+        ensure!(
+            runtime
+                .entrypoint
+                .iter()
+                .filter(|argument| argument.as_str() == "{artifact}")
+                .count()
+                == 1,
+            "process entrypoint 必须且只能引用一次 {{artifact}}"
+        );
         let health_check = runtime
             .health_check
             .as_deref()
@@ -113,10 +127,26 @@ fn validate_runtime_options(runtime: &crate::RuntimeManifest) -> Result<()> {
         return Ok(());
     }
     ensure!(
-        runtime.entrypoint.is_empty()
+        runtime.container_image.is_none()
+            && runtime.entrypoint.is_empty()
             && runtime.health_check.is_none()
             && runtime.shutdown_timeout_seconds.is_none(),
-        "entrypoint、health_check 和 shutdown_timeout_seconds 只能用于 process 插件"
+        "container_image、entrypoint、health_check 和 shutdown_timeout_seconds 只能用于 process 插件"
+    );
+    Ok(())
+}
+
+fn validate_container_image(image: &str) -> Result<()> {
+    validate_name(image, "process 容器镜像")?;
+    let Some((repository, digest)) = image.rsplit_once("@sha256:") else {
+        bail!("process container_image 必须锁定 sha256 digest");
+    };
+    ensure!(
+        !repository.is_empty()
+            && !repository.contains(char::is_whitespace)
+            && digest.len() == 64
+            && digest.bytes().all(|byte| byte.is_ascii_hexdigit()),
+        "process container_image 必须是有效的镜像@sha256:digest"
     );
     Ok(())
 }
@@ -557,17 +587,32 @@ artifact = "dist/pages.json"
         let missing =
             parse_manifest("[plugin.runtime]\nkind='process'\nartifact='dist/plugin.jar'\n")
                 .expect_err("缺少进程启动契约必须失败");
-        assert!(missing.to_string().contains("entrypoint"));
+        assert!(missing.to_string().contains("container_image"));
 
         parse_manifest(
-            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.jar'\nhost_version='>=2026.5.10'\nentrypoint=['java','-jar','dist/plugin.jar']\nhealth_check='/health'\nshutdown_timeout_seconds=10\n",
+            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.jar'\nhost_version='>=2026.5.10'\ncontainer_image='eclipse-temurin:21-jre@sha256:5c67d24ee8e3dd810b2a0cb6c3827ced2ac5d22729538f90b36c2b9d77678bb8'\nentrypoint=['java','-jar','{artifact}']\nhealth_check='/health'\nshutdown_timeout_seconds=10\n",
         )?;
         let version = parse_manifest(
-            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.jar'\nhost_version='soon'\nentrypoint=['node','dist/plugin.js']\nhealth_check='/health'\n",
+            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.js'\nhost_version='soon'\ncontainer_image='node:22@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3'\nentrypoint=['node','{artifact}']\nhealth_check='/health'\n",
         )
         .expect_err("无效版本约束必须失败");
         assert!(version.to_string().contains("版本约束"));
         Ok(())
+    }
+
+    #[test]
+    fn rejects_floating_process_image_and_undeclared_entrypoint() {
+        let floating = parse_manifest(
+            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.js'\ncontainer_image='node:22'\nentrypoint=['node','{artifact}']\nhealth_check='/health'\n",
+        )
+        .expect_err("浮动镜像必须失败");
+        assert!(floating.to_string().contains("sha256"));
+
+        let undeclared = parse_manifest(
+            "[plugin.runtime]\nkind='process'\nartifact='dist/plugin.js'\ncontainer_image='node:22@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3'\nentrypoint=['node','src/server.js']\nhealth_check='/health'\n",
+        )
+        .expect_err("未引用 artifact 的启动命令必须失败");
+        assert!(undeclared.to_string().contains("{artifact}"));
     }
 
     #[test]

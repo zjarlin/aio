@@ -38,6 +38,8 @@ pub struct RuntimeManifest {
     #[serde(default)]
     pub host_version: Option<String>,
     #[serde(default)]
+    pub container_image: Option<String>,
+    #[serde(default)]
     pub entrypoint: Vec<String>,
     #[serde(default)]
     pub health_check: Option<String>,
