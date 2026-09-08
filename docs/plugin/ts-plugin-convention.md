@@ -2,7 +2,7 @@
 
 TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入不成熟的编译链。
 
-可安装的参考仓库是 [aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
+可安装的参考仓库是 [aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component) 和 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
 
 ## 客户端
 
@@ -13,7 +13,7 @@ TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入
 
 ## 服务端
 
-依赖 Node.js、数据库驱动、队列或长期任务时应声明 `process`，提交锁文件并提供健康检查。公网宿主已经启用隔离进程监督器，但当前只授予零额外能力档；插件必须使用预置 digest 镜像，监听 `AIO_PLUGIN_PORT`，不得占用固定宿主端口、自行守护或把密钥写进仓库。
+依赖 Node.js、数据库驱动、队列或长期任务时应声明 `process`，提交锁文件并提供健康检查。公网宿主已经启用隔离进程监督器，但当前只授予零额外能力档；插件必须使用预置 digest 镜像，监听 `AIO_PLUGIN_PORT`，实现 `GET /aio/definition` 和清单声明的路由，不得占用固定宿主端口、自行守护或把密钥写进仓库。
 
 ## 验证
 
@@ -31,3 +31,5 @@ aio plugin validate
 安装阶段不执行任意生命周期脚本；确需原生构建时必须在市场条目中标记，交由隔离构建器显式运行。产物、来源提交和依赖锁三者必须可追溯。
 
 ComponentizeJS 目前仍是实验性工具；SpiderMonkey 的预初始化快照不保证字节级可重复。因此不得仅提交源码并让生产安装器现场构建：必须同时提交 Component artifact 和 pnpm 锁文件，并由完整 Git 提交 SHA 锁定实际运行字节。
+
+Node `process` 插件同样必须提交编译后的 JavaScript artifact 与 pnpm 锁文件；生产安装器只读取 artifact，不执行 `pnpm`、`npm` 或仓库脚本。可执行示例见 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。
