@@ -1,6 +1,6 @@
 git = "https://github.com/zjarlin/aio-plugin-kmp-service.git"
-rev = "9bc1cf6ef14a60ec19083f6ba2161de0eb6e2a78"
+rev = "165f9144deadbe141134c928b8406e100772da07"
 title = "Kotlin Multiplatform Service"
-summary = "使用 Kotlin Toolchain 构建 commonMain 动作页面和 JVM 可执行 JAR，在租户隔离进程中处理页面事件与后端路由。"
+summary = "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。"
 license = "MIT"
 tags = ["example", "kotlin", "kmp", "process", "full-stack"]

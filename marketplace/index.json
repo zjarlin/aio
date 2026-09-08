@@ -26,9 +26,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
-    "rev": "9bc1cf6ef14a60ec19083f6ba2161de0eb6e2a78",
+    "rev": "165f9144deadbe141134c928b8406e100772da07",
     "title": "Kotlin Multiplatform Service",
-    "summary": "使用 Kotlin Toolchain 构建 commonMain 动作页面和 JVM 可执行 JAR，在租户隔离进程中处理页面事件与后端路由。",
+    "summary": "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。",
     "license": "MIT",
     "tags": [
       "example",
@@ -40,9 +40,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
-    "rev": "80360143a6718b31dff9beeaba2b8298c34344f6",
+    "rev": "fc556e41d36d73dcc721a26cd0547ca69e5fe6db",
     "title": "TypeScript Wasm Component",
-    "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建租户隔离的动作页面与受限后端处理器。",
+    "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建无状态动作页面，由宿主按租户持久化页面状态。",
     "license": "MIT",
     "tags": [
       "example",
@@ -53,9 +53,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "cefc4fac7127b9d7f7d766bdc3e1d4c75ea86bf2",
+    "rev": "ba27c9a65bcdf2e05e034e535f404867e8d22241",
     "title": "TypeScript Process Service",
-    "summary": "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在租户隔离进程中处理页面事件和后端路由。",
+    "summary": "使用固定 pnpm 与 TypeScript 工具链构建无状态 Node 服务，由宿主按租户持久化动作页面并代理后端路由。",
     "license": "MIT",
     "tags": [
       "example",
