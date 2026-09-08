@@ -1,9 +1,9 @@
 [
   {
     "git": "https://github.com/zjarlin/aio-plugin-hello.git",
-    "rev": "c2e486e2b6dba91408708337f475623d0c550eca",
+    "rev": "e5afd8d56d481122aa0dc3a5f6c5dbc65fa44122",
     "title": "Hello Counter",
-    "summary": "带点击加一页面和服务端健康接口的最小 AIO 全栈插件。",
+    "summary": "带点击加一页面和 Wasm Component 后端处理器的最小 AIO 全栈插件。",
     "license": "MIT",
     "tags": [
       "example",
