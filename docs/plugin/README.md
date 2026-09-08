@@ -26,21 +26,42 @@ path = "server"
 
 至少声明一端。`client` 导出 `register(&mut dill::CatalogBuilder)`；`server` 导出同名注册函数和 `router(&dill::Catalog)`。宿主生成装配代码，运行时扩展只依赖具体 Rust 类型的 `TypeId`。
 
-稳定 Component ABI 发布后，多语言仓库改为声明构建产物，不改变 Git 安装模型：
+在线安装的多语言仓库统一声明一个已经构建好的运行产物，不改变 Git 安装模型：
 
 ```toml
-[plugin.client]
-runtime = "wasm-component"
-artifact = "dist/client.wasm"
-world = "aio:plugin/page@1"
+[plugin.runtime]
+kind = "wasm-component"
+artifact = "dist/plugin.wasm"
 
-[plugin.server]
-runtime = "process"
-command = ["java", "-jar", "dist/plugin.jar"]
-health = "/health"
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = "hello-screen"
+pages = ["hello"]
+routes = ["hello"]
 ```
 
-源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已经支持 `aio:plugin/page@1` Wasm Component 在线实例化；组件导出 `definition() -> string`，内容必须是可校验的 `PageDefinition` JSON。进程监督器未激活前，`process` 清单必须明确报告“不支持”，不得伪装安装成功。
+Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 返回包含 `status`、`content_type` 和 `body` 的 JSON。宿主为每次调用创建无默认 WASI 权限且带 fuel 上限的实例。
+
+源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已支持 `wasm-component` 在线安装、停用、启用、卸载和回滚。进程隔离监督器未激活前，`process` 清单会明确拒绝安装；不得把普通子进程伪装成已经具备网络、文件系统和资源隔离的正式运行时。
+
+当前 `PageDefinition.body` 支持以下稳定形态：
+
+```json
+{
+  "id": "hello",
+  "label": "Hello",
+  "icon": "panels-top-left",
+  "scene": { "id": "workspace", "label": "工作区" },
+  "required_permission": null,
+  "body": { "kind": "counter", "title": "Hello Runtime", "button": "计数加一" }
+}
+```
+
+纯文本页面把 `body` 改为 `{ "kind": "text", "title": "...", "content": "..." }`。渲染阶段的 `UiOp`、HTML、CSS 和 Dioxus `Element` 都不能作为持久化协议。
 
 ## 租户组合
 

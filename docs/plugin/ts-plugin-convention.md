@@ -4,13 +4,13 @@ TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入
 
 ## 客户端
 
-- AIO 原生页面使用语言无关的 `PageDefinition` 与事件协议；TypeScript 负责生成定义和处理事件，不直接修改宿主 DOM。
+- AIO 原生页面使用语言无关的 `PageDefinition` 与 [`aio:plugin/page@1`](wit/page.wit)；TypeScript 产物通过 `definition` 生成定义并通过 `handle` 处理受限请求，不直接修改宿主 DOM。
 - 需要完整 Web 框架和自有 DOM 时，产出隔离页面，由宿主以受限页面容器装载；必须声明网络、剪贴板、下载等权限。
 - 只有所用编译器能够生成并通过 `aio:plugin/page@1` Component ABI 校验时，才声明 `wasm-component`。
 
 ## 服务端
 
-依赖 Node.js、数据库驱动、队列或长期任务时声明 `process`，提交锁文件并提供 `/health`。宿主注入端口和临时数据目录，插件不得占用固定宿主端口，也不得把密钥写进仓库。
+依赖 Node.js、数据库驱动、队列或长期任务时应声明 `process`，提交锁文件并提供 `/health`。公网宿主在进程隔离监督器完成前会拒绝该目标；插件不得占用固定宿主端口、自行守护或把密钥写进仓库。
 
 ## 验证
 
