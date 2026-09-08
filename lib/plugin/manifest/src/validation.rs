@@ -178,6 +178,10 @@ pub fn validate_repository(root: &Path) -> Result<ValidationReport> {
                     || format!("读取 PageDefinition 产物失败: {}", artifact.display()),
                 )?)
                 .context("解析 PageDefinition 产物失败")?;
+            ensure!(
+                !pages.is_empty(),
+                "page-definition 插件至少需要贡献一个页面"
+            );
             validate_page_definitions(&pages)?;
             validate_declared_pages(&manifest, &pages)?;
             pages.len()
@@ -243,7 +247,6 @@ pub fn artifact_path(root: &Path, relative: &str) -> Result<PathBuf> {
 }
 
 pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
-    ensure!(!pages.is_empty(), "插件至少需要贡献一个页面");
     let mut ids = HashSet::new();
     for page in pages {
         validate_name(&page.id, "页面 id")?;
@@ -544,6 +547,11 @@ artifact = "dist/pages.json"
         }];
         let error = validate_page_definitions(&pages).expect_err("空标题必须失败");
         assert!(error.to_string().contains("页面标题"));
+    }
+
+    #[test]
+    fn accepts_empty_pages_for_service_only_runtime() -> Result<()> {
+        validate_page_definitions(&[])
     }
 
     #[test]
