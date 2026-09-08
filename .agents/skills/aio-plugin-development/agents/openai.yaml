@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIO 插件开发"
+  short_description: "为 AIO 创建并验证可安装的多语言全栈社区插件仓库"
+  default_prompt: "使用 $aio-plugin-development 创建一个可安装并通过验证的 AIO 社区插件。"

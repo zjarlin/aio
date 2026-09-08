@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "app",
+    "cli",
     "generated/apps/*",
     "app/plugins/studio",
     "lib/biz/*",
@@ -41,6 +42,8 @@ serde_json = "1.0.145"
 sha2 = "0.10.9"
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "runtime-tokio-rustls", "migrate", "macros", "json"] }
 tokio = { version = "1.47.1", features = ["macros", "net", "rt", "sync", "time"] }
+toml = "0.8.2"
+toml_edit = "0.25.13"
 tracing = "0.1.44"
 toasty = { version = "0.7.0", features = ["postgresql", "serde"] }
 uuid = { version = "1.23.1", features = ["v4", "serde", "js"] }

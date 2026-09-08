@@ -25,6 +25,9 @@ app/
   plugins/studio/         低代码定义、编译与运行时
   migrations/             PostgreSQL 正式协议迁移
   assets/                 应用静态资源
+cli/                      `aio` 项目初始化与 Git 全栈插件生命周期
+docs/plugin/              Rust、Kotlin、TypeScript 社区插件规约
+marketplace/              Git 驱动的社区插件发现目录
 generated/
   apps/<application-id>/  从不可变 Revision 生成、可整体删除重建的 Web、Desktop、Server 工程
 lib/
@@ -69,3 +72,33 @@ cargo run -p az-app-aio-first-party --no-default-features --features server
 服务端 starter 统一实现 `Plugin<ApplicationStartup>`。`AioPlugins` 像 Bevy 的 `PluginGroup` 一样显式声明构建顺序，`App` 负责按 `TypeId` 做唯一性校验和逐个构建；Dill 负责 Starter 及其全部服务依赖的构造和 `AllOf` 聚合，`ApplicationStartup` 只保存最终顺序合并的 Router。
 
 当前数据库迁移、共享数据库、Capability、Controller、ProgramRuntime、页面与业务模块同步、Studio HTTP 和静态 Web 均由 `AioPlugins` 构建。`server.rs` 只保留配置、Dill Catalog、Tokio listener、`App` 构建和 `axum::serve`。
+
+## 初始化应用与 Git 全栈插件
+
+```bash
+cargo install --path cli
+aio init my-app --title "我的应用"
+aio plugin init my-pages --title "业务页面"
+
+cd my-app
+aio plugin install https://example.com/team/my-pages.git
+aio plugin list
+aio plugin sync
+aio plugin uninstall https://example.com/team/my-pages.git
+```
+
+新应用直接消费 `az-dioxus-admin-shell::PluginApplication`，同时提供 Web、Desktop 和 Server 三个互斥构建目标。本地页面与插件客户端实现 `ApplicationPlugin`；插件服务端通过 Dill 注册 Service/Controller，再贡献 Router。Dill 聚合具体插件类型并按 `TypeId` 拒绝重复类型，页面 id 只承担业务导航身份。
+
+插件仓库根目录使用最小清单：
+
+```toml
+[plugin.client]
+path = "client"
+
+[plugin.server]
+path = "server"
+```
+
+应用仓库只在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。生产发布器必须在隔离构建通过后切换整套版本；CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
+
+社区开发入口是仓库 Skill `.agents/skills/aio-plugin-development`。完整运行边界见 [`docs/plugin`](docs/plugin/README.md)，市场条目位于 [`marketplace/registry`](marketplace/registry/README.md)。Wasm Component 用于跨语言、可移植且受限的能力；需要数据库、长任务或原生 SDK 的 Kotlin/TypeScript 插件运行在独立进程或容器中。

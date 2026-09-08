@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context as _, Result};
 
 const DEFAULT_WEB_PORT: u16 = 8080;
-const REPOSITORY_ENV_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../.env");
 const DATABASE_URL_ENV: &str = "AZ_AIO_DATABASE_URL";
 const DATABASE_URL_OVERRIDE_ENV: &str = "AZ_AIO_DATABASE_URL_OVERRIDE";
 const DATABASE_MIGRATIONS_ENABLED_ENV: &str = "AZ_AIO_DATABASE_MIGRATIONS_ENABLED";
@@ -68,9 +67,12 @@ fn resolve_database_url(
 }
 
 fn load_repository_env() -> Result<()> {
-    let path = Path::new(REPOSITORY_ENV_PATH);
-    dotenvy::from_path_override(path)
-        .with_context(|| format!("读取仓库配置文件失败: {}", path.display()))
+    let path = Path::new(".env");
+    if path.is_file() {
+        dotenvy::from_path_override(path)
+            .with_context(|| format!("读取应用配置文件失败: {}", path.display()))?;
+    }
+    Ok(())
 }
 
 fn optional_env(key: &str) -> Result<Option<String>> {

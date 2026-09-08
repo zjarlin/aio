@@ -1,0 +1,143 @@
+#![forbid(unsafe_code)]
+
+mod initialize;
+mod marketplace;
+mod repository_plugin;
+
+use std::{env, path::PathBuf};
+
+use anyhow::{Result, bail};
+use initialize::{ApplicationOptions, RepositoryPluginOptions};
+use repository_plugin::PluginSource;
+
+fn main() -> Result<()> {
+    run(env::args().skip(1).collect())
+}
+
+fn run(arguments: Vec<String>) -> Result<()> {
+    let Some(command) = arguments.first().map(String::as_str) else {
+        print_usage();
+        return Ok(());
+    };
+
+    match command {
+        "init" => initialize_application(&arguments[1..]),
+        "marketplace" => run_marketplace_command(&arguments[1..]),
+        "plugin" => run_plugin_command(&arguments[1..]),
+        "help" | "--help" | "-h" => {
+            print_usage();
+            Ok(())
+        }
+        _ => bail!("未知命令: {command}\n\n{}", usage()),
+    }
+}
+
+fn run_marketplace_command(arguments: &[String]) -> Result<()> {
+    let Some(command) = arguments.first().map(String::as_str) else {
+        bail!("缺少市场命令\n\n{}", usage());
+    };
+    match (command, &arguments[1..]) {
+        ("build", []) => marketplace::build(
+            &PathBuf::from("marketplace/registry"),
+            &PathBuf::from("marketplace/index.json"),
+        ),
+        ("build", [registry, output]) => {
+            marketplace::build(&PathBuf::from(registry), &PathBuf::from(output))
+        }
+        ("build", _) => bail!("marketplace build 只接受可选的 <registry> <output>"),
+        _ => bail!("未知市场命令: {command}\n\n{}", usage()),
+    }
+}
+
+fn initialize_application(arguments: &[String]) -> Result<()> {
+    let (path, name, title) = parse_init_arguments(arguments)?;
+    initialize::application(ApplicationOptions { path, name, title })
+}
+
+fn run_plugin_command(arguments: &[String]) -> Result<()> {
+    let Some(command) = arguments.first().map(String::as_str) else {
+        bail!("缺少插件命令\n\n{}", usage());
+    };
+
+    match command {
+        "init" => {
+            let (path, name, title) = parse_init_arguments(&arguments[1..])?;
+            initialize::repository_plugin(RepositoryPluginOptions { path, name, title })
+        }
+        "install" => {
+            let source = parse_plugin_source(&arguments[1..])?;
+            repository_plugin::install(&env::current_dir()?, source)
+        }
+        "uninstall" => {
+            let git = exactly_one(&arguments[1..], "缺少要卸载的 Git 地址")?;
+            repository_plugin::uninstall(&env::current_dir()?, git)
+        }
+        "sync" => no_arguments(&arguments[1..], || {
+            repository_plugin::sync(&env::current_dir()?)
+        }),
+        "list" => no_arguments(&arguments[1..], || {
+            repository_plugin::list(&env::current_dir()?)
+        }),
+        _ => bail!("未知插件命令: {command}\n\n{}", usage()),
+    }
+}
+
+fn parse_init_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>, Option<String>)> {
+    let Some(path) = arguments.first() else {
+        bail!("缺少初始化目录");
+    };
+    let mut name = None;
+    let mut title = None;
+    let mut index = 1;
+    while index < arguments.len() {
+        let value = arguments
+            .get(index + 1)
+            .ok_or_else(|| anyhow::anyhow!("选项 {} 缺少值", arguments[index]))?;
+        match arguments[index].as_str() {
+            "--name" => name = Some(value.clone()),
+            "--title" => title = Some(value.clone()),
+            option => bail!("未知初始化选项: {option}"),
+        }
+        index += 2;
+    }
+    Ok((PathBuf::from(path), name, title))
+}
+
+fn parse_plugin_source(arguments: &[String]) -> Result<PluginSource> {
+    let Some(git) = arguments.first() else {
+        bail!("缺少要安装的 Git 地址");
+    };
+    let mut rev = None;
+    match &arguments[1..] {
+        [] => {}
+        [option, value] if option == "--rev" => rev = Some(value.clone()),
+        _ => bail!("插件安装只接受可选的 --rev <版本>"),
+    }
+    Ok(PluginSource {
+        git: git.clone(),
+        rev,
+    })
+}
+
+fn exactly_one<'a>(arguments: &'a [String], missing: &str) -> Result<&'a str> {
+    match arguments {
+        [] => bail!("{missing}"),
+        [value] => Ok(value),
+        _ => bail!("命令只接受一个参数"),
+    }
+}
+
+fn no_arguments(action_arguments: &[String], action: impl FnOnce() -> Result<()>) -> Result<()> {
+    if !action_arguments.is_empty() {
+        bail!("命令不接受参数");
+    }
+    action()
+}
+
+fn print_usage() {
+    println!("{}", usage());
+}
+
+fn usage() -> &'static str {
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio marketplace build [<registry> <output>]"
+}

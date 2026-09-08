@@ -1,0 +1,14 @@
+[
+  {
+    "git": "https://github.com/zjarlin/aio-plugin-hello.git",
+    "rev": "c382f3c9c33fb553f75944539c3689c43936c19a",
+    "title": "Hello Counter",
+    "summary": "带点击加一页面和服务端健康接口的最小 AIO 全栈插件。",
+    "license": "MIT",
+    "tags": [
+      "example",
+      "dioxus",
+      "full-stack"
+    ]
+  }
+]
