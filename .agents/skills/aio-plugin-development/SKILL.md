@@ -19,6 +19,7 @@ description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 
 - Rust 页面只使用 `az-ui-components` 和 `az-dioxus-admin-shell`，不自带 CSS，不复制宿主组件。
 - 多语言插件优先使用稳定的 AIO WIT/PageDefinition 边界；需要数据库、长任务、网络监听或系统权限时使用隔离进程或容器，不把 WASI 权限扩大成宿主权限。
 - 在线 Wasm 插件必须使用 `docs/plugin/wit/page.wit`，在 `[plugin.runtime]` 声明 `kind = "wasm-component"` 与预构建 artifact，并验证 `definition`、`handle` 两个导出。
+- Wasm Component 实例按租户、来源和 revision 隔离；安装/启用先通过 `definition` 校验页面，停用/卸载/回滚必须销毁对应实例，不能只切换数据库状态。
 - KMP 静态页面插件可以用 commonMain 模型和 JVM 生成器产出 `PageDefinition` JSON，声明 `kind = "page-definition"`；必须用仓库内 `kotlin` wrapper 同时编译 JVM 与 wasmJs，并提交生成产物。
 - 当前公网宿主已经激活容器化 `process` 监督器；只为预置 digest 镜像和零额外能力清单声明在线可安装，额外网络、文件系统或数据库能力仍必须标注为未开放。
 - 安装阶段不得执行未声明脚本。构建发生在隔离工作区，校验通过后才能原子切换；失败保留上一版本。
