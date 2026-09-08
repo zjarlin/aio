@@ -10,6 +10,7 @@ pub use model::{
 };
 #[cfg(feature = "validation")]
 pub use validation::{
-    ValidationReport, artifact_path, parse_manifest, read_manifest, validate_manifest,
-    validate_page_definitions, validate_repository, validate_wasm_component,
+    ValidationReport, artifact_path, parse_manifest, read_manifest, validate_declared_pages,
+    validate_host_compatibility, validate_manifest, validate_page_definitions, validate_repository,
+    validate_wasm_component,
 };

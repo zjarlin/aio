@@ -61,6 +61,29 @@ pub fn validate_manifest(manifest: &RepositoryManifest) -> Result<()> {
     validate_subplugins(manifest)
 }
 
+pub fn validate_host_compatibility(
+    manifest: &RepositoryManifest,
+    host_version: &str,
+) -> Result<()> {
+    let host_version = semver::Version::parse(host_version)
+        .with_context(|| format!("宿主版本无效: {host_version}"))?;
+    let Some(requirement) = manifest
+        .plugin
+        .runtime
+        .as_ref()
+        .and_then(|runtime| runtime.host_version.as_deref())
+    else {
+        return Ok(());
+    };
+    let requirement = semver::VersionReq::parse(requirement)
+        .with_context(|| format!("宿主版本约束无效: {requirement}"))?;
+    ensure!(
+        requirement.matches(&host_version),
+        "插件需要宿主版本 {requirement}，当前为 {host_version}"
+    );
+    Ok(())
+}
+
 fn validate_runtime_options(runtime: &crate::RuntimeManifest) -> Result<()> {
     if runtime.kind == PluginRuntime::Process {
         ensure!(
@@ -407,7 +430,10 @@ fn declared_pages(manifest: &RepositoryManifest) -> BTreeSet<&str> {
         .collect()
 }
 
-fn validate_declared_pages(manifest: &RepositoryManifest, pages: &[PageDefinition]) -> Result<()> {
+pub fn validate_declared_pages(
+    manifest: &RepositoryManifest,
+    pages: &[PageDefinition],
+) -> Result<()> {
     let declared = declared_pages(manifest);
     let actual = pages
         .iter()
@@ -541,6 +567,18 @@ artifact = "dist/pages.json"
         )
         .expect_err("无效版本约束必须失败");
         assert!(version.to_string().contains("版本约束"));
+        Ok(())
+    }
+
+    #[test]
+    fn enforces_host_version_requirement() -> Result<()> {
+        let manifest = parse_manifest(
+            "[plugin.runtime]\nkind='page-definition'\nartifact='dist/pages.json'\nhost_version='>=2026.5.10, <2027.0.0'\n",
+        )?;
+        validate_host_compatibility(&manifest, "2026.9.8")?;
+        let error = validate_host_compatibility(&manifest, "2027.1.0")
+            .expect_err("不匹配的宿主版本必须失败");
+        assert!(error.to_string().contains("插件需要宿主版本"));
         Ok(())
     }
 
