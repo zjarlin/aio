@@ -53,7 +53,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "f0381c7db833236fd541e91d8d09642d6ed14e6b",
+    "rev": "6105d9b5a28da9f4f0a9247f131fef34c76a4183",
     "title": "TypeScript Process Service",
     "summary": "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在隔离进程中贡献页面和后端路由。",
     "license": "MIT",
