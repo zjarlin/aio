@@ -1,5 +1,5 @@
 git = "https://github.com/zjarlin/aio-plugin-hello.git"
-rev = "e5afd8d56d481122aa0dc3a5f6c5dbc65fa44122"
+rev = "64501bbfb642c2c006de58140e359a61e4b85f2e"
 title = "Hello Counter"
 summary = "带点击加一页面和 Wasm Component 后端处理器的最小 AIO 全栈插件。"
 license = "MIT"

@@ -1,5 +1,5 @@
 pub const WORKBENCH_GIT: &str = "https://github.com/zjarlin/dioxus-admin-workbench.git";
-pub const WORKBENCH_REV: &str = "b2d33b9eb404ef06e924eb658403cd3b55d98c98";
+pub const WORKBENCH_REV: &str = "aa19101b1d0739a0c6f0df99677c1ba3483a746d";
 
 pub const GITIGNORE: &str = "/target\n/.aio/plugins\n";
 
@@ -43,6 +43,7 @@ impl ApplicationPlugin for HomePlugin {
                 id: "workspace",
                 label: "工作区",
             },
+            required_permission: None,
             render: HomePage,
         }]
     }
@@ -328,6 +329,7 @@ impl ApplicationPlugin for PagesPlugin {
                 id: "workspace",
                 label: "工作区",
             },
+            required_permission: None,
             render: PluginPage,
         }]
     }
