@@ -1,5 +1,5 @@
 git = "https://github.com/zjarlin/aio-plugin-kmp-counter.git"
-rev = "6eaf23d61c078f8a757fe42101982d468eee1cd3"
+rev = "e7d41e44b3b53211b17b4651d52f49709b5cbe2b"
 title = "Kotlin Multiplatform Counter"
 summary = "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。"
 license = "MIT"

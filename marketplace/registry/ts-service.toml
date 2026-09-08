@@ -1,6 +1,6 @@
 git = "https://github.com/zjarlin/aio-plugin-ts-service.git"
-rev = "6105d9b5a28da9f4f0a9247f131fef34c76a4183"
+rev = "cefc4fac7127b9d7f7d766bdc3e1d4c75ea86bf2"
 title = "TypeScript Process Service"
-summary = "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在隔离进程中贡献页面和后端路由。"
+summary = "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在租户隔离进程中处理页面事件和后端路由。"
 license = "MIT"
 tags = ["example", "typescript", "node", "process", "full-stack"]

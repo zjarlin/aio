@@ -13,7 +13,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
-    "rev": "6eaf23d61c078f8a757fe42101982d468eee1cd3",
+    "rev": "e7d41e44b3b53211b17b4651d52f49709b5cbe2b",
     "title": "Kotlin Multiplatform Counter",
     "summary": "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。",
     "license": "MIT",
@@ -26,9 +26,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
-    "rev": "546d5471b7462181fd2b6c3f01859e6c2a7b627c",
+    "rev": "9bc1cf6ef14a60ec19083f6ba2161de0eb6e2a78",
     "title": "Kotlin Multiplatform Service",
-    "summary": "使用 Kotlin Toolchain 构建 commonMain 模型和 JVM 可执行 JAR，并在隔离进程中同时贡献页面与后端路由。",
+    "summary": "使用 Kotlin Toolchain 构建 commonMain 动作页面和 JVM 可执行 JAR，在租户隔离进程中处理页面事件与后端路由。",
     "license": "MIT",
     "tags": [
       "example",
@@ -40,9 +40,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
-    "rev": "1ead088858975ed5929db9f9f57d8bea1b41b9e9",
+    "rev": "80360143a6718b31dff9beeaba2b8298c34344f6",
     "title": "TypeScript Wasm Component",
-    "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建页面与受限后端处理器的全栈插件。",
+    "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建租户隔离的动作页面与受限后端处理器。",
     "license": "MIT",
     "tags": [
       "example",
@@ -53,9 +53,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "6105d9b5a28da9f4f0a9247f131fef34c76a4183",
+    "rev": "cefc4fac7127b9d7f7d766bdc3e1d4c75ea86bf2",
     "title": "TypeScript Process Service",
-    "summary": "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在隔离进程中贡献页面和后端路由。",
+    "summary": "使用固定 pnpm 与 TypeScript 工具链构建 Node 标准库服务，在租户隔离进程中处理页面事件和后端路由。",
     "license": "MIT",
     "tags": [
       "example",

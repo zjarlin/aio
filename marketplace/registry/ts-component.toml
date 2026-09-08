@@ -1,6 +1,6 @@
 git = "https://github.com/zjarlin/aio-plugin-ts-component.git"
-rev = "1ead088858975ed5929db9f9f57d8bea1b41b9e9"
+rev = "80360143a6718b31dff9beeaba2b8298c34344f6"
 title = "TypeScript Wasm Component"
-summary = "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建页面与受限后端处理器的全栈插件。"
+summary = "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建租户隔离的动作页面与受限后端处理器。"
 license = "MIT"
 tags = ["example", "typescript", "wasm-component", "full-stack"]
