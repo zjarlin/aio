@@ -10,10 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo test -p az-remote-ui -p az-engine -p az-aio-web
-      - run: cargo clippy -p az-remote-ui -p az-engine --all-targets -- -D warnings
+      - run: cargo test -p az-studio -p az-aio-app -p az-aio-cli
+      - run: cargo clippy -p az-plugin-core -p az-studio -p az-aio-cli --all-targets -- -D warnings
