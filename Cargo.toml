@@ -6,7 +6,7 @@ members = [
     "generated/apps/*",
     "app/plugins/studio",
     "lib/biz/*",
-    "lib/plugin/core",
+    "lib/plugin/*",
 ]
 exclude = ["lib/dioxus-admin-workbench"]
 
@@ -29,12 +29,14 @@ dioxus = { version = "0.7.9", default-features = false, features = ["macro", "ht
 convert_case = "0.8.0"
 deunicode = "1.6.2"
 az-plugin-core = { version = "=2026.5.10", path = "lib/plugin/core" }
+az-plugin-manifest = { version = "=2026.5.10", path = "lib/plugin/manifest", default-features = false }
 az-dioxus-admin-shell = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/admin-shell/dioxus", default-features = false }
 az-ui-components = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/ui/components" }
 dotenvy = "0.15.7"
 evalexpr = "13.1.0"
 icons = { version = "0.18.3", features = ["dioxus"] }
 regex = "1.12.2"
+semver = "1.0.28"
 dill = "0.15.0"
 schemars = "1.2.1"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -47,6 +49,8 @@ toml_edit = "0.25.13"
 tracing = "0.1.44"
 toasty = { version = "0.7.0", features = ["postgresql", "serde"] }
 uuid = { version = "1.23.1", features = ["v4", "serde", "js"] }
+wit-component = "0.244.0"
+wit-parser = "0.244.0"
 matchit = "0.8.4"
 pinyin = { version = "0.11.0", default-features = false, features = ["plain"] }
 tower = { version = "0.5.2", features = ["util"] }

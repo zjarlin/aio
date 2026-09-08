@@ -1,10 +1,10 @@
 use std::{fs, path::Path};
 
 use anyhow::{Context as _, Result, ensure};
+pub use az_plugin_manifest::{PluginRuntime, RepositoryManifest, RepositoryPackage};
 use serde::{Deserialize, Serialize};
 
 pub const PROJECT_MANIFEST: &str = "aio.toml";
-pub const PLUGIN_MANIFEST: &str = "aio-plugin.toml";
 pub const LOCK_FILE: &str = ".aio/plugins.lock";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -25,34 +25,6 @@ pub struct PluginSource {
     pub git: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rev: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RepositoryManifest {
-    pub plugin: RepositoryPlugin,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RepositoryPlugin {
-    pub client: Option<RepositoryPackage>,
-    pub server: Option<RepositoryPackage>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RepositoryPackage {
-    #[serde(default)]
-    pub runtime: PluginRuntime,
-    #[serde(default = "current_directory")]
-    pub path: String,
-}
-
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum PluginRuntime {
-    #[default]
-    RustSource,
-    WasmComponent,
-    Process,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -90,7 +62,7 @@ pub fn read_lock(root: &Path) -> Result<PluginLock> {
 }
 
 pub fn read_repository(root: &Path) -> Result<RepositoryManifest> {
-    read_toml(&root.join(PLUGIN_MANIFEST))
+    az_plugin_manifest::read_manifest(root)
 }
 
 pub fn read_package_name(package_root: &Path) -> Result<String> {
@@ -155,22 +127,18 @@ pub fn validate_relative_path(path: &str) -> Result<()> {
     Ok(())
 }
 
-fn current_directory() -> String {
-    ".".to_owned()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn reads_future_runtime_without_treating_it_as_rust_source() -> Result<()> {
+    fn reads_online_runtime_without_treating_it_as_rust_source() -> Result<()> {
         let manifest = toml::from_str::<RepositoryManifest>(
-            "[plugin.client]\nruntime = \"wasm-component\"\nartifact = \"dist/client.wasm\"\n",
+            "[plugin.runtime]\nkind = \"wasm-component\"\nartifact = \"dist/client.wasm\"\n",
         )?;
 
-        let client = manifest.plugin.client.context("缺少 client")?;
-        assert_eq!(client.runtime, PluginRuntime::WasmComponent);
+        let runtime = manifest.plugin.runtime.context("缺少 runtime")?;
+        assert_eq!(runtime.kind, PluginRuntime::WasmComponent);
         Ok(())
     }
 }

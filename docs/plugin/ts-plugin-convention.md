@@ -25,6 +25,7 @@ pnpm test
 pnpm build
 wasm-tools validate --features component-model dist/plugin.wasm
 wasm-tools component wit dist/plugin.wasm
+aio plugin validate
 ```
 
 安装阶段不执行任意生命周期脚本；确需原生构建时必须在市场条目中标记，交由隔离构建器显式运行。产物、来源提交和依赖锁三者必须可追溯。

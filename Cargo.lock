@@ -334,6 +334,7 @@ name = "az-aio-cli"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
+ "az-plugin-manifest",
  "serde",
  "serde_json",
  "tempfile",
@@ -399,6 +400,20 @@ dependencies = [
  "tower",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "az-plugin-manifest"
+version = "2026.5.10"
+dependencies = [
+ "anyhow",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "toml",
+ "wit-component",
+ "wit-parser",
 ]
 
 [[package]]

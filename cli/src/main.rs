@@ -78,6 +78,11 @@ fn run_plugin_command(arguments: &[String]) -> Result<()> {
         "list" => no_arguments(&arguments[1..], || {
             repository_plugin::list(&env::current_dir()?)
         }),
+        "validate" => match &arguments[1..] {
+            [] => repository_plugin::validate(&env::current_dir()?),
+            [path] => repository_plugin::validate(&PathBuf::from(path)),
+            _ => bail!("plugin validate 只接受可选的 <仓库目录>"),
+        },
         _ => bail!("未知插件命令: {command}\n\n{}", usage()),
     }
 }
@@ -139,5 +144,5 @@ fn print_usage() {
 }
 
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio marketplace build [<registry> <output>]"
 }

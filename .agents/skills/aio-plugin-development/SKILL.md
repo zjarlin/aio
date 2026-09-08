@@ -25,6 +25,6 @@ description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 
 
 ## 完成验证
 
-Rust 插件至少执行 `cargo fmt --all --check`、`cargo test --workspace`，再安装进一个临时 AIO 宿主，分别检查 Web 与 Server feature。Kotlin 与 TypeScript 按各自规约产出后，还要运行宿主提供的清单和 ABI 校验。
+Rust 插件至少执行 `cargo fmt --all --check`、`cargo test --workspace`，再安装进一个临时 AIO 宿主，分别检查 Web 与 Server feature。Kotlin 与 TypeScript 按各自规约产出后，还要在插件仓库执行 `aio plugin validate`；该命令使用与宿主共享的 `az-plugin-manifest` 校验清单、artifact、子插件依赖图、PageDefinition 和 Component ABI。
 
 需要进入社区市场时，在 `marketplace/registry/` 增加单独条目；展示名称、说明和标签只属于市场元数据，不进入运行时插件身份。

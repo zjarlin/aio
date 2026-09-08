@@ -34,6 +34,7 @@ cargo fmt --all --check
 cargo test --workspace
 wasm-tools validate dist/plugin.wasm
 wasm-tools component wit dist/plugin.wasm
+aio plugin validate /path/to/plugin
 
 aio init /tmp/aio-host --name aio-host --title "AIO Host"
 cd /tmp/aio-host

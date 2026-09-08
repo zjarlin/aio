@@ -25,6 +25,7 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 ./kotlin test -m model -p jvm
 ./kotlin run -m generator -p jvm -- dist/pages.json
 jq . dist/pages.json
+aio plugin validate
 ```
 
 只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。可安装示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)。

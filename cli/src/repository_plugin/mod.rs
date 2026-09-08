@@ -15,6 +15,21 @@ use manifest::{
     validate_relative_path, write_lock, write_project,
 };
 
+pub fn validate(root: &Path) -> Result<()> {
+    let report = az_plugin_manifest::validate_repository(root)?;
+    let artifact = report
+        .artifact
+        .as_deref()
+        .map_or_else(|| "-".to_owned(), |path| path.display().to_string());
+    println!(
+        "插件校验通过: runtime={} subplugins={} pages={} artifact={artifact}",
+        runtime_name(report.runtime),
+        report.subplugin_count,
+        report.page_count,
+    );
+    Ok(())
+}
+
 pub fn install(root: &Path, source: PluginSource) -> Result<()> {
     let mut project = read_project(root)?;
     ensure!(
@@ -114,6 +129,11 @@ fn resolve_plugins(root: &Path, sources: &[PluginSource]) -> Result<Vec<Installe
             .with_context(|| format!("拉取插件失败: {}", source.git))?;
         let repository = read_repository(&checkout)
             .with_context(|| format!("发现插件清单失败: {}", source.git))?;
+        ensure!(
+            repository.plugin.runtime.is_none(),
+            "在线运行时插件不能装配到 Rust 源码宿主，请使用 aio plugin validate: {}",
+            source.git
+        );
         ensure!(
             repository.plugin.client.is_some() || repository.plugin.server.is_some(),
             "插件必须至少声明 client 或 server 能力: {}",
@@ -411,6 +431,15 @@ fn validate_cache_directory(directory: &str) -> Result<()> {
         "插件锁定文件包含无效缓存目录: {directory}"
     );
     Ok(())
+}
+
+fn runtime_name(runtime: PluginRuntime) -> &'static str {
+    match runtime {
+        PluginRuntime::RustSource => "rust-source",
+        PluginRuntime::PageDefinition => "page-definition",
+        PluginRuntime::WasmComponent => "wasm-component",
+        PluginRuntime::Process => "process",
+    }
 }
 
 #[cfg(test)]

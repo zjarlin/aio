@@ -45,6 +45,18 @@ pages = ["hello"]
 routes = ["hello"]
 ```
 
+`process` 仓库必须把启动和停止契约明确写入清单，不允许安装器猜测脚本：
+
+```toml
+[plugin.runtime]
+kind = "process"
+artifact = "dist/plugin.jar"
+host_version = ">=2026.5.10"
+entrypoint = ["java", "-jar", "dist/plugin.jar"]
+health_check = "/health"
+shutdown_timeout_seconds = 10
+```
+
 只贡献静态页面定义的 Kotlin/TypeScript 插件可以声明 `kind = "page-definition"`，artifact 是 `PageDefinition` JSON 数组。它适合由跨平台 common 模型生成页面；需要动态后端请求处理时再升级为 Component。
 
 Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 返回包含 `status`、`content_type` 和 `body` 的 JSON。宿主为每次调用创建无默认 WASI 权限且带 fuel 上限的实例。
@@ -83,3 +95,11 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 `marketplace/registry/` 是可审计的静态目录。每个插件一个 TOML，合并后即可被索引；是否要求人工审核由仓库分支保护决定，不进入协议。市场只负责发现，租户始终可以直接配置未收录的 Git 仓库。
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md) 和 [TypeScript 规约](ts-plugin-convention.md)。
+
+提交市场前必须在插件仓库执行语言自身的构建与测试，然后使用宿主共享校验器：
+
+```bash
+aio plugin validate
+```
+
+该命令不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。
