@@ -13,6 +13,8 @@ aio plugin init ../aio-plugin-hello --name aio-plugin-hello --title "Hello"
 
 页面插件实现 `az_dioxus_admin_shell::ApplicationPlugin`，并在 `register` 中绑定到 Dill。具体类型是唯一运行时身份；页面 `id` 只用于导航，不作为插件身份。交互控件使用 `az-ui-components`，样式由宿主提供，插件不得携带 CSS、Stylesheet 或 inline style。
 
+需要在线安装时，把同一份 `PageDefinition` 通过 `aio:plugin/page@1` 的 `definition() -> string` 导出编译为 Component，并在仓库清单声明 `wasm-component`。宿主在 fuel 限额和无默认 WASI 权限的实例中完成健康检查后才切换租户活动版本。
+
 ```rust
 pub fn register(builder: &mut dill::CatalogBuilder) {
     builder

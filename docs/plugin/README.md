@@ -40,7 +40,7 @@ command = ["java", "-jar", "dist/plugin.jar"]
 health = "/health"
 ```
 
-当前 CLI 只接受 `rust-source` 的目录清单；在 WIT Host 和进程监督器落地前，非 Rust 清单必须明确报告“不支持”，不得伪装安装成功。
+源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已经支持 `aio:plugin/page@1` Wasm Component 在线实例化；组件导出 `definition() -> string`，内容必须是可校验的 `PageDefinition` JSON。进程监督器未激活前，`process` 清单必须明确报告“不支持”，不得伪装安装成功。
 
 ## 租户组合
 
