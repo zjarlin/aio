@@ -5,6 +5,7 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 ## 客户端与可移植逻辑
 
 - 共享业务逻辑放在 `commonMain`。
+- 只贡献宿主已有页面形态时，可以在 commonMain 建模，由 JVM 生成器产出 `PageDefinition` JSON，并声明 `kind = "page-definition"`。同一 commonMain 至少同时通过 JVM 与 wasmJs 编译。
 - 需要 AIO 原生页面时，目标是 `wasm-component` 并实现 [`aio:plugin/page@1`](wit/page.wit)；组件通过 `definition` 返回 `PageDefinition` JSON 数组，通过 `handle` 返回受限请求结果，不直接操作宿主 DOM。
 - 独立 Compose Multiplatform 页面只能作为隔离页面运行，不能伪装成 AIO 原生控件树。
 - 在 AIO Component ABI 正式发布前，Kotlin/Wasm 页面属于预览目标，不得提交为可自动安装的稳定插件。
@@ -15,12 +16,15 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 目录与验证
 
-功能代码优先放在 `plugin/src/commonMain`，平台适配分别放入 `wasmJsMain`、`wasmWasiMain` 或 `jvmMain`。每个功能包包含 `README.md`。
+跨平台代码放在 Toolchain 模块的 `src/`，平台适配分别放入 `src@wasmJs/`、`src@wasmWasi/` 或 `src@jvm/`。每个功能包包含 `README.md`。
+
+仓库提交固定版本和 SHA256 校验的 `kotlin` wrapper，并使用 `project.yaml`、`module.yaml` 描述模块。典型验证命令：
 
 ```bash
-./gradlew clean check
-./gradlew wasmWasiTest
-./gradlew jvmTest
+./kotlin build -m model -p jvm -p wasmJs
+./kotlin test -m model -p jvm
+./kotlin run -m generator -p jvm -- dist/pages.json
+jq . dist/pages.json
 ```
 
-只运行实际声明目标的任务。产物生成后执行宿主 ABI 校验，生产清单不得引用 Gradle 临时目录。
+只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。可安装示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)。

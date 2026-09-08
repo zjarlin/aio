@@ -10,5 +10,18 @@
       "dioxus",
       "full-stack"
     ]
+  },
+  {
+    "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
+    "rev": "6eaf23d61c078f8a757fe42101982d468eee1cd3",
+    "title": "Kotlin Multiplatform Counter",
+    "summary": "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。",
+    "license": "MIT",
+    "tags": [
+      "example",
+      "kotlin",
+      "kmp",
+      "page-definition"
+    ]
   }
 ]

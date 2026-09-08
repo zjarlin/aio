@@ -7,6 +7,7 @@ AIO 宿主负责壳、租户组合、权限、安装事务和回滚。社区仓�
 | 形态 | 适用能力 | 生命周期 |
 | --- | --- | --- |
 | `rust-source` | 与宿主同版本的 Dioxus 页面、Dill Service/Controller | 拉取源码后隔离编译，整套版本原子切换 |
+| `page-definition` | 多语言生成的静态页面定义 | 校验 JSON 后直接按租户挂载，可单独卸载 |
 | `wasm-component` | 多语言纯计算、PageDefinition 生成、受限请求处理 | Wasmtime 实例化，按声明授予 WASI 能力，可单独卸载 |
 | `process` | JVM/Node、数据库驱动、长任务、第三方 SDK | 独立进程或容器，健康检查后挂载路由，停止即卸载 |
 
@@ -43,6 +44,8 @@ id = "hello-screen"
 pages = ["hello"]
 routes = ["hello"]
 ```
+
+只贡献静态页面定义的 Kotlin/TypeScript 插件可以声明 `kind = "page-definition"`，artifact 是 `PageDefinition` JSON 数组。它适合由跨平台 common 模型生成页面；需要动态后端请求处理时再升级为 Component。
 
 Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 返回包含 `status`、`content_type` 和 `body` 的 JSON。宿主为每次调用创建无默认 WASI 权限且带 fuel 上限的实例。
 
