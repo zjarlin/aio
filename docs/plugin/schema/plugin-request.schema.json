@@ -1,0 +1,177 @@
+{
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/plugin-request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PluginRequest",
+  "$comment": "AIO Plugin JSON contract aio:plugin@1.0.0",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "const": "service_request"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "query": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "method",
+        "path",
+        "body",
+        "tenant_id",
+        "user_id"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "action_id": {
+          "type": "string"
+        },
+        "body": {
+          "$ref": "#/$defs/PageBody"
+        },
+        "kind": {
+          "type": "string",
+          "const": "page_action"
+        },
+        "page_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "page_id",
+        "action_id",
+        "tenant_id",
+        "user_id",
+        "body"
+      ]
+    }
+  ],
+  "$defs": {
+    "PageActionDefinition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ]
+    },
+    "PageBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "button": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "counter"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "button"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "text"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "content"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/PageActionDefinition"
+              }
+            },
+            "content": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "actions"
+            },
+            "state": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "content",
+            "actions"
+          ]
+        }
+      ]
+    }
+  }
+}

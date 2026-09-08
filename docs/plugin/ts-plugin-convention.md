@@ -19,6 +19,8 @@ TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入
 
 ## 验证
 
+使用 `aio plugin schema schemas` 获取正式 JSON Schema。TypeScript 类型生成和结构校验应以这些文件为输入，不复制宿主私有模型。
+
 ```bash
 corepack enable
 pnpm install --frozen-lockfile --ignore-scripts

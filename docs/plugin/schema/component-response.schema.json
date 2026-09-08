@@ -1,0 +1,27 @@
+{
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/component-response.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ComponentResponse",
+  "type": "object",
+  "properties": {
+    "body": {
+      "type": "string"
+    },
+    "content_type": {
+      "type": "string"
+    },
+    "status": {
+      "type": "integer",
+      "format": "uint16",
+      "maximum": 65535,
+      "minimum": 0
+    }
+  },
+  "$comment": "AIO Plugin JSON contract aio:plugin@1.0.0",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "content_type",
+    "body"
+  ]
+}

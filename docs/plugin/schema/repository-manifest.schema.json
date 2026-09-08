@@ -1,0 +1,212 @@
+{
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/repository-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RepositoryManifest",
+  "type": "object",
+  "properties": {
+    "plugin": {
+      "$ref": "#/$defs/PluginManifest"
+    }
+  },
+  "$comment": "AIO Plugin JSON contract aio:plugin@1.0.0",
+  "additionalProperties": false,
+  "required": [
+    "plugin"
+  ],
+  "$defs": {
+    "CapabilityManifest": {
+      "type": "object",
+      "properties": {
+        "database": {
+          "type": "boolean",
+          "default": false
+        },
+        "filesystem": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "network": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginManifest": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/CapabilityManifest",
+          "default": {
+            "database": false,
+            "filesystem": [],
+            "network": []
+          }
+        },
+        "client": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryPackage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "runtime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeManifest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "server": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepositoryPackage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "subplugins": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SubpluginManifest"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PluginRuntime": {
+      "type": "string",
+      "enum": [
+        "rust-source",
+        "page-definition",
+        "wasm-component",
+        "process"
+      ]
+    },
+    "RepositoryPackage": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "default": "."
+        },
+        "runtime": {
+          "$ref": "#/$defs/PluginRuntime",
+          "default": "rust-source"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuntimeManifest": {
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string"
+        },
+        "container_image": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "entrypoint": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "health_check": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "host_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "kind": {
+          "$ref": "#/$defs/PluginRuntime"
+        },
+        "shutdown_timeout_seconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "default": null,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "artifact"
+      ]
+    },
+    "SubpluginManifest": {
+      "type": "object",
+      "properties": {
+        "account_actions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "pages": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ]
+    }
+  }
+}

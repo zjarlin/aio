@@ -18,4 +18,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
       - run: cargo test -p az-studio -p az-aio-app -p az-aio-cli
+      - run: cargo run -q -p az-aio-cli -- plugin schema docs/plugin/schema
+      - run: git diff --exit-code docs/plugin/schema
       - run: cargo clippy -p az-plugin-core -p az-studio -p az-aio-cli --all-targets -- -D warnings

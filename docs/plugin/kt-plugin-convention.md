@@ -31,6 +31,8 @@ jq . dist/pages.json
 aio plugin validate
 ```
 
+需要生成 Kotlin DTO 或在 CI 中做结构校验时，先执行 `aio plugin schema schemas` 获取正式 JSON Schema；不要从文档示例或某个宿主实现反推协议模型。
+
 可执行 JAR 使用 Toolchain 原生产物：
 
 ```bash

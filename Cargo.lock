@@ -407,6 +407,7 @@ name = "az-plugin-manifest"
 version = "2026.5.10"
 dependencies = [
  "anyhow",
+ "schemars",
  "semver",
  "serde",
  "serde_json",

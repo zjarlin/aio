@@ -65,7 +65,9 @@ shutdown_timeout_seconds = 10
 
 只贡献静态页面定义的 Kotlin/TypeScript 插件可以声明 `kind = "page-definition"`，artifact 是 `PageDefinition` JSON 数组。它适合由跨平台 common 模型生成页面；需要动态后端请求处理时再升级为 Component。
 
-Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 返回包含 `status`、`content_type` 和 `body` 的 JSON。宿主为每个租户、来源和 revision 创建独立实例，实例无默认 WASI 权限并在每次调用前重置 fuel；停用、卸载、回滚和租户组合切换会销毁对应实例。
+Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() -> string` 返回 `PageDefinition` JSON 数组，`handle(request: string) -> string` 接收带明确 `kind` 的 `PluginRequest`，返回包含 `status`、`content_type` 和 `body` 的 `ComponentResponse` JSON。宿主为每个租户、来源和 revision 创建独立实例，实例无默认 WASI 权限并在每次调用前重置 fuel；停用、卸载、回滚和租户组合切换会销毁对应实例。
+
+[`schema/`](schema/) 保存上述模型的 JSON Schema。执行 `aio plugin schema [<输出目录>]` 可生成相同契约，用于多语言类型生成、IDE 补全和 CI 结构校验；完整语义仍以 `aio plugin validate` 为准。
 
 源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已支持 `wasm-component` 和 `process` 在线安装、停用、启用、卸载和回滚。`process` 运行在按租户、来源和 revision 隔离的容器网络中，使用非 root 用户、只读根文件系统、资源配额与 capability 丢弃；当前只开放零额外能力档，非空网络、文件系统或数据库声明会在启动前被拒绝。
 

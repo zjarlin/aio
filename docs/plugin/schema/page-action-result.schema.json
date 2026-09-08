@@ -1,0 +1,113 @@
+{
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/page-action-result.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PageActionResult",
+  "type": "object",
+  "properties": {
+    "body": {
+      "$ref": "#/$defs/PageBody"
+    }
+  },
+  "$comment": "AIO Plugin JSON contract aio:plugin@1.0.0",
+  "additionalProperties": false,
+  "required": [
+    "body"
+  ],
+  "$defs": {
+    "PageActionDefinition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ]
+    },
+    "PageBody": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "button": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "counter"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "button"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "text"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "content"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/PageActionDefinition"
+              }
+            },
+            "content": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "actions"
+            },
+            "state": {
+              "type": "object",
+              "additionalProperties": true,
+              "default": {}
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "title",
+            "content",
+            "actions"
+          ]
+        }
+      ]
+    }
+  }
+}

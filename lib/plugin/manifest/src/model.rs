@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct RepositoryManifest {
     pub plugin: PluginManifest,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct PluginManifest {
     #[serde(default)]
@@ -25,6 +27,7 @@ pub struct PluginManifest {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct RepositoryPackage {
     #[serde(default)]
@@ -34,6 +37,7 @@ pub struct RepositoryPackage {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeManifest {
     pub kind: PluginRuntime,
@@ -51,6 +55,7 @@ pub struct RuntimeManifest {
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "kebab-case")]
 pub enum PluginRuntime {
     #[default]
@@ -61,6 +66,7 @@ pub enum PluginRuntime {
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct CapabilityManifest {
     #[serde(default)]
@@ -72,6 +78,7 @@ pub struct CapabilityManifest {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct SubpluginManifest {
     pub id: String,
@@ -86,6 +93,7 @@ pub struct SubpluginManifest {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct PageDefinition {
     pub id: String,
@@ -98,6 +106,7 @@ pub struct PageDefinition {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct SceneDefinition {
     pub id: String,
@@ -105,7 +114,8 @@ pub struct SceneDefinition {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PageBody {
     Counter {
         title: String,
@@ -125,6 +135,7 @@ pub enum PageBody {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct PageActionDefinition {
     pub id: String,
@@ -132,11 +143,95 @@ pub struct PageActionDefinition {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct PageActionResult {
     pub body: PageBody,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PluginRequest {
+    ServiceRequest {
+        method: String,
+        path: String,
+        query: Option<String>,
+        body: String,
+        tenant_id: String,
+        user_id: String,
+    },
+    PageAction {
+        page_id: String,
+        action_id: String,
+        tenant_id: String,
+        user_id: String,
+        body: PageBody,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+pub struct ComponentResponse {
+    pub status: u16,
+    pub content_type: String,
+    pub body: String,
+}
+
 fn current_directory() -> String {
     ".".to_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn round_trips_typed_plugin_requests() -> Result<(), serde_json::Error> {
+        let request = PluginRequest::PageAction {
+            page_id: "counter".to_owned(),
+            action_id: "increment".to_owned(),
+            tenant_id: "tenant-a".to_owned(),
+            user_id: "user-a".to_owned(),
+            body: PageBody::Actions {
+                title: "Counter".to_owned(),
+                content: "1".to_owned(),
+                state: [("count".to_owned(), serde_json::json!(1))]
+                    .into_iter()
+                    .collect(),
+                actions: vec![PageActionDefinition {
+                    id: "increment".to_owned(),
+                    label: "+1".to_owned(),
+                }],
+            },
+        };
+        let json = serde_json::to_string(&request)?;
+
+        assert_eq!(serde_json::from_str::<PluginRequest>(&json)?, request);
+        assert!(json.contains("\"kind\":\"page_action\""));
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_ambiguous_request_and_page_fields() {
+        assert!(
+            serde_json::from_str::<PluginRequest>(
+                r#"{"method":"GET","path":"/echo","body":"","tenant_id":"t","user_id":"u"}"#,
+            )
+            .is_err()
+        );
+        assert!(
+            serde_json::from_str::<PageBody>(
+                r#"{"kind":"text","title":"Hello","content":"World","html":"<b>World</b>"}"#,
+            )
+            .is_err()
+        );
+        assert!(
+            serde_json::from_str::<ComponentResponse>(
+                r#"{"status":200,"content_type":"text/plain","body":"ok","headers":{}}"#,
+            )
+            .is_err()
+        );
+    }
 }
