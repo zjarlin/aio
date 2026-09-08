@@ -5,8 +5,9 @@ mod model;
 mod validation;
 
 pub use model::{
-    CapabilityManifest, PageBody, PageDefinition, PluginManifest, PluginRuntime,
-    RepositoryManifest, RepositoryPackage, RuntimeManifest, SceneDefinition, SubpluginManifest,
+    CapabilityManifest, PageActionDefinition, PageActionResult, PageBody, PageDefinition,
+    PluginManifest, PluginRuntime, RepositoryManifest, RepositoryPackage, RuntimeManifest,
+    SceneDefinition, SubpluginManifest,
 };
 #[cfg(feature = "validation")]
 pub use validation::{

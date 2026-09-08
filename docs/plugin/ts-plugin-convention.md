@@ -7,6 +7,7 @@ TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入
 ## 客户端
 
 - AIO 原生页面使用语言无关的 `PageDefinition` 与 [`aio:plugin/page@1`](wit/page.wit)；TypeScript 产物通过 `definition` 生成定义并通过 `handle` 处理受限请求，不直接修改宿主 DOM。
+- 需要宿主持有按钮布局、Component 持有租户状态时使用 `actions` 页面体。`handle` 接收宿主注入的 `page_action` 请求，并在响应 `body` 中返回 `{"body": <PageBody>}`；不要信任浏览器提交的租户或用户身份。
 - 需要在账户区提供入口时，在子插件清单写 `account_actions = ["页面 ID"]`。该入口只能跳转到同一 Component 已声明的页面，标题、图标和权限均由页面定义推导。
 - 需要完整 Web 框架和自有 DOM 时，产出隔离页面，由宿主以受限页面容器装载；必须声明网络、剪贴板、下载等权限。
 - 只有所用编译器能够生成并通过 `aio:plugin/page@1` Component ABI 校验时，才声明 `wasm-component`。

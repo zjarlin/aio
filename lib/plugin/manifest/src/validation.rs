@@ -183,6 +183,12 @@ pub fn validate_repository(root: &Path) -> Result<ValidationReport> {
                 "page-definition 插件至少需要贡献一个页面"
             );
             validate_page_definitions(&pages)?;
+            ensure!(
+                pages
+                    .iter()
+                    .all(|page| !matches!(page.body, PageBody::Actions { .. })),
+                "page-definition 插件不能声明需要运行时处理的页面动作"
+            );
             validate_declared_pages(&manifest, &pages)?;
             pages.len()
         }
@@ -272,6 +278,25 @@ pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
             PageBody::Text { title, content } => {
                 validate_name(title, "文本页标题")?;
                 validate_name(content, "文本页内容")?;
+            }
+            PageBody::Actions {
+                title,
+                content,
+                actions,
+            } => {
+                validate_name(title, "动作页标题")?;
+                validate_name(content, "动作页内容")?;
+                ensure!(!actions.is_empty(), "动作页至少需要一个动作");
+                let mut ids = HashSet::new();
+                for action in actions {
+                    validate_name(&action.id, "页面动作 id")?;
+                    validate_name(&action.label, "页面动作标题")?;
+                    ensure!(
+                        ids.insert(action.id.as_str()),
+                        "页面动作 id 重复: {}",
+                        action.id
+                    );
+                }
             }
         }
     }
@@ -571,6 +596,56 @@ artifact = "dist/pages.json"
     #[test]
     fn accepts_empty_pages_for_service_only_runtime() -> Result<()> {
         validate_page_definitions(&[])
+    }
+
+    #[test]
+    fn validates_runtime_page_actions() -> Result<()> {
+        let mut pages = [PageDefinition {
+            id: "actions".to_owned(),
+            label: "Actions".to_owned(),
+            icon: None,
+            scene: crate::SceneDefinition {
+                id: "examples".to_owned(),
+                label: "Examples".to_owned(),
+            },
+            required_permission: None,
+            body: PageBody::Actions {
+                title: "Counter".to_owned(),
+                content: "0".to_owned(),
+                actions: vec![crate::PageActionDefinition {
+                    id: "increment".to_owned(),
+                    label: "+1".to_owned(),
+                }],
+            },
+        }];
+        validate_page_definitions(&pages)?;
+
+        let PageBody::Actions { actions, .. } = &mut pages[0].body else {
+            unreachable!();
+        };
+        actions.push(actions[0].clone());
+        let error = validate_page_definitions(&pages).expect_err("重复页面动作必须失败");
+        assert!(error.to_string().contains("页面动作 id 重复"));
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_runtime_actions_in_static_page_artifact() -> Result<()> {
+        let repository = tempdir()?;
+        fs::create_dir(repository.path().join("dist"))?;
+        fs::write(
+            repository.path().join("aio-plugin.toml"),
+            format!("{RUNTIME}\n[[plugin.subplugins]]\nid='actions'\npages=['actions']"),
+        )?;
+        fs::write(
+            repository.path().join("dist/pages.json"),
+            r#"[{"id":"actions","label":"Actions","icon":null,"scene":{"id":"examples","label":"Examples"},"required_permission":null,"body":{"kind":"actions","title":"Counter","content":"0","actions":[{"id":"increment","label":"+1"}]}}]"#,
+        )?;
+
+        let error = validate_repository(repository.path())
+            .expect_err("静态页面不能声明需要运行时处理的动作");
+        assert!(error.to_string().contains("不能声明需要运行时处理"));
+        Ok(())
     }
 
     #[test]

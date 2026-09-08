@@ -84,6 +84,19 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
 
 纯文本页面把 `body` 改为 `{ "kind": "text", "title": "...", "content": "..." }`。渲染阶段的 `UiOp`、HTML、CSS 和 Dioxus `Element` 都不能作为持久化协议。
 
+需要由插件处理按钮事件时，`wasm-component` 或 `process` 页面使用 `actions` 页面体：
+
+```json
+{
+  "kind": "actions",
+  "title": "租户计数器",
+  "content": "计数：0",
+  "actions": [{ "id": "increment", "label": "+1" }]
+}
+```
+
+宿主在点击后发送 `{"kind":"page_action","page_id":"...","action_id":"...","tenant_id":"...","user_id":"..."}`。Wasm Component 从 `handle` 的响应 `body` 返回 `{"body": <PageBody>}`；process 插件在 `POST /aio/action` 直接返回相同结果。租户和用户字段只由宿主注入。结果只能替换当前页面体，页面身份、导航、权限和场景仍以安装时校验并保存的 `PageDefinition` 为准。`page-definition` 没有运行实例，因此不能声明 `actions` 页面体。
+
 ## 租户组合
 
 每个租户拥有独立的组合文件和锁文件。组合文件可跟踪分支、标签或提交，生产锁文件只保存解析后的完整提交 SHA：

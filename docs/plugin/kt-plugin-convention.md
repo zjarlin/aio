@@ -7,6 +7,7 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 - 共享业务逻辑放在 `commonMain`。
 - 只贡献宿主已有页面形态时，可以在 commonMain 建模，由 JVM 生成器产出 `PageDefinition` JSON，并声明 `kind = "page-definition"`。同一 commonMain 至少同时通过 JVM 与 wasmJs 编译。
 - 需要 AIO 原生页面时，目标是 `wasm-component` 并实现 [`aio:plugin/page@1`](wit/page.wit)；组件通过 `definition` 返回 `PageDefinition` JSON 数组，通过 `handle` 返回受限请求结果，不直接操作宿主 DOM。
+- 需要运行时按钮事件时使用 `actions` 页面体；`wasm-component` 在 `handle` 中返回新的 `PageBody`，`process` 在 `POST /aio/action` 返回相同结果。纯 `page-definition` 没有事件实例，校验器会拒绝动作页面。
 - 独立 Compose Multiplatform 页面只能作为隔离页面运行，不能伪装成 AIO 原生控件树。
 - 在 AIO Component ABI 正式发布前，Kotlin/Wasm 页面属于预览目标，不得提交为可自动安装的稳定插件。
 

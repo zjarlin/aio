@@ -104,8 +104,32 @@ pub struct SceneDefinition {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PageBody {
-    Counter { title: String, button: String },
-    Text { title: String, content: String },
+    Counter {
+        title: String,
+        button: String,
+    },
+    Text {
+        title: String,
+        content: String,
+    },
+    Actions {
+        title: String,
+        content: String,
+        actions: Vec<PageActionDefinition>,
+    },
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PageActionDefinition {
+    pub id: String,
+    pub label: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PageActionResult {
+    pub body: PageBody,
 }
 
 fn current_directory() -> String {
