@@ -43,6 +43,7 @@ database = false
 id = "hello-screen"
 pages = ["hello"]
 routes = ["hello"]
+account_actions = ["hello"]
 ```
 
 `process` 仓库必须把启动和停止契约明确写入清单，不允许安装器猜测脚本：
@@ -59,6 +60,8 @@ shutdown_timeout_seconds = 10
 ```
 
 `container_image` 必须锁定 digest，宿主仅使用预置镜像且不在安装期拉取。`{artifact}` 由监督器替换为容器内只读产物路径。进程在固定 `8080` 端口提供 `health_check`、`GET /aio/definition` 和清单声明的业务路由；端口不映射到公网，只由宿主代理。
+
+运行时子插件可通过 `account_actions` 把已有页面加入账户区。动作值必须等于同一仓库的已声明页面 ID；壳从该页面推导标题、图标和权限，动作 ID 会按 Git 来源命名空间化。运行时插件不能用账户动作声明退出、修改权限或其他任意宿主命令。
 
 只贡献静态页面定义的 Kotlin/TypeScript 插件可以声明 `kind = "page-definition"`，artifact 是 `PageDefinition` JSON 数组。它适合由跨平台 common 模型生成页面；需要动态后端请求处理时再升级为 Component。
 

@@ -476,6 +476,25 @@ pub fn validate_declared_pages(
         declared == actual,
         "子插件页面声明与 PageDefinition 不一致: 声明={declared:?}, 产物={actual:?}"
     );
+    validate_declared_account_actions(manifest, &actual)?;
+    Ok(())
+}
+
+fn validate_declared_account_actions(
+    manifest: &RepositoryManifest,
+    pages: &BTreeSet<&str>,
+) -> Result<()> {
+    for action in manifest
+        .plugin
+        .subplugins
+        .iter()
+        .flat_map(|plugin| plugin.account_actions.iter())
+    {
+        ensure!(
+            pages.contains(action.as_str()),
+            "账户动作必须指向同一插件已声明的页面: {action}"
+        );
+    }
     Ok(())
 }
 
@@ -552,6 +571,32 @@ artifact = "dist/pages.json"
     #[test]
     fn accepts_empty_pages_for_service_only_runtime() -> Result<()> {
         validate_page_definitions(&[])
+    }
+
+    #[test]
+    fn rejects_account_action_without_a_declared_page() -> Result<()> {
+        let manifest = parse_manifest(&format!(
+            "{RUNTIME}\n[[plugin.subplugins]]\nid='account'\npages=['profile']\naccount_actions=['missing']"
+        ))?;
+        let pages = [PageDefinition {
+            id: "profile".to_owned(),
+            label: "Profile".to_owned(),
+            icon: None,
+            scene: crate::SceneDefinition {
+                id: "account".to_owned(),
+                label: "Account".to_owned(),
+            },
+            required_permission: None,
+            body: PageBody::Text {
+                title: "Profile".to_owned(),
+                content: "Profile".to_owned(),
+            },
+        }];
+
+        let error =
+            validate_declared_pages(&manifest, &pages).expect_err("账户动作不能指向不存在的页面");
+        assert!(error.to_string().contains("账户动作必须指向"));
+        Ok(())
     }
 
     #[test]
