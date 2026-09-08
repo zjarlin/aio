@@ -11,13 +11,13 @@ workspace = "../../.."
 
 [features]
 default = []
-validation = ["dep:anyhow", "dep:semver", "dep:serde_json", "dep:toml", "dep:wit-component", "dep:wit-parser"]
+validation = ["dep:anyhow", "dep:semver", "dep:toml", "dep:wit-component", "dep:wit-parser"]
 
 [dependencies]
 anyhow = { workspace = true, optional = true }
 semver = { workspace = true, optional = true }
 serde.workspace = true
-serde_json = { workspace = true, optional = true }
+serde_json.workspace = true
 toml = { workspace = true, optional = true }
 wit-component = { workspace = true, optional = true }
 wit-parser = { workspace = true, optional = true }

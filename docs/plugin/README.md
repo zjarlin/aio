@@ -91,11 +91,12 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
   "kind": "actions",
   "title": "租户计数器",
   "content": "计数：0",
+  "state": { "count": 0 },
   "actions": [{ "id": "increment", "label": "+1" }]
 }
 ```
 
-宿主在点击后发送 `{"kind":"page_action","page_id":"...","action_id":"...","tenant_id":"...","user_id":"..."}`。Wasm Component 从 `handle` 的响应 `body` 返回 `{"body": <PageBody>}`；process 插件在 `POST /aio/action` 直接返回相同结果。租户和用户字段只由宿主注入。结果只能替换当前页面体，页面身份、导航、权限和场景仍以安装时校验并保存的 `PageDefinition` 为准。`page-definition` 没有运行实例，因此不能声明 `actions` 页面体。
+宿主在点击后发送 `{"kind":"page_action","page_id":"...","action_id":"...","tenant_id":"...","user_id":"...","body":<当前 PageBody>}`。Wasm Component 从 `handle` 的响应 `body` 返回 `{"body": <PageBody>}`；process 插件在 `POST /aio/action` 直接返回相同结果。租户、用户和当前页面体只由宿主注入，插件应根据 `body.state` 计算新状态，不依赖进程内可变状态。动作结果通过校验后按租户、Git revision 和页面写入 PostgreSQL，刷新与宿主重启后继续生效；不同 revision 各自保留状态，卸载时清除。结果只能替换当前页面体，页面身份、导航、权限、场景和动作声明仍以安装时校验并保存的 `PageDefinition` 为准。状态最多 64 个字段且序列化后不超过 64 KiB。`page-definition` 没有运行实例，因此不能声明 `actions` 页面体。
 
 ## 租户组合
 

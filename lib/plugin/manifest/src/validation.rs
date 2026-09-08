@@ -10,6 +10,9 @@ use wit_parser::{Function, FunctionKind, Type, WorldItem, WorldKey};
 
 use crate::{PageBody, PageDefinition, PluginRuntime, RepositoryManifest, RepositoryPackage};
 
+const MAX_PAGE_STATE_KEYS: usize = 64;
+const MAX_PAGE_STATE_BYTES: usize = 64 * 1024;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ValidationReport {
     pub runtime: PluginRuntime,
@@ -282,10 +285,22 @@ pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
             PageBody::Actions {
                 title,
                 content,
+                state,
                 actions,
             } => {
                 validate_name(title, "动作页标题")?;
                 validate_name(content, "动作页内容")?;
+                ensure!(
+                    state.len() <= MAX_PAGE_STATE_KEYS,
+                    "动作页状态字段不能超过 {MAX_PAGE_STATE_KEYS} 个"
+                );
+                for key in state.keys() {
+                    validate_name(key, "动作页状态字段")?;
+                }
+                ensure!(
+                    serde_json::to_vec(state)?.len() <= MAX_PAGE_STATE_BYTES,
+                    "动作页状态不能超过 {MAX_PAGE_STATE_BYTES} 字节"
+                );
                 ensure!(!actions.is_empty(), "动作页至少需要一个动作");
                 let mut ids = HashSet::new();
                 for action in actions {
@@ -612,6 +627,9 @@ artifact = "dist/pages.json"
             body: PageBody::Actions {
                 title: "Counter".to_owned(),
                 content: "0".to_owned(),
+                state: [("count".to_owned(), serde_json::json!(0))]
+                    .into_iter()
+                    .collect(),
                 actions: vec![crate::PageActionDefinition {
                     id: "increment".to_owned(),
                     label: "+1".to_owned(),
@@ -627,6 +645,41 @@ artifact = "dist/pages.json"
         let error = validate_page_definitions(&pages).expect_err("重复页面动作必须失败");
         assert!(error.to_string().contains("页面动作 id 重复"));
         Ok(())
+    }
+
+    #[test]
+    fn rejects_invalid_runtime_page_state() {
+        let page = |state| PageDefinition {
+            id: "actions".to_owned(),
+            label: "Actions".to_owned(),
+            icon: None,
+            scene: crate::SceneDefinition {
+                id: "examples".to_owned(),
+                label: "Examples".to_owned(),
+            },
+            required_permission: None,
+            body: PageBody::Actions {
+                title: "Counter".to_owned(),
+                content: "0".to_owned(),
+                state,
+                actions: vec![crate::PageActionDefinition {
+                    id: "increment".to_owned(),
+                    label: "+1".to_owned(),
+                }],
+            },
+        };
+
+        let blank = [(" ".to_owned(), serde_json::json!(0))]
+            .into_iter()
+            .collect();
+        assert!(validate_page_definitions(&[page(blank)]).is_err());
+
+        let oversized = [("content".to_owned(), serde_json::json!("x".repeat(65_536)))]
+            .into_iter()
+            .collect();
+        let error =
+            validate_page_definitions(&[page(oversized)]).expect_err("超大页面状态必须失败");
+        assert!(error.to_string().contains("动作页状态不能超过"));
     }
 
     #[test]

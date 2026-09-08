@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -115,6 +118,8 @@ pub enum PageBody {
     Actions {
         title: String,
         content: String,
+        #[serde(default)]
+        state: BTreeMap<String, Value>,
         actions: Vec<PageActionDefinition>,
     },
 }
