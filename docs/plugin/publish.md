@@ -31,13 +31,14 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
     AIO_PLUGIN_PUBLISH_URL: ${{ vars.AIO_PLUGIN_PUBLISH_URL }}
     AIO_PLUGIN_PUBLISH_TOKEN: ${{ secrets.AIO_PLUGIN_PUBLISH_TOKEN }}
   run: |
-    artifact_base64="$(base64 --wrap=0 dist/plugin.wasm)"
+    artifact_file="$RUNNER_TEMP/plugin.wasm.base64"
+    base64 --wrap=0 dist/plugin.wasm | tr -d '\n' > "$artifact_file"
     artifact_sha256="$(sha256sum dist/plugin.wasm | awk '{print $1}')"
     jq -n \
       --arg git "${{ github.server_url }}/${{ github.repository }}.git" \
       --arg rev "$GITHUB_SHA" \
       --rawfile manifest aio-plugin.toml \
-      --arg artifact_base64 "$artifact_base64" \
+      --rawfile artifact_base64 "$artifact_file" \
       --arg artifact_sha256 "$artifact_sha256" \
       '{git:$git, rev:$rev, manifest_toml:$manifest, artifact_base64:$artifact_base64, artifact_sha256:$artifact_sha256}' \
       | curl --fail --show-error --request POST \
