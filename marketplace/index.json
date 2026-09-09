@@ -97,6 +97,24 @@
     }
   },
   {
+    "git": "https://github.com/zjarlin/aio-plugin-ts-pages.git",
+    "rev": "4b7bfc18f866d6fcde8050a2d36dc6983268a6fb",
+    "title": "TypeScript Static Pages",
+    "summary": "使用 TypeScript 生成语言无关的 PageDefinition JSON 静态页面，不创建运行时实例。",
+    "license": "MIT",
+    "tags": [
+      "example",
+      "typescript",
+      "page-definition"
+    ],
+    "runtime": "page-definition",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
+  },
+  {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
     "rev": "0747e31128d625a999babffc21766ab137882691",
     "title": "TypeScript Process Service",
