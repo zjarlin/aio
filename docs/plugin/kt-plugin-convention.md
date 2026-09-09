@@ -19,6 +19,12 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 目录与验证
 
+初始化当前稳定的 KMP `process` 仓库：
+
+```bash
+aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin --runtime process
+```
+
 跨平台代码放在 Toolchain 模块的 `src/`，平台适配分别放入 `src@wasmJs/`、`src@wasmWasi/` 或 `src@jvm/`。每个功能包包含 `README.md`。
 
 仓库提交固定版本和 SHA256 校验的 `kotlin` wrapper，并使用 `project.yaml`、`module.yaml` 描述模块。典型验证命令：

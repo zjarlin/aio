@@ -79,6 +79,8 @@ cargo run -p az-app-aio-first-party --no-default-features --features server
 cargo install --path cli
 aio init my-app --title "我的应用"
 aio plugin init my-pages --title "业务页面"
+aio plugin init my-kmp-service --title "KMP 服务" --language kotlin --runtime process
+aio plugin init my-ts-component --title "TS 页面" --language typescript --runtime wasm-component
 
 cd my-app
 aio plugin install https://example.com/team/my-pages.git

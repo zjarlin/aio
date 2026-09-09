@@ -4,7 +4,7 @@
 
 ```bash
 cargo install --path cli
-aio plugin init ../aio-plugin-hello --name aio-plugin-hello --title "Hello"
+aio plugin init ../aio-plugin-hello --name aio-plugin-hello --title "Hello" --language rust --runtime rust-source
 ```
 
 仓库由 `client`、`server` 两个 crate 组成。只需要一端时可删除另一目录和对应清单段；不要建立空转发 crate。

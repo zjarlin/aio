@@ -1,0 +1,18 @@
+[plugin.runtime]
+kind = "process"
+artifact = "dist/plugin.jar"
+host_version = ">=2026.9.8"
+container_image = "eclipse-temurin:21-jre@sha256:5c67d24ee8e3dd810b2a0cb6c3827ced2ac5d22729538f90b36c2b9d77678bb8"
+entrypoint = ["java", "-jar", "{artifact}"]
+health_check = "/health"
+shutdown_timeout_seconds = 10
+
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = "kmp-process-screen"
+pages = ["kmp-process"]
+routes = ["echo"]

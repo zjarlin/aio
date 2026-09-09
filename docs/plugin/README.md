@@ -118,6 +118,16 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md) 和 [TypeScript 规约](ts-plugin-convention.md)。
 
+CLI 可以直接生成当前稳定的三种仓库骨架：
+
+```bash
+aio plugin init aio-plugin-rust --language rust --runtime rust-source
+aio plugin init aio-plugin-kmp --language kotlin --runtime process
+aio plugin init aio-plugin-ts --language typescript --runtime wasm-component
+```
+
+省略 `--language` 时保持 Rust 默认；选择 Kotlin 或 TypeScript 时可以省略 `--runtime`，CLI 会选择上面对应的稳定目标。尚未发布模板的语言/运行时组合会在创建目录前失败，不生成半成品仓库。
+
 提交市场前必须在插件仓库执行语言自身的构建与测试，然后使用宿主共享校验器：
 
 ```bash

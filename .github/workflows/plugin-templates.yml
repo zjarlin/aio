@@ -1,0 +1,83 @@
+name: Plugin templates
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - "docs/plugin/**"
+      - ".github/workflows/plugin-templates.yml"
+  pull_request:
+    paths:
+      - "cli/**"
+      - "docs/plugin/**"
+      - ".github/workflows/plugin-templates.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: 启用模板指定的 pnpm
+        run: |
+          mkdir -p "$RUNNER_TEMP/corepack"
+          corepack enable --install-directory "$RUNNER_TEMP/corepack"
+          echo "$RUNNER_TEMP/corepack" >> "$GITHUB_PATH"
+
+      - name: 构建 AIO CLI
+        run: cargo build -p az-aio-cli
+
+      - name: 验证 Kotlin Toolchain process 模板
+        env:
+          KOTLIN_CLI_NO_WELCOME_BANNER: "1"
+        run: |
+          plugin="$RUNNER_TEMP/aio-plugin-generated-kmp"
+          target/debug/aio plugin init "$plugin" --title "生成的 Kotlin 插件" --language kotlin --runtime process
+          cd "$plugin"
+          ./kotlin check
+          ./kotlin build -m model -p wasmJs
+          ./kotlin package -m service -p jvm -f executable-jar
+          mkdir -p dist
+          cp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar
+          "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
+
+      - name: 验证 TypeScript Wasm Component 模板
+        run: |
+          plugin="$RUNNER_TEMP/aio-plugin-generated-ts"
+          target/debug/aio plugin init "$plugin" --title "生成的 TypeScript 插件" --language typescript --runtime wasm-component
+          cd "$plugin"
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
+
+      - name: 检出运行时宿主
+        uses: actions/checkout@v4
+        with:
+          repository: zjarlin/aio-public-shell
+          ref: f3a8d555e053d1290c142d95f47783052ead7c0b
+          path: aio-public-shell
+
+      - name: 验证生成 Component 的租户隔离
+        working-directory: aio-public-shell
+        env:
+          AIO_TEST_WASM_COMPONENT: ${{ runner.temp }}/aio-plugin-generated-ts/dist/plugin.wasm
+        run: cargo test --no-default-features --features server activates_reuses_and_destroys_tenant_instances -- --ignored

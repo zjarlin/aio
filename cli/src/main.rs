@@ -7,7 +7,7 @@ mod repository_plugin;
 use std::{env, path::PathBuf};
 
 use anyhow::{Result, bail};
-use initialize::{ApplicationOptions, RepositoryPluginOptions};
+use initialize::{ApplicationOptions, PluginLanguage, RepositoryPluginOptions, parse_runtime};
 use repository_plugin::PluginSource;
 
 fn main() -> Result<()> {
@@ -61,8 +61,8 @@ fn run_plugin_command(arguments: &[String]) -> Result<()> {
 
     match command {
         "init" => {
-            let (path, name, title) = parse_init_arguments(&arguments[1..])?;
-            initialize::repository_plugin(RepositoryPluginOptions { path, name, title })
+            let options = parse_plugin_init_arguments(&arguments[1..])?;
+            initialize::repository_plugin(options)
         }
         "install" => {
             let source = parse_plugin_source(&arguments[1..])?;
@@ -113,6 +113,40 @@ fn parse_init_arguments(arguments: &[String]) -> Result<(PathBuf, Option<String>
     Ok((PathBuf::from(path), name, title))
 }
 
+fn parse_plugin_init_arguments(arguments: &[String]) -> Result<RepositoryPluginOptions> {
+    let Some(path) = arguments.first() else {
+        bail!("缺少初始化目录");
+    };
+    let mut name = None;
+    let mut title = None;
+    let mut language = None;
+    let mut runtime = None;
+    let mut index = 1;
+    while index < arguments.len() {
+        let value = arguments
+            .get(index + 1)
+            .ok_or_else(|| anyhow::anyhow!("选项 {} 缺少值", arguments[index]))?;
+        match arguments[index].as_str() {
+            "--name" => name = Some(value.clone()),
+            "--title" => title = Some(value.clone()),
+            "--language" => language = Some(PluginLanguage::parse(value)?),
+            "--runtime" => runtime = Some(parse_runtime(value)?),
+            option => bail!("未知插件初始化选项: {option}"),
+        }
+        index += 2;
+    }
+    let language = language.unwrap_or_default();
+    let runtime = runtime.unwrap_or_else(|| language.default_runtime());
+    language.validate_runtime(runtime)?;
+    Ok(RepositoryPluginOptions {
+        path: PathBuf::from(path),
+        name,
+        title,
+        language,
+        runtime,
+    })
+}
+
 fn parse_plugin_source(arguments: &[String]) -> Result<PluginSource> {
     let Some(git) = arguments.first() else {
         bail!("缺少要安装的 Git 地址");
@@ -149,5 +183,53 @@ fn print_usage() {
 }
 
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>] [--runtime <rust-source|process|wasm-component>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+}
+
+#[cfg(test)]
+mod tests {
+    use az_plugin_manifest::PluginRuntime;
+
+    use super::*;
+
+    #[test]
+    fn parses_multilingual_plugin_template_options() -> Result<()> {
+        let options = parse_plugin_init_arguments(&[
+            "plugin".to_owned(),
+            "--language".to_owned(),
+            "kotlin".to_owned(),
+            "--runtime".to_owned(),
+            "process".to_owned(),
+        ])?;
+
+        assert_eq!(options.path, PathBuf::from("plugin"));
+        assert_eq!(options.language, PluginLanguage::Kotlin);
+        assert_eq!(options.runtime, PluginRuntime::Process);
+        Ok(())
+    }
+
+    #[test]
+    fn derives_runtime_from_language() -> Result<()> {
+        let options = parse_plugin_init_arguments(&[
+            "plugin".to_owned(),
+            "--language".to_owned(),
+            "typescript".to_owned(),
+        ])?;
+
+        assert_eq!(options.runtime, PluginRuntime::WasmComponent);
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_language_runtime_mismatch() {
+        let result = parse_plugin_init_arguments(&[
+            "plugin".to_owned(),
+            "--language".to_owned(),
+            "kotlin".to_owned(),
+            "--runtime".to_owned(),
+            "wasm-component".to_owned(),
+        ]);
+
+        assert!(result.is_err());
+    }
 }

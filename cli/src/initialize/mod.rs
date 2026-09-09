@@ -1,4 +1,8 @@
+mod kotlin;
+mod language;
+mod scaffold;
 pub(crate) mod template;
+mod typescript;
 
 use std::{
     fs,
@@ -6,6 +10,9 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, bail, ensure};
+use az_plugin_manifest::PluginRuntime;
+
+pub use language::{PluginLanguage, parse_runtime, runtime_name};
 
 pub struct ApplicationOptions {
     pub path: PathBuf,
@@ -17,6 +24,8 @@ pub struct RepositoryPluginOptions {
     pub path: PathBuf,
     pub name: Option<String>,
     pub title: Option<String>,
+    pub language: PluginLanguage,
+    pub runtime: PluginRuntime,
 }
 
 pub fn application(options: ApplicationOptions) -> Result<()> {
@@ -77,55 +86,79 @@ pub fn application(options: ApplicationOptions) -> Result<()> {
 }
 
 pub fn repository_plugin(options: RepositoryPluginOptions) -> Result<()> {
+    options.language.validate_runtime(options.runtime)?;
     let name = resolve_package_name(&options.path, options.name)?;
     let title = options.title.unwrap_or_else(|| name.clone());
+    let language = options.language;
+    let runtime = options.runtime;
     let client_name = format!("{name}-client");
     let server_name = format!("{name}-server");
     prepare_directory(&options.path)?;
-    create_directory(&options.path.join("client/src"))?;
-    create_directory(&options.path.join("server/src"))?;
+    match language {
+        PluginLanguage::Rust => {
+            rust_repository_plugin(&options.path, &name, &title, &client_name, &server_name)?;
+        }
+        PluginLanguage::Kotlin => kotlin::repository_plugin(&options.path, &name, &title)?,
+        PluginLanguage::TypeScript => {
+            typescript::repository_plugin(&options.path, &name, &title)?;
+        }
+    }
+    println!(
+        "已初始化插件: {} ({} + {})",
+        options.path.display(),
+        language.as_str(),
+        runtime_name(runtime)
+    );
+    Ok(())
+}
+
+fn rust_repository_plugin(
+    path: &Path,
+    name: &str,
+    title: &str,
+    client_name: &str,
+    server_name: &str,
+) -> Result<()> {
+    create_directory(&path.join("client/src"))?;
+    create_directory(&path.join("server/src"))?;
     write(
-        &options.path.join("Cargo.toml"),
-        &template::repository_workspace(&client_name, &server_name),
+        &path.join("Cargo.toml"),
+        &template::repository_workspace(client_name, server_name),
     )?;
     write(
-        &options.path.join("client/Cargo.toml"),
-        &template::repository_client_cargo(&client_name),
+        &path.join("client/Cargo.toml"),
+        &template::repository_client_cargo(client_name),
     )?;
     write(
-        &options.path.join("server/Cargo.toml"),
-        &template::repository_server_cargo(&server_name),
+        &path.join("server/Cargo.toml"),
+        &template::repository_server_cargo(server_name),
     )?;
+    write(&path.join("rust-toolchain.toml"), template::RUST_TOOLCHAIN)?;
     write(
-        &options.path.join("rust-toolchain.toml"),
-        template::RUST_TOOLCHAIN,
-    )?;
-    write(
-        &options.path.join("aio-plugin.toml"),
+        &path.join("aio-plugin.toml"),
         template::repository_manifest(),
     )?;
-    write(&options.path.join(".gitignore"), "/target\n")?;
+    write(&path.join(".gitignore"), "/target\n")?;
     write(
-        &options.path.join("README.md"),
-        &template::repository_plugin_readme(&title),
+        &path.join("README.md"),
+        &template::repository_plugin_readme(title),
     )?;
     write(
-        &options.path.join("client/README.md"),
+        &path.join("client/README.md"),
         template::repository_client_readme(),
     )?;
     write(
-        &options.path.join("client/src/lib.rs"),
-        &template::repository_client_source(&title),
+        &path.join("client/src/lib.rs"),
+        &template::repository_client_source(title),
     )?;
     write(
-        &options.path.join("server/README.md"),
+        &path.join("server/README.md"),
         template::repository_server_readme(),
     )?;
     write(
-        &options.path.join("server/src/lib.rs"),
-        &template::repository_server_source(&name),
+        &path.join("server/src/lib.rs"),
+        &template::repository_server_source(name),
     )?;
-    println!("已初始化全栈插件: {}", options.path.display());
     Ok(())
 }
 
@@ -217,6 +250,8 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("问候".to_owned()),
+            language: PluginLanguage::Rust,
+            runtime: PluginRuntime::RustSource,
         })?;
 
         assert!(path.join("client/src/lib.rs").is_file());
@@ -227,5 +262,83 @@ mod tests {
         assert!(manifest.contains("plugin.client"));
         assert!(manifest.contains("plugin.server"));
         Ok(())
+    }
+
+    #[test]
+    fn initializes_kotlin_toolchain_process_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-kotlin");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("Kotlin 问候".to_owned()),
+            language: PluginLanguage::Kotlin,
+            runtime: PluginRuntime::Process,
+        })?;
+
+        assert!(path.join("kotlin").is_file());
+        assert!(path.join("project.yaml").is_file());
+        assert!(path.join("model/README.md").is_file());
+        assert!(path.join("service/README.md").is_file());
+        assert!(fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"process\""));
+        assert!(
+            fs::read_to_string(
+                path.join("model/src/site/addzero/aio/plugin/hello_kotlin/RuntimeModel.kt")
+            )?
+            .contains("Kotlin 问候")
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            assert_ne!(
+                fs::metadata(path.join("kotlin"))?.permissions().mode() & 0o111,
+                0
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn initializes_typescript_component_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-typescript");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("TypeScript 问候".to_owned()),
+            language: PluginLanguage::TypeScript,
+            runtime: PluginRuntime::WasmComponent,
+        })?;
+
+        assert!(path.join("pnpm-lock.yaml").is_file());
+        assert!(path.join("wit/page.wit").is_file());
+        assert!(path.join("src/plugin/README.md").is_file());
+        assert!(path.join("test/plugin/README.md").is_file());
+        assert!(
+            fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"wasm-component\"")
+        );
+        let source = fs::read_to_string(path.join("src/plugin/component.ts"))?;
+        assert!(source.contains("hello-typescript"));
+        assert!(source.contains("TypeScript 问候"));
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_unpublished_template_before_creating_directory() {
+        let root = tempfile::tempdir().expect("创建临时目录");
+        let path = root.path().join("unsupported");
+
+        let result = repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: None,
+            language: PluginLanguage::Kotlin,
+            runtime: PluginRuntime::WasmComponent,
+        });
+
+        assert!(result.is_err());
+        assert!(!path.exists());
     }
 }

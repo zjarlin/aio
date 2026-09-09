@@ -1,0 +1,15 @@
+product: jvm/app
+
+description: "AIO process plugin HTTP service"
+
+dependencies:
+  - //model
+
+settings:
+  kotlin:
+    version: 2.3.21
+  jvm:
+    jdk:
+      version: 21
+    release: 21
+    mainClass: site.addzero.aio.plugin.kmpservice.MainKt

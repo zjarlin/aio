@@ -1,0 +1,19 @@
+product:
+  type: kmp/lib
+  platforms: [jvm, wasmJs]
+
+description: "Language-neutral AIO process plugin models"
+
+dependencies:
+  - org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0
+
+settings:
+  kotlin:
+    version: 2.3.21
+    serialization:
+      enabled: true
+      version: 1.11.0
+  jvm:
+    jdk:
+      version: 21
+    release: 21

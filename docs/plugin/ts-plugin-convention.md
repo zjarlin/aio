@@ -2,6 +2,12 @@
 
 TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入不成熟的编译链。
 
+初始化当前稳定的 TypeScript Component 仓库：
+
+```bash
+aio plugin init ../aio-plugin-ts --title "TS 页面" --language typescript --runtime wasm-component
+```
+
 可安装的参考仓库是 [aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component) 和 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
 
 ## 客户端
