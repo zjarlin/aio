@@ -84,7 +84,7 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
 }
 ```
 
-纯文本页面把 `body` 改为 `{ "kind": "text", "title": "...", "content": "..." }`。渲染阶段的 `UiOp`、HTML、CSS 和 Dioxus `Element` 都不能作为持久化协议。
+纯文本页面把 `body` 改为 `{ "kind": "text", "title": "...", "content": "..." }`。`counter` 由宿主维护当前浏览器中的本地计数，适合静态示例，不调用插件运行时，也不在刷新后保留值。渲染阶段的 `UiOp`、HTML、CSS 和 Dioxus `Element` 都不能作为持久化协议。
 
 需要由插件处理按钮事件时，`wasm-component` 或 `process` 页面使用 `actions` 页面体：
 
@@ -118,7 +118,7 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md) 和 [TypeScript 规约](ts-plugin-convention.md)。
 
-CLI 可以直接生成当前稳定的六种仓库骨架：
+CLI 可以直接生成当前稳定的七种仓库骨架：
 
 ```bash
 aio plugin init aio-plugin-rust --language rust --runtime rust-source

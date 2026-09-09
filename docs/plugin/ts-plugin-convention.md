@@ -10,11 +10,11 @@ aio plugin init ../aio-plugin-ts --title "TS 页面" --language typescript --run
 aio plugin init ../aio-plugin-node --title "Node 服务" --language typescript --runtime process
 ```
 
-可安装的参考仓库是 [aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component) 和 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
+可安装的参考仓库是 [aio-plugin-ts-pages](https://github.com/zjarlin/aio-plugin-ts-pages)、[aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component) 和 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
 
 ## 客户端
 
-- 只贡献静态宿主页面时使用 `page-definition`；构建产物是经过类型检查的 `dist/pages.json`，安装后不保留 Node 或 Wasm 实例，也不能声明动作页面。
+- 只贡献静态宿主页面时使用 `page-definition`；构建产物是经过类型检查的 `dist/pages.json`，安装后不保留 Node 或 Wasm 实例，也不能声明动作页面。`counter` 是宿主本地交互，刷新后重置；需要跨刷新、按租户保存状态时使用 `actions` 页面体与 Component 或 process 运行时。
 - AIO 原生页面使用语言无关的 `PageDefinition` 与 [`aio:plugin/page@1`](wit/page.wit)；TypeScript 产物通过 `definition` 生成定义并通过 `handle` 处理受限请求，不直接修改宿主 DOM。
 - 需要宿主持有按钮布局与持久状态时使用 `actions` 页面体。`handle` 接收宿主注入的 `page_action` 请求和当前 `body.state`，并在响应 `body` 中返回 `{"body": <PageBody>}`；插件应实现无状态 reducer，不要信任浏览器提交的租户、用户或页面状态。
 - 需要在账户区提供入口时，在子插件清单写 `account_actions = ["页面 ID"]`。该入口只能跳转到同一 Component 已声明的页面，标题、图标和权限均由页面定义推导。
