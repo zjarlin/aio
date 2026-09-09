@@ -13,7 +13,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-component.git",
-    "rev": "a200e734b6b9048d48b8d9218df280069531bdef",
+    "rev": "98df8dc14a0779eb63e19faf2a31d2408de3adcd",
     "title": "Kotlin Multiplatform Wasm Component",
     "summary": "使用 Kotlin Toolchain 构建 JVM、wasmJs 与 wasmWasi commonMain，并在 Wasmtime 中按租户运行动态动作页面和服务。",
     "license": "MIT",
@@ -28,7 +28,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
-    "rev": "54c7469c02a9a9e4128b1297219b9ea746756533",
+    "rev": "0e74ef5dd8c2fa80d6a652254a1239081a1847ac",
     "title": "Kotlin Multiplatform Counter",
     "summary": "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。",
     "license": "MIT",
@@ -41,7 +41,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
-    "rev": "dc9f703c0fad5109109390a7803b5fae261abb31",
+    "rev": "d225811457d2444d4dc85e27b0955d84e5155024",
     "title": "Kotlin Multiplatform Service",
     "summary": "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。",
     "license": "MIT",
@@ -55,7 +55,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
-    "rev": "87533efab13820b10827babce968a6dd5c9f2b2c",
+    "rev": "c10f1277635af8a2300a55b68003c0b59e72326d",
     "title": "TypeScript Wasm Component",
     "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建无状态动作页面，由宿主按租户持久化页面状态。",
     "license": "MIT",
@@ -68,7 +68,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "da27a4f73bad2f9a5458a815fc31cff170abef20",
+    "rev": "0747e31128d625a999babffc21766ab137882691",
     "title": "TypeScript Process Service",
     "summary": "使用固定 pnpm 与 TypeScript 工具链构建无状态 Node 服务，由宿主按租户持久化动作页面并代理后端路由。",
     "license": "MIT",
