@@ -138,4 +138,4 @@ aio plugin init aio-plugin-node --language typescript --runtime process
 aio plugin validate
 ```
 
-该命令不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。
+该命令不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。对 `wasm-component`，校验器还会在无导入、限 fuel/内存的 Wasmtime 实例中调用 `definition()`，验证实际返回的 `PageDefinition` 与子插件页面声明一致。

@@ -4,11 +4,11 @@ use std::{
     path::{Component as PathComponent, Path, PathBuf},
 };
 
+use crate::{
+    PageBody, PageDefinition, PluginRuntime, RepositoryManifest, RepositoryPackage,
+    validate_wasm_component,
+};
 use anyhow::{Context as _, Result, bail, ensure};
-use wit_component::{DecodedWasm, decode};
-use wit_parser::{Function, FunctionKind, Type, WorldItem, WorldKey};
-
-use crate::{PageBody, PageDefinition, PluginRuntime, RepositoryManifest, RepositoryPackage};
 
 const MAX_PAGE_STATE_KEYS: usize = 64;
 const MAX_PAGE_STATE_BYTES: usize = 64 * 1024;
@@ -196,10 +196,11 @@ pub fn validate_repository(root: &Path) -> Result<ValidationReport> {
             pages.len()
         }
         PluginRuntime::WasmComponent => {
-            validate_wasm_component(&fs::read(&artifact).with_context(|| {
+            let pages = validate_wasm_component(&fs::read(&artifact).with_context(|| {
                 format!("读取 Wasm Component 产物失败: {}", artifact.display())
             })?)?;
-            declared_pages(&manifest).len()
+            validate_declared_pages(&manifest, &pages)?;
+            pages.len()
         }
         PluginRuntime::Process => 0,
         PluginRuntime::RustSource => bail!("rust-source 不使用 plugin.runtime"),
@@ -316,57 +317,6 @@ pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
         }
     }
     Ok(())
-}
-
-pub fn validate_wasm_component(bytes: &[u8]) -> Result<()> {
-    let decoded = decode(bytes).context("解析 Wasm Component WIT 失败")?;
-    let (resolve, world_id) = match decoded {
-        DecodedWasm::Component(resolve, world_id) => (resolve, world_id),
-        DecodedWasm::WitPackage(_, _) => bail!("artifact 是 WIT package，不是 Wasm Component"),
-    };
-    let world = &resolve.worlds[world_id];
-    ensure!(
-        world.imports.is_empty(),
-        "Wasm Component 包含未授权导入: {}",
-        world.imports.len()
-    );
-    ensure!(
-        world.exports.len() == 2,
-        "Wasm Component 必须仅导出 definition 和 handle"
-    );
-    let definition = exported_function(
-        world.exports.get(&WorldKey::Name("definition".to_owned())),
-        "definition",
-    )?;
-    ensure!(definition.params.is_empty(), "definition 不能声明参数");
-    ensure!(
-        definition.result.as_ref() == Some(&Type::String),
-        "definition 必须返回 string"
-    );
-    let handle = exported_function(
-        world.exports.get(&WorldKey::Name("handle".to_owned())),
-        "handle",
-    )?;
-    ensure!(
-        handle.params.len() == 1 && handle.params[0].1 == Type::String,
-        "handle 必须接受一个 string 参数"
-    );
-    ensure!(
-        handle.result.as_ref() == Some(&Type::String),
-        "handle 必须返回 string"
-    );
-    Ok(())
-}
-
-fn exported_function<'a>(item: Option<&'a WorldItem>, name: &str) -> Result<&'a Function> {
-    let Some(WorldItem::Function(function)) = item else {
-        bail!("Wasm Component 缺少 {name} 函数导出");
-    };
-    ensure!(
-        function.kind == FunctionKind::Freestanding,
-        "Wasm Component {name} 必须是同步独立函数"
-    );
-    Ok(function)
 }
 
 fn validate_source_package(package: &RepositoryPackage) -> Result<()> {

@@ -49,7 +49,7 @@ WIT_BINDGEN=/path/to/wit-bindgen ./scripts/generate-bindings.sh --check
 aio plugin validate
 ```
 
-当前 Kotlin 运行时会导入 WASI Preview 1 `random_get`。零能力模板使用仓库内最小适配器消除最终宿主导入；它不提供密码学安全随机数，业务代码不得用 `Random.Default` 生成令牌。需要真实随机或其他 WASI 能力时，先扩展清单能力和宿主授权，不得绕过空导入校验。
+当前 Kotlin 运行时会导入 WASI Preview 1 `random_get`。零能力模板使用仓库内最小适配器消除最终宿主导入；它不提供密码学安全随机数，业务代码不得用 `Random.Default` 生成令牌。需要真实随机或其他 WASI 能力时，先扩展清单能力和宿主授权，不得绕过空导入校验。`aio plugin validate` 会实际实例化 Component 并调用 `definition()`，因此该函数必须是无状态、无外部导入且能返回与清单一致的页面。
 
 需要生成 Kotlin DTO 或在 CI 中做结构校验时，先执行 `aio plugin schema schemas` 获取正式 JSON Schema；不要从文档示例或某个宿主实现反推协议模型。
 

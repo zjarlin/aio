@@ -5,6 +5,8 @@ mod model;
 mod schema;
 #[cfg(feature = "validation")]
 mod validation;
+#[cfg(feature = "validation")]
+mod wasm_component;
 
 pub use model::{
     CapabilityManifest, ComponentResponse, PageActionDefinition, PageActionResult, PageBody,
@@ -17,5 +19,6 @@ pub use schema::{PluginSchema, schemas};
 pub use validation::{
     ValidationReport, artifact_path, parse_manifest, read_manifest, validate_declared_pages,
     validate_host_compatibility, validate_manifest, validate_page_definitions, validate_repository,
-    validate_wasm_component,
 };
+#[cfg(feature = "validation")]
+pub use wasm_component::validate_wasm_component;

@@ -20,7 +20,7 @@ aio plugin init ../aio-plugin-node --title "Node 服务" --language typescript -
 - 需要在账户区提供入口时，在子插件清单写 `account_actions = ["页面 ID"]`。该入口只能跳转到同一 Component 已声明的页面，标题、图标和权限均由页面定义推导。
 - 需要完整 Web 框架和自有 DOM 时，产出隔离页面，由宿主以受限页面容器装载；必须声明网络、剪贴板、下载等权限。
 - 只有所用编译器能够生成并通过 `aio:plugin/page@1` Component ABI 校验时，才声明 `wasm-component`。
-- 纯页面和轻量请求插件应关闭 `stdio`、`random`、`clocks`、`http` 和 `fetch-event`，使产物不导入 WASI 能力。
+- 纯页面和轻量请求插件应关闭 `stdio`、`random`、`clocks`、`http` 和 `fetch-event`，使产物不导入 WASI 能力。`aio plugin validate` 会实际实例化 Component 并调用 `definition()`，因此该函数不能依赖初始化脚本、Node 运行时或任意外部导入。
 
 ## 服务端
 
