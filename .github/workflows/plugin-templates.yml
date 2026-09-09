@@ -124,7 +124,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zjarlin/aio-public-shell
-          ref: 93e0ec57c7d297b637b118e831a515ba4a905c9b
+          ref: 1113807bce777530018fae1a1a5e7bec056bdb22
           path: aio-public-shell
 
       - name: 验证生成 Component 的租户隔离
