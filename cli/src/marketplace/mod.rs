@@ -1,6 +1,7 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use anyhow::{Context as _, Result, ensure};
+use az_plugin_manifest::{CapabilityManifest, PluginRuntime};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -11,6 +12,8 @@ struct MarketplaceEntry {
     summary: String,
     license: String,
     tags: Vec<String>,
+    runtime: PluginRuntime,
+    capabilities: CapabilityManifest,
 }
 
 pub fn build(registry: &Path, output: &Path) -> Result<()> {
@@ -82,6 +85,25 @@ fn validate_entry(entry: &MarketplaceEntry, path: &Path) -> Result<()> {
         "市场 tags 不能为空: {}",
         path.display()
     );
+    ensure!(
+        entry.runtime != PluginRuntime::RustSource,
+        "市场条目不能直接发布 rust-source 插件: {}",
+        path.display()
+    );
+    ensure!(
+        entry
+            .capabilities
+            .network
+            .iter()
+            .all(|value| !value.trim().is_empty())
+            && entry
+                .capabilities
+                .filesystem
+                .iter()
+                .all(|value| !value.trim().is_empty()),
+        "市场能力声明不能包含空值: {}",
+        path.display()
+    );
     let mut tags = HashSet::new();
     for tag in &entry.tags {
         ensure!(
@@ -107,7 +129,7 @@ mod tests {
         fs::create_dir_all(&registry)?;
         fs::write(
             registry.join("hello.toml"),
-            "git = \"https://example.com/hello.git\"\nrev = \"0123456789012345678901234567890123456789\"\ntitle = \"Hello\"\nsummary = \"Example\"\nlicense = \"MIT\"\ntags = [\"example\"]\n",
+            "git = \"https://example.com/hello.git\"\nrev = \"0123456789012345678901234567890123456789\"\ntitle = \"Hello\"\nsummary = \"Example\"\nlicense = \"MIT\"\ntags = [\"example\"]\nruntime = \"page-definition\"\n[capabilities]\nnetwork = []\nfilesystem = []\ndatabase = false\n",
         )?;
 
         build(&registry, &output)?;

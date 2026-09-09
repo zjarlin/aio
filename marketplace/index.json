@@ -9,7 +9,13 @@
       "example",
       "dioxus",
       "full-stack"
-    ]
+    ],
+    "runtime": "wasm-component",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-component.git",
@@ -24,7 +30,13 @@
       "wasm-component",
       "full-stack",
       "preview"
-    ]
+    ],
+    "runtime": "wasm-component",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
@@ -37,7 +49,13 @@
       "kotlin",
       "kmp",
       "page-definition"
-    ]
+    ],
+    "runtime": "page-definition",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
@@ -51,7 +69,13 @@
       "kmp",
       "process",
       "full-stack"
-    ]
+    ],
+    "runtime": "process",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
@@ -64,7 +88,13 @@
       "typescript",
       "wasm-component",
       "full-stack"
-    ]
+    ],
+    "runtime": "wasm-component",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
@@ -78,6 +108,12 @@
       "node",
       "process",
       "full-stack"
-    ]
+    ],
+    "runtime": "process",
+    "capabilities": {
+      "network": [],
+      "filesystem": [],
+      "database": false
+    }
   }
 ]

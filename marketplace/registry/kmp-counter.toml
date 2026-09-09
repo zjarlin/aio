@@ -4,3 +4,9 @@ title = "Kotlin Multiplatform Counter"
 summary = "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。"
 license = "MIT"
 tags = ["example", "kotlin", "kmp", "page-definition"]
+runtime = "page-definition"
+
+[capabilities]
+network = []
+filesystem = []
+database = false
