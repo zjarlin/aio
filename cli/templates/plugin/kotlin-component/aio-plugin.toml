@@ -1,0 +1,18 @@
+[plugin.runtime]
+kind = "wasm-component"
+artifact = "dist/plugin.wasm"
+host_version = ">=2026.9.9"
+
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = "__PLUGIN_ID__-screen"
+pages = ["__PLUGIN_ID__"]
+
+[[plugin.subplugins]]
+id = "__PLUGIN_ID__-echo-service"
+dependencies = ["__PLUGIN_ID__-screen"]
+routes = ["echo"]

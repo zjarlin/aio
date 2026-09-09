@@ -9,7 +9,7 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 - 需要 AIO 原生页面时，目标是 `wasm-component` 并实现 [`aio:plugin/page@1`](wit/page.wit)；组件通过 `definition` 返回 `PageDefinition` JSON 数组，通过 `handle` 返回受限请求结果，不直接操作宿主 DOM。
 - 需要运行时按钮事件时使用 `actions` 页面体；`wasm-component` 在 `handle` 中返回新的 `PageBody`，`process` 在 `POST /aio/action` 返回相同结果。插件从宿主注入的当前 `body.state` 计算下一状态，不把租户页面状态保存在 JVM 或 Wasm 实例内。纯 `page-definition` 没有事件实例，校验器会拒绝动作页面。
 - 独立 Compose Multiplatform 页面只能作为隔离页面运行，不能伪装成 AIO 原生控件树。
-- 在 AIO Component ABI 正式发布前，Kotlin/Wasm 页面属于预览目标，不得提交为可自动安装的稳定插件。
+- Kotlin/Wasm Component 当前属于预览目标；进入市场时必须标记 `preview`，锁定 Kotlin、WIT 生成器和 `wasm-tools` 版本，并声明最低宿主版本。
 
 ## 服务端
 
@@ -19,10 +19,11 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 目录与验证
 
-初始化当前稳定的 KMP 静态页面或 `process` 仓库：
+初始化 KMP 静态页面、预览 Component 或 `process` 仓库：
 
 ```bash
 aio plugin init ../aio-plugin-kmp-pages --title "KMP 页面" --language kotlin --runtime page-definition
+aio plugin init ../aio-plugin-kmp-component --title "KMP Component" --language kotlin --runtime wasm-component
 aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin --runtime process
 ```
 
@@ -38,6 +39,18 @@ jq . dist/pages.json
 aio plugin validate
 ```
 
+Component 模板把同一模型编译到 JVM、wasmJs 和 wasmWasi，并使用 Kotlin 官方 fork 的 WIT 生成器与 `wasm-tools` 封装：
+
+```bash
+./kotlin build -m model -p jvm -p wasmJs -p wasmWasi
+./kotlin test -m model -p jvm
+WIT_BINDGEN=/path/to/wit-bindgen ./scripts/generate-bindings.sh --check
+./scripts/build-component.sh
+aio plugin validate
+```
+
+当前 Kotlin 运行时会导入 WASI Preview 1 `random_get`。零能力模板使用仓库内最小适配器消除最终宿主导入；它不提供密码学安全随机数，业务代码不得用 `Random.Default` 生成令牌。需要真实随机或其他 WASI 能力时，先扩展清单能力和宿主授权，不得绕过空导入校验。
+
 需要生成 Kotlin DTO 或在 CI 中做结构校验时，先执行 `aio plugin schema schemas` 获取正式 JSON Schema；不要从文档示例或某个宿主实现反推协议模型。
 
 可执行 JAR 使用 Toolchain 原生产物：
@@ -48,4 +61,4 @@ cp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.
 aio plugin validate
 ```
 
-只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。
+只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，Component 示例见 [aio-plugin-kmp-component](https://github.com/zjarlin/aio-plugin-kmp-component)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。

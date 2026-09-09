@@ -33,13 +33,14 @@ impl PluginLanguage {
             (Self::Rust, PluginRuntime::RustSource)
                 | (Self::Kotlin, PluginRuntime::Process)
                 | (Self::Kotlin, PluginRuntime::PageDefinition)
+                | (Self::Kotlin, PluginRuntime::WasmComponent)
                 | (Self::TypeScript, PluginRuntime::WasmComponent)
                 | (Self::TypeScript, PluginRuntime::Process)
                 | (Self::TypeScript, PluginRuntime::PageDefinition)
         );
         ensure!(
             supported,
-            "当前脚手架只支持 rust+rust-source、kotlin+page-definition、kotlin+process、typescript+page-definition、typescript+wasm-component、typescript+process"
+            "当前脚手架只支持 rust+rust-source、kotlin+page-definition、kotlin+wasm-component、kotlin+process、typescript+page-definition、typescript+wasm-component、typescript+process"
         );
         Ok(())
     }
@@ -95,11 +96,11 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unpublished_language_runtime_combinations() {
+    fn accepts_published_language_runtime_combinations() {
         assert!(
             PluginLanguage::Kotlin
                 .validate_runtime(PluginRuntime::WasmComponent)
-                .is_err()
+                .is_ok()
         );
         assert!(
             PluginLanguage::TypeScript

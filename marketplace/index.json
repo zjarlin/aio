@@ -12,6 +12,21 @@
     ]
   },
   {
+    "git": "https://github.com/zjarlin/aio-plugin-kmp-component.git",
+    "rev": "a200e734b6b9048d48b8d9218df280069531bdef",
+    "title": "Kotlin Multiplatform Wasm Component",
+    "summary": "使用 Kotlin Toolchain 构建 JVM、wasmJs 与 wasmWasi commonMain，并在 Wasmtime 中按租户运行动态动作页面和服务。",
+    "license": "MIT",
+    "tags": [
+      "example",
+      "kotlin",
+      "kmp",
+      "wasm-component",
+      "full-stack",
+      "preview"
+    ]
+  },
+  {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
     "rev": "54c7469c02a9a9e4128b1297219b9ea746756533",
     "title": "Kotlin Multiplatform Counter",

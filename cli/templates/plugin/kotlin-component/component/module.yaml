@@ -1,0 +1,10 @@
+product: wasm-wasi/app
+
+description: "AIO Kotlin Wasm Component 导出适配器"
+
+dependencies:
+  - //model
+
+settings:
+  kotlin:
+    version: 2.4.10

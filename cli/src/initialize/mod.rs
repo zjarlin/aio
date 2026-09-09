@@ -330,6 +330,35 @@ mod tests {
     }
 
     #[test]
+    fn initializes_kotlin_toolchain_component_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-kotlin-component");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("Kotlin Component 问候".to_owned()),
+            language: PluginLanguage::Kotlin,
+            runtime: PluginRuntime::WasmComponent,
+        })?;
+
+        assert!(path.join("kotlin").is_file());
+        assert!(path.join("wit/page.wit").is_file());
+        assert!(path.join("scripts/build-component.sh").is_file());
+        assert!(path.join("runtime/sandbox-preview1-adapter.wat").is_file());
+        assert!(
+            fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"wasm-component\"")
+        );
+        let source = fs::read_to_string(path.join(
+            "model/src/site/addzero/aio/plugin/hello_kotlin_component/contract/PluginContract.kt",
+        ))?;
+        assert!(source.contains("hello-kotlin-component"));
+        assert!(source.contains("Kotlin Component 问候"));
+        assert!(!source.contains("__PACKAGE_NAME__"));
+        Ok(())
+    }
+
+    #[test]
     fn initializes_typescript_component_plugin() -> Result<()> {
         let root = tempdir()?;
         let path = root.path().join("hello-typescript");
@@ -406,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unpublished_template_before_creating_directory() {
+    fn rejects_unsupported_template_before_creating_directory() {
         let root = tempfile::tempdir().expect("创建临时目录");
         let path = root.path().join("unsupported");
 
@@ -414,8 +443,8 @@ mod tests {
             path: path.clone(),
             name: None,
             title: None,
-            language: PluginLanguage::Kotlin,
-            runtime: PluginRuntime::WasmComponent,
+            language: PluginLanguage::Rust,
+            runtime: PluginRuntime::Process,
         });
 
         assert!(result.is_err());

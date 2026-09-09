@@ -225,9 +225,9 @@ mod tests {
         let result = parse_plugin_init_arguments(&[
             "plugin".to_owned(),
             "--language".to_owned(),
-            "kotlin".to_owned(),
+            "rust".to_owned(),
             "--runtime".to_owned(),
-            "wasm-component".to_owned(),
+            "process".to_owned(),
         ]);
 
         assert!(result.is_err());

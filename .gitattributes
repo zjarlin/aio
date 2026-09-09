@@ -1,0 +1,2 @@
+cli/templates/plugin/kotlin-component/component/src/**/bindings/*.kt whitespace=-blank-at-eof
+cli/templates/plugin/kotlin-component/component/src/**/bindings/**/*.kt whitespace=-blank-at-eof

@@ -1,0 +1,8 @@
+.DS_Store
+.idea/
+.kotlin/
+build/
+out/
+*.log
+!dist/
+!dist/plugin.wasm

@@ -123,6 +123,7 @@ CLI 可以直接生成当前稳定的六种仓库骨架：
 ```bash
 aio plugin init aio-plugin-rust --language rust --runtime rust-source
 aio plugin init aio-plugin-kmp-pages --language kotlin --runtime page-definition
+aio plugin init aio-plugin-kmp-component --language kotlin --runtime wasm-component
 aio plugin init aio-plugin-kmp --language kotlin --runtime process
 aio plugin init aio-plugin-ts-pages --language typescript --runtime page-definition
 aio plugin init aio-plugin-ts --language typescript --runtime wasm-component

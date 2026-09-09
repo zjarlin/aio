@@ -44,6 +44,11 @@ jobs:
       - name: 构建 AIO CLI
         run: cargo build -p az-aio-cli
 
+      - name: 安装固定的 Kotlin Component 工具链
+        run: |
+          cargo install --locked --git https://github.com/Kotlin/wit-bindgen.git --rev 700f2db5e1d01f7bee8d756750c6f631171f520e wit-bindgen-cli
+          cargo install --locked wasm-tools --version 1.240.0
+
       - name: 验证 Kotlin Toolchain process 模板
         env:
           KOTLIN_CLI_NO_WELCOME_BANNER: "1"
@@ -68,6 +73,18 @@ jobs:
           ./kotlin check
           ./kotlin build -m model -p jvm -p wasmJs
           ./kotlin run -m generator -p jvm -- dist/pages.json
+          "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
+
+      - name: 验证 Kotlin Toolchain Wasm Component 模板
+        env:
+          KOTLIN_CLI_NO_WELCOME_BANNER: "1"
+        run: |
+          plugin="$RUNNER_TEMP/aio-plugin-generated-kmp-component"
+          target/debug/aio plugin init "$plugin" --title "生成的 Kotlin Component" --language kotlin --runtime wasm-component
+          cd "$plugin"
+          ./kotlin check
+          ./scripts/generate-bindings.sh --check
+          ./scripts/build-component.sh
           "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
 
       - name: 验证 TypeScript Wasm Component 模板
@@ -107,13 +124,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zjarlin/aio-public-shell
-          ref: f3a8d555e053d1290c142d95f47783052ead7c0b
+          ref: 0f293e7eff37bb8d215c8fcdc92e4476d617140a
           path: aio-public-shell
 
       - name: 验证生成 Component 的租户隔离
-        env:
-          AIO_TEST_WASM_COMPONENT: ${{ runner.temp }}/aio-plugin-generated-ts/dist/plugin.wasm
         run: |
           cp -R aio-public-shell "$RUNNER_TEMP/aio-public-shell"
           cd "$RUNNER_TEMP/aio-public-shell"
-          cargo test --no-default-features --features server activates_reuses_and_destroys_tenant_instances -- --ignored
+          AIO_TEST_WASM_COMPONENT="$RUNNER_TEMP/aio-plugin-generated-ts/dist/plugin.wasm" \
+            cargo test --no-default-features --features server activates_reuses_and_destroys_tenant_instances -- --ignored
+          AIO_TEST_WASM_COMPONENT="$RUNNER_TEMP/aio-plugin-generated-kmp-component/dist/plugin.wasm" \
+            cargo test --no-default-features --features server activates_reuses_and_destroys_tenant_instances -- --ignored
