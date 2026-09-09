@@ -22,7 +22,7 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
 
 ## CI 请求
 
-发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。`wasm-component` 会重新校验 WIT ABI、无导入限制、页面定义和租户实例健康检查；失败时保持旧活动 revision。
+发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列重新校验 WIT ABI、无导入限制、页面定义和租户实例健康检查；校验或激活失败时保持旧活动 revision。
 
 ```yaml
 - name: 发布已验证的 Component
@@ -41,10 +41,23 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
       --rawfile artifact_base64 "$artifact_file" \
       --arg artifact_sha256 "$artifact_sha256" \
       '{git:$git, rev:$rev, manifest_toml:$manifest, artifact_base64:$artifact_base64, artifact_sha256:$artifact_sha256}' \
-      | curl --fail --show-error --request POST \
+      | curl --fail-with-body --show-error --request POST \
           --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" \
           --header 'content-type: application/json' \
           --data-binary @- "$AIO_PLUGIN_PUBLISH_URL"
+```
+
+发布接口会立即返回当前状态（`queued`、`running`、`active` 或 `failed`）：
+
+```json
+{"job_id":"...","state":"queued","revision":"<GITHUB_SHA>"}
+```
+
+使用同一租户的登录会话查询后台进度；`failed` 响应包含原因，上一活动版本继续提供服务：
+
+```bash
+curl --fail --cookie "aio_session=<登录会话>" \
+  https://aio.addzero.site/api/runtime/publish-jobs/<job_id>
 ```
 
 在线发布要求在 `aio-plugin.toml` 的同一份可校验清单中声明市场元数据。宿主从已校验的清单写入 PostgreSQL，因此 Git 提交、Wasm、能力声明、页面和市场卡片会锁定在同一个 revision：
