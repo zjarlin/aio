@@ -15,6 +15,8 @@ pub struct RepositoryManifest {
 #[serde(deny_unknown_fields)]
 pub struct PluginManifest {
     #[serde(default)]
+    pub marketplace: Option<MarketplaceManifest>,
+    #[serde(default)]
     pub client: Option<RepositoryPackage>,
     #[serde(default)]
     pub server: Option<RepositoryPackage>,
@@ -24,6 +26,16 @@ pub struct PluginManifest {
     pub capabilities: CapabilityManifest,
     #[serde(default)]
     pub subplugins: Vec<SubpluginManifest>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+pub struct MarketplaceManifest {
+    pub title: String,
+    pub summary: String,
+    pub license: String,
+    pub tags: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

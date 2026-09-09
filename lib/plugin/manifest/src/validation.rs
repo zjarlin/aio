@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    PageBody, PageDefinition, PluginRuntime, RepositoryManifest, RepositoryPackage,
-    validate_wasm_component,
+    MarketplaceManifest, PageBody, PageDefinition, PluginRuntime, RepositoryManifest,
+    RepositoryPackage, validate_wasm_component,
 };
 use anyhow::{Context as _, Result, bail, ensure};
 
@@ -59,9 +59,23 @@ pub fn validate_manifest(manifest: &RepositoryManifest) -> Result<()> {
         }
         validate_runtime_options(runtime)?;
     }
+    if let Some(marketplace) = &plugin.marketplace {
+        validate_marketplace(marketplace)?;
+    }
     validate_capabilities(&plugin.capabilities.network, "网络能力")?;
     validate_capabilities(&plugin.capabilities.filesystem, "文件系统能力")?;
     validate_subplugins(manifest)
+}
+
+fn validate_marketplace(marketplace: &MarketplaceManifest) -> Result<()> {
+    validate_name(&marketplace.title, "市场标题")?;
+    validate_name(&marketplace.summary, "市场简介")?;
+    validate_name(&marketplace.license, "市场许可证")?;
+    ensure!(!marketplace.tags.is_empty(), "市场标签不能为空");
+    for tag in &marketplace.tags {
+        validate_name(tag, "市场标签")?;
+    }
+    Ok(())
 }
 
 pub fn validate_host_compatibility(
@@ -514,6 +528,29 @@ artifact = "dist/pages.json"
             "{RUNTIME}\n[[plugin.subplugins]]\nid='profile'\npages=['profile']\n[[plugin.subplugins]]\nid='account'\ndependencies=['profile']\naccount_actions=['profile']"
         ))?;
         assert_eq!(manifest.plugin.subplugins.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn validates_marketplace_metadata() -> Result<()> {
+        let manifest = parse_manifest(&format!(
+            "{RUNTIME}\n[plugin.marketplace]\ntitle='Counter'\nsummary='Tenant counter'\nlicense='MIT'\ntags=['example', 'wasm']"
+        ))?;
+        assert_eq!(
+            manifest
+                .plugin
+                .marketplace
+                .as_ref()
+                .expect("市场元数据必须保留")
+                .title,
+            "Counter"
+        );
+
+        let error = parse_manifest(&format!(
+            "{RUNTIME}\n[plugin.marketplace]\ntitle='Counter'\nsummary='Tenant counter'\nlicense='MIT'\ntags=[]"
+        ))
+        .expect_err("空市场标签必须失败");
+        assert!(error.to_string().contains("市场标签"));
         Ok(())
     }
 

@@ -9,9 +9,9 @@ mod validation;
 mod wasm_component;
 
 pub use model::{
-    CapabilityManifest, ComponentResponse, PageActionDefinition, PageActionResult, PageBody,
-    PageDefinition, PluginManifest, PluginRequest, PluginRuntime, RepositoryManifest,
-    RepositoryPackage, RuntimeManifest, SceneDefinition, SubpluginManifest,
+    CapabilityManifest, ComponentResponse, MarketplaceManifest, PageActionDefinition,
+    PageActionResult, PageBody, PageDefinition, PluginManifest, PluginRequest, PluginRuntime,
+    RepositoryManifest, RepositoryPackage, RuntimeManifest, SceneDefinition, SubpluginManifest,
 };
 #[cfg(feature = "schema")]
 pub use schema::{PluginSchema, schemas};

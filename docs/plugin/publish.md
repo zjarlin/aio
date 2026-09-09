@@ -47,4 +47,14 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
           --data-binary @- "$AIO_PLUGIN_PUBLISH_URL"
 ```
 
-需要进入市场的插件继续提交市场元数据，或由管理员在发布请求附带 `marketplace` 展示对象。市场页面只读 PostgreSQL 缓存：远程 HTTPS/Git registry 会后台刷新，超时只保留上一次成功索引，不影响市场页面和活动插件。
+在线发布要求在 `aio-plugin.toml` 的同一份可校验清单中声明市场元数据。宿主从已校验的清单写入 PostgreSQL，因此 Git 提交、Wasm、能力声明、页面和市场卡片会锁定在同一个 revision：
+
+```toml
+[plugin.marketplace]
+title = "订单中心"
+summary = "按租户隔离的订单处理页面与服务。"
+license = "MIT"
+tags = ["orders", "wasm-component"]
+```
+
+市场页面只读 PostgreSQL 缓存：远程 HTTPS/Git registry 会后台刷新，超时只保留上一次成功索引，不影响市场页面和活动插件。
