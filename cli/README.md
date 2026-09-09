@@ -10,6 +10,7 @@ aio init my-app --title "我的应用"
 aio plugin init my-plugin --title "业务插件"
 aio plugin init my-kmp-plugin --title "KMP 服务" --language kotlin --runtime process
 aio plugin init my-component --title "TS 页面" --language typescript --runtime wasm-component
+aio plugin init my-node-plugin --title "Node 服务" --language typescript --runtime process
 cd my-app
 aio plugin install https://example.com/team/my-plugin.git
 aio plugin list

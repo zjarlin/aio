@@ -100,7 +100,7 @@ pub fn repository_plugin(options: RepositoryPluginOptions) -> Result<()> {
         }
         PluginLanguage::Kotlin => kotlin::repository_plugin(&options.path, &name, &title)?,
         PluginLanguage::TypeScript => {
-            typescript::repository_plugin(&options.path, &name, &title)?;
+            typescript::repository_plugin(&options.path, &name, &title, runtime)?;
         }
     }
     println!(
@@ -322,6 +322,30 @@ mod tests {
         let source = fs::read_to_string(path.join("src/plugin/component.ts"))?;
         assert!(source.contains("hello-typescript"));
         assert!(source.contains("TypeScript 问候"));
+        Ok(())
+    }
+
+    #[test]
+    fn initializes_typescript_process_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-node");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("Node 问候".to_owned()),
+            language: PluginLanguage::TypeScript,
+            runtime: PluginRuntime::Process,
+        })?;
+
+        assert!(path.join("pnpm-lock.yaml").is_file());
+        assert!(path.join("src/service/README.md").is_file());
+        assert!(path.join("test/service/README.md").is_file());
+        assert!(fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"process\""));
+        let source = fs::read_to_string(path.join("src/service/server.ts"))?;
+        assert!(source.contains("hello-node"));
+        assert!(source.contains("Node 问候"));
+        assert!(source.contains("action.kind !== \"page_action\""));
         Ok(())
     }
 

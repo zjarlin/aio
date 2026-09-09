@@ -1,0 +1,18 @@
+[plugin.runtime]
+kind = "process"
+artifact = "dist/service/server.js"
+host_version = ">=2026.9.8"
+container_image = "node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3"
+entrypoint = ["node", "{artifact}"]
+health_check = "/health"
+shutdown_timeout_seconds = 10
+
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = "ts-process-screen"
+pages = ["ts-process"]
+routes = ["echo"]
