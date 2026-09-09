@@ -116,7 +116,7 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 
 `marketplace/registry/` 是可审计的静态目录。每个插件一个 TOML，合并后即可被索引；是否要求人工审核由仓库分支保护决定，不进入协议。市场只负责发现，租户始终可以直接配置未收录的 Git 仓库。
 
-语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md) 和 [TypeScript 规约](ts-plugin-convention.md)。
+语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md)、[TypeScript 规约](ts-plugin-convention.md) 和 [在线发布规约](publish.md)。
 
 CLI 可以直接生成当前稳定的七种仓库骨架：
 

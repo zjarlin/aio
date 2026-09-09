@@ -23,6 +23,7 @@ description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 
 - KMP 静态页面插件可以用 commonMain 模型和 JVM 生成器产出 `PageDefinition` JSON，声明 `kind = "page-definition"`；必须用仓库内 `kotlin` wrapper 同时编译 JVM 与 wasmJs，并提交生成产物。
 - 当前公网宿主已经激活容器化 `process` 监督器；只为预置 digest 镜像和零额外能力清单声明在线可安装，额外网络、文件系统或数据库能力仍必须标注为未开放。
 - 公网安装阶段不得执行仓库脚本。构建和测试在插件作者 CI 或受控发布器中完成，安装器只校验已提交 artifact 并原子切换；进程监督器停止或数据库切换失败时保留并恢复上一版本。
+- Component 需要在 push 后在线更新时，必须使用来源和租户绑定的发布凭证；CI 只提交完整 SHA、清单、artifact 与 SHA-256，不能使用跨来源的共享令牌。规约和 Actions 示例见 `docs/plugin/publish.md`。
 
 ## 完成验证
 
