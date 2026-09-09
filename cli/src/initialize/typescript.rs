@@ -5,6 +5,71 @@ use az_plugin_manifest::PluginRuntime;
 
 use super::scaffold::{TemplateFile, materialize};
 
+const PAGE_FILES: &[TemplateFile] = &[
+    TemplateFile {
+        path: ".gitignore",
+        content: include_str!("../../templates/plugin/typescript-pages/.gitignore"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "aio-plugin.toml",
+        content: include_str!("../../templates/plugin/typescript-pages/aio-plugin.toml"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "package.json",
+        content: include_str!("../../templates/plugin/typescript-pages/package.json"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "pnpm-lock.yaml",
+        content: include_str!("../../templates/plugin/typescript-process/pnpm-lock.yaml"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "tsconfig.json",
+        content: include_str!("../../templates/plugin/typescript-pages/tsconfig.json"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "src/node-runtime.d.ts",
+        content: include_str!("../../templates/plugin/typescript-pages/src/node-runtime.d.ts"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "src/pages/README.md",
+        content: include_str!("../../templates/plugin/typescript-pages/src/pages/README.md"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "src/pages/definition.ts",
+        content: include_str!("../../templates/plugin/typescript-pages/src/pages/definition.ts"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "src/generator/README.md",
+        content: include_str!("../../templates/plugin/typescript-pages/src/generator/README.md"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "src/generator/main.ts",
+        content: include_str!("../../templates/plugin/typescript-pages/src/generator/main.ts"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "test/pages/README.md",
+        content: include_str!("../../templates/plugin/typescript-pages/test/pages/README.md"),
+        executable: false,
+    },
+    TemplateFile {
+        path: "test/pages/definition.test.mjs",
+        content: include_str!(
+            "../../templates/plugin/typescript-pages/test/pages/definition.test.mjs"
+        ),
+        executable: false,
+    },
+];
+
 const COMPONENT_FILES: &[TemplateFile] = &[
     TemplateFile {
         path: ".gitignore",
@@ -124,10 +189,25 @@ pub fn repository_plugin(
     runtime: PluginRuntime,
 ) -> Result<()> {
     match runtime {
+        PluginRuntime::PageDefinition => page_plugin(path, name, title),
         PluginRuntime::WasmComponent => component_plugin(path, name, title),
         PluginRuntime::Process => process_plugin(path, name, title),
         _ => unreachable!("语言与运行目标已在初始化入口校验"),
     }
+}
+
+fn page_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
+    let title_literal = serde_json::to_string(title)?;
+    let name_literal = serde_json::to_string(name)?;
+    let about_literal = serde_json::to_string(&format!("{name}-about"))?;
+    let replacements = [
+        ("__PLUGIN_NAME__", name_literal.clone()),
+        ("__PRIMARY_ID__", name_literal),
+        ("__ABOUT_ID__", about_literal),
+        ("__TITLE__", title_literal),
+    ];
+    materialize(path, PAGE_FILES, &replacements)?;
+    super::write(&path.join("README.md"), &page_readme(title))
 }
 
 fn component_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
@@ -155,6 +235,12 @@ fn process_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
     ];
     materialize(path, PROCESS_FILES, &replacements)?;
     super::write(&path.join("README.md"), &process_readme(title))
+}
+
+fn page_readme(title: &str) -> String {
+    format!(
+        "# {title}\n\n这是 TypeScript `page-definition` 插件。类型化模型生成 `dist/pages.json`，宿主在安装时校验并挂载页面，不创建运行实例。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\naio plugin validate\n```\n\n发布前提交 `pnpm-lock.yaml` 和 `dist/pages.json`；静态页面插件不能声明动作页面。\n"
+    )
 }
 
 fn component_readme(title: &str) -> String {

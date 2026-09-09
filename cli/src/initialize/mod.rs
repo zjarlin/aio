@@ -98,7 +98,9 @@ pub fn repository_plugin(options: RepositoryPluginOptions) -> Result<()> {
         PluginLanguage::Rust => {
             rust_repository_plugin(&options.path, &name, &title, &client_name, &server_name)?;
         }
-        PluginLanguage::Kotlin => kotlin::repository_plugin(&options.path, &name, &title)?,
+        PluginLanguage::Kotlin => {
+            kotlin::repository_plugin(&options.path, &name, &title, runtime)?;
+        }
         PluginLanguage::TypeScript => {
             typescript::repository_plugin(&options.path, &name, &title, runtime)?;
         }
@@ -300,6 +302,34 @@ mod tests {
     }
 
     #[test]
+    fn initializes_kotlin_toolchain_page_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-kotlin-pages");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("Kotlin 页面".to_owned()),
+            language: PluginLanguage::Kotlin,
+            runtime: PluginRuntime::PageDefinition,
+        })?;
+
+        assert!(path.join("kotlin").is_file());
+        assert!(path.join("generator/README.md").is_file());
+        assert!(path.join("model/README.md").is_file());
+        assert!(
+            fs::read_to_string(path.join("aio-plugin.toml"))?
+                .contains("kind = \"page-definition\"")
+        );
+        let source = fs::read_to_string(
+            path.join("model/src/site/addzero/aio/plugin/hello_kotlin_pages/PageDefinition.kt"),
+        )?;
+        assert!(source.contains("hello-kotlin-pages"));
+        assert!(source.contains("Kotlin 页面"));
+        Ok(())
+    }
+
+    #[test]
     fn initializes_typescript_component_plugin() -> Result<()> {
         let root = tempdir()?;
         let path = root.path().join("hello-typescript");
@@ -346,6 +376,32 @@ mod tests {
         assert!(source.contains("hello-node"));
         assert!(source.contains("Node 问候"));
         assert!(source.contains("action.kind !== \"page_action\""));
+        Ok(())
+    }
+
+    #[test]
+    fn initializes_typescript_page_definition_plugin() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("hello-ts-pages");
+
+        repository_plugin(RepositoryPluginOptions {
+            path: path.clone(),
+            name: None,
+            title: Some("TypeScript 页面".to_owned()),
+            language: PluginLanguage::TypeScript,
+            runtime: PluginRuntime::PageDefinition,
+        })?;
+
+        assert!(path.join("pnpm-lock.yaml").is_file());
+        assert!(path.join("src/pages/README.md").is_file());
+        assert!(path.join("src/generator/README.md").is_file());
+        assert!(
+            fs::read_to_string(path.join("aio-plugin.toml"))?
+                .contains("kind = \"page-definition\"")
+        );
+        let source = fs::read_to_string(path.join("src/pages/definition.ts"))?;
+        assert!(source.contains("hello-ts-pages"));
+        assert!(source.contains("TypeScript 页面"));
         Ok(())
     }
 

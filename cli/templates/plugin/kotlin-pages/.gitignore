@@ -1,0 +1,6 @@
+/.kotlin
+/build
+/.idea
+/.DS_Store
+!/dist/
+!/dist/pages.json

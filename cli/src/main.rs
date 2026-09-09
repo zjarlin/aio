@@ -183,7 +183,7 @@ fn print_usage() {
 }
 
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>] [--runtime <rust-source|process|wasm-component>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>] [--runtime <rust-source|page-definition|process|wasm-component>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
 }
 
 #[cfg(test)]

@@ -1,0 +1,17 @@
+[plugin.runtime]
+kind = "page-definition"
+artifact = "dist/pages.json"
+
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = __PRIMARY_ID__
+pages = [__PRIMARY_ID__]
+
+[[plugin.subplugins]]
+id = __ABOUT_ID__
+dependencies = [__PRIMARY_ID__]
+pages = [__ABOUT_ID__]

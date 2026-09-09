@@ -118,11 +118,13 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md) 和 [TypeScript 规约](ts-plugin-convention.md)。
 
-CLI 可以直接生成当前稳定的四种仓库骨架：
+CLI 可以直接生成当前稳定的六种仓库骨架：
 
 ```bash
 aio plugin init aio-plugin-rust --language rust --runtime rust-source
+aio plugin init aio-plugin-kmp-pages --language kotlin --runtime page-definition
 aio plugin init aio-plugin-kmp --language kotlin --runtime process
+aio plugin init aio-plugin-ts-pages --language typescript --runtime page-definition
 aio plugin init aio-plugin-ts --language typescript --runtime wasm-component
 aio plugin init aio-plugin-node --language typescript --runtime process
 ```

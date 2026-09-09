@@ -58,6 +58,18 @@ jobs:
           cp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar
           "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
 
+      - name: 验证 Kotlin Toolchain page-definition 模板
+        env:
+          KOTLIN_CLI_NO_WELCOME_BANNER: "1"
+        run: |
+          plugin="$RUNNER_TEMP/aio-plugin-generated-kmp-pages"
+          target/debug/aio plugin init "$plugin" --title "生成的 Kotlin 页面" --language kotlin --runtime page-definition
+          cd "$plugin"
+          ./kotlin check
+          ./kotlin build -m model -p jvm -p wasmJs
+          ./kotlin run -m generator -p jvm -- dist/pages.json
+          "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
+
       - name: 验证 TypeScript Wasm Component 模板
         run: |
           plugin="$RUNNER_TEMP/aio-plugin-generated-ts"
@@ -73,6 +85,17 @@ jobs:
         run: |
           plugin="$RUNNER_TEMP/aio-plugin-generated-node"
           target/debug/aio plugin init "$plugin" --title "生成的 Node 插件" --language typescript --runtime process
+          cd "$plugin"
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm typecheck
+          pnpm test
+          pnpm build
+          "$GITHUB_WORKSPACE/target/debug/aio" plugin validate
+
+      - name: 验证 TypeScript page-definition 模板
+        run: |
+          plugin="$RUNNER_TEMP/aio-plugin-generated-ts-pages"
+          target/debug/aio plugin init "$plugin" --title "生成的 TypeScript 页面" --language typescript --runtime page-definition
           cd "$plugin"
           pnpm install --frozen-lockfile --ignore-scripts
           pnpm typecheck

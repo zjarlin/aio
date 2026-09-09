@@ -19,9 +19,10 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 目录与验证
 
-初始化当前稳定的 KMP `process` 仓库：
+初始化当前稳定的 KMP 静态页面或 `process` 仓库：
 
 ```bash
+aio plugin init ../aio-plugin-kmp-pages --title "KMP 页面" --language kotlin --runtime page-definition
 aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin --runtime process
 ```
 
