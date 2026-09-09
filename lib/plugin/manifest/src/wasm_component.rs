@@ -6,7 +6,8 @@ use wit_parser::{Function, FunctionKind, Type, WorldItem, WorldKey};
 
 use crate::{PageDefinition, validate_page_definitions};
 
-const FUEL_PER_DEFINITION: u64 = 10_000_000;
+// Component 适配层在 definition 阶段会初始化序列化和页面模型，跨语言产物通常比业务调用消耗更多 fuel。
+const FUEL_PER_DEFINITION: u64 = 100_000_000;
 const MAX_DEFINITION_BYTES: usize = 1024 * 1024;
 const MAX_MEMORY_BYTES: usize = 128 * 1024 * 1024;
 const MAX_TABLE_ELEMENTS: usize = 100_000;
