@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     env, fs,
     io::{Read, Write},
     net::IpAddr,
@@ -53,6 +54,19 @@ struct PreparedPublication {
     manifest_toml: String,
     artifact_base64: String,
     artifact_sha256: String,
+    git_proof: GitProof,
+}
+
+#[derive(Serialize)]
+struct GitProof {
+    commit_base64: String,
+    trees: Vec<GitTreeProof>,
+}
+
+#[derive(Serialize)]
+struct GitTreeProof {
+    oid: String,
+    content_base64: String,
 }
 
 fn prepare_publication(options: PublicationOptions) -> Result<PreparedPublication> {
@@ -107,6 +121,7 @@ fn prepare_publication(options: PublicationOptions) -> Result<PreparedPublicatio
         &artifact_bytes,
         "插件 artifact",
     )?;
+    let git_proof = prepare_git_proof(&root, &revision, &[MANIFEST_FILE, &runtime.artifact])?;
     let git = resolve_git_source(&root, options.git)?;
     let artifact_sha256 = format!("{:x}", Sha256::digest(&artifact_bytes));
     Ok(PreparedPublication {
@@ -115,6 +130,52 @@ fn prepare_publication(options: PublicationOptions) -> Result<PreparedPublicatio
         manifest_toml,
         artifact_base64: STANDARD.encode(artifact_bytes),
         artifact_sha256,
+        git_proof,
+    })
+}
+
+fn prepare_git_proof(root: &Path, revision: &str, paths: &[&str]) -> Result<GitProof> {
+    let commit = git_output(root, &["cat-file", "commit", revision])?;
+    let root_tree = git_text(root, &["rev-parse", &format!("{revision}^{{tree}}")])?;
+    ensure!(
+        is_full_revision(&root_tree),
+        "Git 根 tree OID 不是完整 SHA-1"
+    );
+
+    let mut tree_oids = vec![root_tree.clone()];
+    let mut seen = HashSet::from([root_tree]);
+    for relative in paths {
+        let mut directory = PathBuf::new();
+        let parent = Path::new(relative)
+            .parent()
+            .context("发布文件路径缺少父目录")?;
+        for component in parent.components() {
+            directory.push(component);
+            let git_directory = directory
+                .to_str()
+                .context("发布文件路径不是有效 UTF-8")?
+                .replace(std::path::MAIN_SEPARATOR, "/");
+            let oid = git_text(root, &["rev-parse", &format!("{revision}:{git_directory}")])?;
+            ensure!(is_full_revision(&oid), "Git tree OID 不是完整 SHA-1: {oid}");
+            if seen.insert(oid.clone()) {
+                tree_oids.push(oid);
+            }
+        }
+    }
+
+    let trees = tree_oids
+        .into_iter()
+        .map(|oid| {
+            let content = git_output(root, &["cat-file", "tree", &oid])?;
+            Ok(GitTreeProof {
+                oid,
+                content_base64: STANDARD.encode(content),
+            })
+        })
+        .collect::<Result<_>>()?;
+    Ok(GitProof {
+        commit_base64: STANDARD.encode(commit),
+        trees,
     })
 }
 
@@ -181,6 +242,7 @@ struct PublishPluginRequest<'a> {
     manifest_toml: &'a str,
     artifact_base64: &'a str,
     artifact_sha256: &'a str,
+    git_proof: &'a GitProof,
 }
 
 #[derive(Deserialize)]
@@ -262,6 +324,7 @@ fn encode_request(publication: &PreparedPublication) -> Result<Vec<u8>> {
         manifest_toml: &publication.manifest_toml,
         artifact_base64: &publication.artifact_base64,
         artifact_sha256: &publication.artifact_sha256,
+        git_proof: &publication.git_proof,
     })?;
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
     encoder.write_all(&json)?;
@@ -379,10 +442,53 @@ mod tests {
         assert_eq!(publication.git, "https://example.com/community/pages.git");
         assert_eq!(publication.revision, revision);
         assert_eq!(publication.artifact_sha256.len(), 64);
+        assert_eq!(
+            STANDARD.decode(&publication.git_proof.commit_base64)?,
+            git_output(repository.path(), &["cat-file", "commit", &revision])?
+        );
+        let expected_tree_oids = [
+            git_text(
+                repository.path(),
+                &["rev-parse", &format!("{revision}^{{tree}}")],
+            )?,
+            git_text(
+                repository.path(),
+                &["rev-parse", &format!("{revision}:dist")],
+            )?,
+            git_text(
+                repository.path(),
+                &["rev-parse", &format!("{revision}:dist/generated")],
+            )?,
+        ];
+        assert_eq!(
+            publication
+                .git_proof
+                .trees
+                .iter()
+                .map(|tree| tree.oid.as_str())
+                .collect::<Vec<_>>(),
+            expected_tree_oids
+        );
+        for tree in &publication.git_proof.trees {
+            assert_eq!(
+                STANDARD.decode(&tree.content_base64)?,
+                git_output(repository.path(), &["cat-file", "tree", &tree.oid])?
+            );
+        }
+        let duplicate_proof = prepare_git_proof(
+            repository.path(),
+            &revision,
+            &[
+                MANIFEST_FILE,
+                "dist/generated/pages.json",
+                "dist/generated/pages.json",
+            ],
+        )?;
+        assert_eq!(duplicate_proof.trees.len(), expected_tree_oids.len());
 
-        let artifact = fs::read_to_string(repository.path().join("dist/pages.json"))?;
+        let artifact = fs::read_to_string(repository.path().join("dist/generated/pages.json"))?;
         fs::write(
-            repository.path().join("dist/pages.json"),
+            repository.path().join("dist/generated/pages.json"),
             artifact.replace("Committed", "Changed"),
         )?;
         let error = prepare_publication(PublicationOptions {
@@ -405,6 +511,7 @@ mod tests {
                 .to_owned(),
             artifact_base64: "W10=".to_owned(),
             artifact_sha256: "b".repeat(64),
+            git_proof: test_git_proof(),
         };
         let encoded = encode_request(&publication)?;
         let mut decoder = GzDecoder::new(encoded.as_slice());
@@ -413,6 +520,12 @@ mod tests {
         let payload = serde_json::from_str::<serde_json::Value>(&decoded)?;
         assert_eq!(payload["rev"], publication.revision);
         assert_eq!(payload["artifact_base64"], "W10=");
+        assert_eq!(payload["git_proof"]["commit_base64"], "Y29tbWl0Cg==");
+        assert_eq!(payload["git_proof"]["trees"][0]["oid"], "c".repeat(40));
+        assert_eq!(
+            payload["git_proof"]["trees"][0]["content_base64"],
+            "dHJlZQo="
+        );
 
         let endpoint = publish_url("http://127.0.0.1:8080/api/runtime/plugins/publish")?;
         assert_eq!(
@@ -437,6 +550,7 @@ mod tests {
                 .to_owned(),
             artifact_base64: "W10=".to_owned(),
             artifact_sha256: "b".repeat(64),
+            git_proof: test_git_proof(),
         };
         let listener = TcpListener::bind("127.0.0.1:0")?;
         let endpoint = format!(
@@ -502,6 +616,11 @@ mod tests {
         let payload = serde_json::from_str::<serde_json::Value>(&body)?;
         assert_eq!(payload["rev"], revision);
         assert_eq!(payload["artifact_base64"], "W10=");
+        assert_eq!(payload["git_proof"]["commit_base64"], "Y29tbWl0Cg==");
+        assert_eq!(
+            payload["git_proof"]["trees"].as_array().map(Vec::len),
+            Some(1)
+        );
 
         let response = format!(
             "{{\"data\":{{\"job_id\":\"job-1\",\"revision\":\"{revision}\",\"page_count\":1,\"state\":\"active\",\"detail\":\"activated\"}}}}"
@@ -516,13 +635,13 @@ mod tests {
 
     fn plugin_repository() -> Result<tempfile::TempDir> {
         let repository = tempdir()?;
-        fs::create_dir(repository.path().join("dist"))?;
+        fs::create_dir_all(repository.path().join("dist/generated"))?;
         fs::write(
             repository.path().join(MANIFEST_FILE),
-            "[plugin.runtime]\nkind = \"page-definition\"\nartifact = \"dist/pages.json\"\n\n[plugin.marketplace]\ntitle = \"Pages\"\nsummary = \"Committed pages\"\nlicense = \"MIT\"\ntags = [\"test\"]\n\n[[plugin.subplugins]]\nid = \"pages\"\npages = [\"page\"]\n",
+            "[plugin.runtime]\nkind = \"page-definition\"\nartifact = \"dist/generated/pages.json\"\n\n[plugin.marketplace]\ntitle = \"Pages\"\nsummary = \"Committed pages\"\nlicense = \"MIT\"\ntags = [\"test\"]\n\n[[plugin.subplugins]]\nid = \"pages\"\npages = [\"page\"]\n",
         )?;
         fs::write(
-            repository.path().join("dist/pages.json"),
+            repository.path().join("dist/generated/pages.json"),
             "[{\"id\":\"page\",\"label\":\"Page\",\"icon\":null,\"scene\":{\"id\":\"workspace\",\"label\":\"Workspace\"},\"required_permission\":null,\"body\":{\"kind\":\"text\",\"title\":\"Page\",\"content\":\"Committed\"}}]\n",
         )?;
         git(repository.path(), &["init", "--quiet"])?;
@@ -534,6 +653,16 @@ mod tests {
         git(repository.path(), &["add", "--force", "."])?;
         git(repository.path(), &["commit", "--quiet", "-m", "init"])?;
         Ok(repository)
+    }
+
+    fn test_git_proof() -> GitProof {
+        GitProof {
+            commit_base64: "Y29tbWl0Cg==".to_owned(),
+            trees: vec![GitTreeProof {
+                oid: "c".repeat(40),
+                content_base64: "dHJlZQo=".to_owned(),
+            }],
+        }
     }
 
     fn git(root: &Path, arguments: &[&str]) -> Result<()> {
