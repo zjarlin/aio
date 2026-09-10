@@ -1,5 +1,5 @@
 pub const WORKBENCH_GIT: &str = "https://github.com/zjarlin/dioxus-admin-workbench.git";
-pub const WORKBENCH_REV: &str = "aa19101b1d0739a0c6f0df99677c1ba3483a746d";
+pub const WORKBENCH_REV: &str = "86475520ed70465457fec636ebb001b1c9dc0bd8";
 
 pub const GITIGNORE: &str = "/target\n/.aio/plugins\n";
 
