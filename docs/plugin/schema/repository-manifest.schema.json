@@ -38,6 +38,33 @@
       },
       "additionalProperties": false
     },
+    "MarketplaceManifest": {
+      "type": "object",
+      "properties": {
+        "license": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "summary",
+        "license",
+        "tags"
+      ]
+    },
     "PluginManifest": {
       "type": "object",
       "properties": {
@@ -53,6 +80,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/RepositoryPackage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "marketplace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MarketplaceManifest"
             },
             {
               "type": "null"
