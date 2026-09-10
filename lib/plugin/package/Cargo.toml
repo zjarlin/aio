@@ -1,0 +1,24 @@
+[package]
+name = "az-plugin-package"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Portable binary plugin packages shared by AIO publishers and hosts."
+repository.workspace = true
+workspace = "../../.."
+
+[dependencies]
+anyhow.workspace = true
+az-plugin-manifest = { workspace = true, features = ["validation"] }
+base64.workspace = true
+flate2.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+url.workspace = true
+
+[lints]
+workspace = true

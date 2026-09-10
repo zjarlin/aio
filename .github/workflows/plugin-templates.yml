@@ -123,14 +123,14 @@ jobs:
       - name: 检出运行时宿主
         uses: actions/checkout@v7
         with:
-          repository: zjarlin/aio-public-shell
+          repository: zjarlin/aio-idea
           ref: 53793e88c686e21b0719088c03fb0b15425f32db
-          path: aio-public-shell
+          path: aio-idea
 
       - name: 验证生成 Component 的租户隔离
         run: |
-          cp -R aio-public-shell "$RUNNER_TEMP/aio-public-shell"
-          cd "$RUNNER_TEMP/aio-public-shell"
+          cp -R aio-idea "$RUNNER_TEMP/aio-idea"
+          cd "$RUNNER_TEMP/aio-idea"
           AIO_TEST_WASM_COMPONENT="$RUNNER_TEMP/aio-plugin-generated-ts/dist/plugin.wasm" \
             cargo test --no-default-features --features server activates_reuses_and_destroys_tenant_instances -- --ignored
           AIO_TEST_WASM_COMPONENT="$RUNNER_TEMP/aio-plugin-generated-kmp-component/dist/plugin.wasm" \

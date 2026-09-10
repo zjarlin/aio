@@ -16,8 +16,8 @@ edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
 authors = ["zjarlin"]
-homepage = "https://github.com/zjarlin/aio"
-repository = "https://github.com/zjarlin/aio"
+homepage = "https://github.com/zjarlin/aio-platform"
+repository = "https://github.com/zjarlin/aio-platform"
 
 [workspace.dependencies]
 anyhow = "1.0.99"
@@ -31,6 +31,7 @@ convert_case = "0.8.0"
 deunicode = "1.6.2"
 az-plugin-core = { version = "=2026.5.10", path = "lib/plugin/core" }
 az-plugin-manifest = { version = "=2026.5.10", path = "lib/plugin/manifest", default-features = false }
+az-plugin-package = { version = "=2026.5.10", path = "lib/plugin/package" }
 az-dioxus-admin-shell = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/admin-shell/dioxus", default-features = false }
 az-ui-components = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/ui/components" }
 dotenvy = "0.15.7"
@@ -60,6 +61,7 @@ pinyin = { version = "0.11.0", default-features = false, features = ["plain"] }
 tower = { version = "0.5.2", features = ["util"] }
 tower-http = { version = "0.6.2", features = ["fs"] }
 urlencoding = "2"
+url = "2.5.7"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

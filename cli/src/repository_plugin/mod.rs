@@ -1,5 +1,6 @@
 mod git;
 mod manifest;
+mod packaging;
 mod publication;
 mod schema;
 
@@ -9,6 +10,7 @@ use anyhow::{Context as _, Result, ensure};
 use toml_edit::{DocumentMut, InlineTable, Item, Value};
 
 pub use manifest::PluginSource;
+pub use packaging::{PackageOptions, package};
 pub use publication::{PublicationOptions, publish};
 pub use schema::write_schemas;
 

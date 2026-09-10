@@ -1,79 +1,81 @@
-# 在线发布
+# 二进制插件发布
 
-插件仓库的 Git push 可以触发预构建 artifact 在线更新，但 Git 不再是公网请求期的依赖。市场条目、已验证清单、锁定提交、artifact 摘要、页面定义和生命周期事件都保存 PostgreSQL；Git 只保留代码审计和可复现构建来源。
+插件作者在自己的 Rust、Kotlin 或 TypeScript 工具链中构建产物，再直接把 `.aio-plugin` 包上传到 aio-idea 插件中心。发布不依赖 GitHub Actions，不需要 Git 对象证明，也不要求把构建产物提交到 Git。一个功能仓库同时包含前端、后端和共享逻辑；子插件与父插件作为同一个包发布。
 
-## 发布凭证
-
-有 `plugin:manage` 的当前租户管理员为一个 HTTPS Git 来源创建发布凭证：
+## 打包与上传
 
 ```bash
-curl --fail --cookie "aio_session=<登录会话>" \
-  --header 'content-type: application/json' \
-  --data '{"git":"https://github.com/example/aio-plugin-orders.git"}' \
-  https://aio.addzero.site/api/runtime/publish-credentials
+# 先执行本语言的构建和测试，确保清单引用的 artifact 已生成
+aio plugin validate ./orders
+aio plugin package ./orders --git https://example.com/team/orders.git --version 1.0.0 -o ./orders.aio-plugin
+
+# 令牌通过本地环境或密钥管理器提供，不写入仓库
+export AIO_PLUGIN_PUBLISH_TOKEN='<来源绑定的发布凭证>'
+aio plugin publish ./orders.aio-plugin
 ```
 
-响应的 `token` 只返回一次。把它保存为该插件仓库的 `AIO_PLUGIN_PUBLISH_TOKEN` Actions secret，并把 `https://aio.addzero.site/api/runtime/plugins/publish` 保存为 `AIO_PLUGIN_PUBLISH_URL` Actions variable。凭证被固定到创建时的租户和 Git 地址，不能更新其他来源或租户；轮换凭证会立即使旧 token 失效，撤销接口是：
+`package` 默认输出 `<目录>/dist/plugin.aio-plugin`。Git 来源可以从当前插件目录自己的 `origin` 推导，没有 `.git` 时显式指定 `--git`；不继承父目录的 Git 信息。未提交的清单和被忽略的编译产物也可打包。`publish <目录> --version 1.0.0` 可以省去单独的打包命令；版本也可从该目录的 `Cargo.toml` 或 `package.json` 推导。
 
-```bash
-curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
-  https://aio.addzero.site/api/runtime/publish-credentials/<credential-id>
-```
+已经生成的包可以搬到任何目录或机器再发布。包内来源、版本和内容摘要不能通过命令参数改写。默认发布接口为 `https://aio.addzero.site/api/runtime/plugins/publish`，私有中心通过 `AIO_PLUGIN_PUBLISH_URL` 覆盖。CI 只是可选的构建与调用方式，不属于协议要求。
 
-## CI 请求
+## 版本与内容
 
-发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。artifact 必须是该 SHA 中已跟踪的原始字节；CI 可以重建源码验证工具链，但必须在发布前恢复提交内 artifact。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列校验 PageDefinition、Component ABI 或 process 清单，并执行对应的实例健康检查；校验或激活失败时保持旧活动 revision。
+包由共享库 `az-plugin-package` 编解码，是包含清单和二进制 artifact 的确定性 gzip JSON 容器。HTTP 直接发送包字节，类型为 `application/vnd.aio.plugin+gzip`，不设置 `Content-Encoding`。当前限制为清单 128 KiB、artifact 32 MiB、压缩包与解压 JSON 各 48 MiB；多 gzip 成员、尾随数据、无效路径、缺失市场声明和摘要篡改均会被拒绝。
 
-统一使用 `aio plugin publish` 组装请求，CI 不应自行拼接 JSON、Base64、摘要和轮询脚本。该命令先执行共享协议校验，然后逐字节比较工作树中的清单和 artifact 与当前 Git 提交中的 blob；任何未提交、构建后未恢复或 SHA 不一致都会在上传前失败。
+- `version` 是发布者的 SemVer 版本号，同一 Git 来源不能用同一版本号覆盖不同内容。
+- `rev` 是来源、版本、清单、可选源码参考和 artifact 摘要共同确定的完整 SHA-256，正式锁定实际运行包。
+- `artifact_sha256` 校验二进制 artifact 字节。
+- `source_revision` 是可选完整 Git SHA，只作源码参考，不证明构建可复现，也不用于从 Git 下载包。
 
-```yaml
-- name: 检出固定版本的 AIO CLI
-  uses: actions/checkout@v7
-  with:
-    repository: zjarlin/aio
-    ref: ${{ vars.AIO_CLI_REVISION }} # 必须配置为审核过的完整提交 SHA
-    path: aio-host-source
-    submodules: recursive
-
-- name: 验证 AIO 插件协议
-  run: cargo +nightly run --manifest-path aio-host-source/Cargo.toml --bin aio -- plugin validate "$GITHUB_WORKSPACE"
-
-- name: 发布已验证的插件
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AIO_PLUGIN_PUBLISH_URL != ''
-  env:
-    AIO_PLUGIN_PUBLISH_URL: ${{ vars.AIO_PLUGIN_PUBLISH_URL }}
-    AIO_PLUGIN_PUBLISH_TOKEN: ${{ secrets.AIO_PLUGIN_PUBLISH_TOKEN }}
-  run: |
-    if [ -z "$AIO_PLUGIN_PUBLISH_TOKEN" ]; then
-      exit 0
-    fi
-    cargo +nightly run --manifest-path aio-host-source/Cargo.toml --bin aio -- plugin publish "$GITHUB_WORKSPACE"
-```
-
-发布接口会立即返回当前状态（`queued`、`running`、`active` 或 `failed`）：
-
-```json
-{"data":{"job_id":"...","state":"queued","detail":"已持久化 artifact，等待后台验证","revision":"<GITHUB_SHA>"}}
-```
-
-使用来源绑定的发布 token 或同一租户的管理员登录会话查询后台进度；`failed` 响应包含原因，上一活动版本继续提供服务：
-
-```bash
-curl --fail --cookie "aio_session=<登录会话>" \
-  https://aio.addzero.site/api/runtime/publish-jobs/<job_id>
-
-curl --fail --header "authorization: Bearer <发布令牌>" \
-  https://aio.addzero.site/api/runtime/publish-jobs/<job_id>
-```
-
-在线发布要求在 `aio-plugin.toml` 的同一份可校验清单中声明市场元数据。宿主从已校验的清单写入 PostgreSQL，因此 Git 提交、Wasm、能力声明、页面和市场卡片会锁定在同一个 revision：
+市场元数据必须在 `aio-plugin.toml` 中声明：
 
 ```toml
 [plugin.marketplace]
 title = "订单中心"
-summary = "按租户隔离的订单处理页面与服务。"
+summary = "按租户隔离的订单页面与服务。"
 license = "MIT"
-tags = ["orders", "wasm-component"]
+tags = ["orders"]
 ```
 
-市场页面只读 PostgreSQL 缓存：远程 HTTPS/Git registry 会后台刷新，超时只保留上一次成功索引，不影响市场页面和活动插件。
+当前在线目标为 `page-definition`、`wasm-component` 和 `process`。Rust 源码 `client/server` 声明不是可运行二进制包，必须使用源码装配流程；不能把尚未编译的 Dioxus crate 宣称为已交付在线插件。
+
+## 发布凭证
+
+平台需要用 `AIO_PLUGIN_PUBLISH_ACCOUNTS` 明确授权可管理发布来源的账号。该账号还需具有当前租户的 `plugin:manage` 权限；普通租户用户不能任意认领别人的全局发布来源。
+
+```bash
+curl --fail --cookie 'aio_session=<登录会话>' \
+  --header 'content-type: application/json' \
+  --data '{"git":"https://example.com/team/orders.git"}' \
+  https://aio.addzero.site/api/runtime/publish-credentials
+```
+
+响应中的 `token` 只返回一次。凭证固定到创建时的租户和 Git 来源，不能改发其他来源或租户；重复创建会轮换令牌。撤销接口：
+
+```bash
+curl --fail --request DELETE --cookie 'aio_session=<登录会话>' \
+  https://aio.addzero.site/api/runtime/publish-credentials/<credential-id>
+```
+
+## 保存与激活
+
+宿主先检查凭证、包完整性、清单与能力边界，再将完整包和元数据保存 PostgreSQL `plugin_packages`，返回后台 `job_id`。工作队列完成 PageDefinition 校验、Component ABI 或 process 健康检查，最后通过现有生命周期事务激活。上传不是立即执行任意代码；安装器不会执行 Cargo、Kotlin、pnpm 或仓库脚本。
+
+```json
+{"data":{"job_id":"...","state":"queued","revision":"<包内容 SHA-256>","detail":"..."}}
+```
+
+CLI 会等待 `active` 或 `failed`。发布失败、启动失败或数据库切换失败保留上一活动版本；只有成功激活的版本才进入可下载目录和市场。重传相同内容可重试发布任务，但同版本不同内容必须更换 SemVer。
+
+```bash
+curl --fail --header 'authorization: Bearer <发布令牌>' \
+  https://aio.addzero.site/api/runtime/publish-jobs/<job-id>
+
+curl --fail --cookie 'aio_session=<登录会话>' \
+  --output orders.aio-plugin \
+  https://aio.addzero.site/api/runtime/packages/<包内容 SHA-256>
+```
+
+市场元数据和安装读取数据库。已发布包的安装、启用、回滚和重启恢复可从数据库重建丢失的本地缓存，不回退到远程 Git；Git 拉取只服务于显式源码或未发布仓库安装，并且仍锁定完整 Git 提交。
+
+宿主限制并发发布和缓存资源；二进制中心默认最多 1024 个版本、2 GiB 包存储，可通过 `AIO_PLUGIN_PACKAGE_MAX_REVISIONS`、`AIO_PLUGIN_PACKAGE_MAX_BYTES` 调整。当前公网权限档不开放额外网络、文件系统或数据库能力。进程继续采用固定 digest 镜像、只读挂载、非 root 用户和资源限额，Wasm 实例按租户和版本隔离。

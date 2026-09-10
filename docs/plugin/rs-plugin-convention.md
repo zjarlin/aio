@@ -7,7 +7,7 @@ cargo install --path cli
 aio plugin init ../aio-plugin-hello --name aio-plugin-hello --title "Hello" --language rust
 ```
 
-Rust 插件固定使用源码装配，CLI 不接受 `--runtime` 选择。仓库由 `client`、`server` 两个 crate 组成；只需要一端时可删除另一目录和对应清单段，不要建立空转发 crate。
+当前 Rust/Dioxus 初始化使用源码装配，CLI 不接受 `--runtime` 选择。同一个 Git 仓库内的 `client`、`server` crate 分别拥有前端与后端，可以增加 `shared` crate 保存 DTO 和纯业务逻辑；它们不是两个 Git 仓库。只需要一端时可删除另一目录和对应清单段，不要建立空转发 crate。
 
 ## 页面
 
@@ -24,6 +24,12 @@ pub fn register(builder: &mut dill::CatalogBuilder) {
 ## 服务
 
 Service、Controller 分开并由 Dill 创建。`register` 只注册具体类型，`router` 只把已解析 Controller 转换成 Axum Router。业务错误使用 `anyhow::Result`，关键边界补充 `Context`。
+
+服务端依赖不得通过 shared crate 进入浏览器。Web 使用当前宿主的同源 API，Desktop 必须通过可配置后端地址建立连接，不能把浏览器专用请求实现作为跨平台 API。生成的主应用具有 Web、Desktop、Server 三个互斥目标；源码扩展随应用整体编译，不能作为单插件在线热替换的证据。
+
+## 二进制边界
+
+直接发布的包必须包含可独立运行的 PageDefinition、Wasm Component 或 process artifact，不能上传尚未编译的 `client/server` crate。Rust 编写的 Component 同样实现 [WIT 协议](wit/page.wit)，使用统一的 [二进制发布流程](publish.md)。Dioxus 自定义前端二进制与后端的联合在线装载尚未完成，不能将当前源码模板描述为这一能力。
 
 ## 验证
 

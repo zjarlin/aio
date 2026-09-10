@@ -43,7 +43,7 @@ mod tests {
             assert_eq!(
                 value["$id"],
                 format!(
-                    "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/{file_name}"
+                    "https://raw.githubusercontent.com/zjarlin/aio-platform/main/docs/plugin/schema/{file_name}"
                 )
             );
         }

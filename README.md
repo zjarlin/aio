@@ -1,6 +1,51 @@
-# AIO
+# aio-platform
 
-AIO 是数据库原生的 Dioxus 低代码应用。PostgreSQL 保存正式 `ProgramDefinition`，Studio 根据定义生成页面、领域 Service 契约与 Controller，再编译为 `ProgramImage` 发布。生成文件只是类型检查和实现扩展点，不反向成为业务定义真源。
+`aio-platform` 是插件开发平台，`aio-idea` 是使用它组装的应用产品。平台提供 CLI、无头插件契约、共享壳和多语言发布协议；[aio-idea](https://github.com/zjarlin/aio-idea) 负责公网运行时、租户组合和官方插件中心。命令仍为 `aio`，公开应用地址为 [aio.addzero.site](https://aio.addzero.site)。
+
+## 架构
+
+```mermaid
+flowchart TD
+    Repository["一个功能，一个 Git 仓库<br/>前端 + 后端 + shared + 子插件"]
+    Toolchain["Rust / Kotlin Toolchain / TypeScript<br/>本地构建与测试"]
+    Package["aio plugin package<br/>.aio-plugin 二进制包 + SemVer + 内容 SHA-256"]
+    Publish["aio plugin publish<br/>来源绑定凭证，直接 HTTP 上传"]
+    Center["aio-idea 官方插件中心<br/>PostgreSQL：包、元数据、版本、生命周期"]
+    Composition["每个租户的活动插件组合<br/>安装 / 停用 / 卸载 / 回滚"]
+    Frontend["前端挂载<br/>场景根、菜单树、全屏账户页、页面事件"]
+    Backend["后端执行<br/>Wasmtime Component / 隔离进程"]
+    Shell["dioxus-admin-workbench<br/>PluginApplication + az-ui-components"]
+    Source["Rust 源码装配<br/>ApplicationPlugin / Service / Controller + Dill TypeId"]
+    Repository --> Toolchain --> Package --> Publish --> Center --> Composition
+    Composition --> Frontend --> Shell
+    Composition --> Backend
+    Frontend -->|"受控事件和服务请求；会话注入用户、租户"| Backend
+    Repository --> Source -->|"Web / Desktop / Server 整体构建"| Shell
+```
+
+## 插件机制
+
+前后端是同一插件内部的职责，不是两个 Git 仓库。`client/`、`server/`、`shared/` 或 KMP 模块是源码布局；父插件及其子插件共同构建、发布和回滚。Rust 扩展使用 Dill 与 `TypeId`；Git 来源、页面 ID 和包摘要分别是发布来源、导航标识和产物版本，不替代运行时类型身份。
+
+| 扩展 | 机制 | 更新方式 |
+| --- | --- | --- |
+| Dioxus 页面与原生 Rust 服务 | `ApplicationPlugin`、Service、Controller 经 Dill 装配，Web/Desktop 复用页面代码 | 源码装配后整体构建发布，不宣称单插件热替换 |
+| 跨语言页面 | 插件返回正式 `PageDefinition`，壳聚合场景根、菜单和账户入口 | 当前租户安装后刷新目录，无需重编译壳 |
+| 页面按钮事件 | Component `handle` 或 process `/aio/action` 接收宿主注入的上下文，返回经过校验的页面状态 | 状态按租户、版本和页面保存 PostgreSQL |
+| 轻量后端 | `aio:plugin/page@1` WIT，Wasmtime 按租户和版本隔离实例 | 健康检查后激活，失败保留旧实例与活动版本 |
+| JVM / Node 服务 | digest 锁定镜像、只读文件系统、非 root、资源限额、受控路由代理 | 独立进程生命周期和回滚 |
+
+顶部场景选择菜单树的根，侧栏只显示该根下的树。账户插件贡献的设置、市场、个人资料等页面独立全屏打开，返回时保留主后台状态。壳不把场景重复显示成侧栏分组。
+
+在线二进制包由插件作者在自己的工具链中构建，`aio plugin publish` 直接上传到插件中心，不需要 GitHub Actions，也不要求把编译产物提交到 Git。中心保存完整包，按内容 SHA-256 锁定运行字节；清单、能力、健康检查或激活失败不会替换上一活动版本。已成功发布的包可以下载或从数据库离线重装，Git registry 仅作为额外发现来源。
+
+目前在线 UI 使用 `PageDefinition`。任意 Dioxus 前端二进制与后端的联合在线装载尚未交付；源码 Dioxus 路径与跨语言 Component 路径不能混称为同一种热替换能力。Rust/Dioxus 全栈二进制包和 npm 正式发布仍是待完成项。
+
+开发规约：[总览](docs/plugin/README.md)、[Rust/Dioxus](docs/plugin/rs-plugin-convention.md)、[Kotlin](docs/plugin/kt-plugin-convention.md)、[TypeScript](docs/plugin/ts-plugin-convention.md)、[二进制发布](docs/plugin/publish.md)。AI 开发入口为 `.agents/skills/aio-plugin-development/SKILL.md`。
+
+## Studio
+
+平台内的 Studio 是数据库原生的 Dioxus 低代码应用。PostgreSQL 保存正式 `ProgramDefinition`，Studio 根据定义生成页面、领域 Service 契约与 Controller，再编译为 `ProgramImage` 发布。生成文件只是类型检查和实现扩展点，不反向成为业务定义真源。
 
 ```text
 拖拽 / AI Vibe
@@ -25,14 +70,16 @@ app/
   plugins/studio/         低代码定义、编译与运行时
   migrations/             PostgreSQL 正式协议迁移
   assets/                 应用静态资源
-cli/                      `aio` 项目初始化与 Git 全栈插件生命周期
+cli/                      `aio` 初始化、源码装配、二进制打包与发布
 docs/plugin/              Rust、Kotlin、TypeScript 社区插件规约
-marketplace/              Git 驱动的社区插件发现目录
+marketplace/              用于额外发现与冷启动的 Git registry
 generated/
   apps/<application-id>/  从不可变 Revision 生成、可整体删除重建的 Web、Desktop、Server 工程
 lib/
   biz/<application-id>/   生成 Service 契约、Controller 与人工 Service 实现槽
   plugin/core/            通用 Plugin<T> 与插件公共契约
+  plugin/manifest/        PageDefinition、WIT、清单与语义验证
+  plugin/package/         CLI 与宿主共用的二进制包和摘要协议
 ```
 
 `app/plugins/studio` 拥有 AIO 的 ProgramGraph、编辑器、编译器、发布器、Graph VM、发布应用适配和 REST/SSE。通用应用壳与基础组件统一来自 submodule [`dioxus-admin-workbench`](https://github.com/zjarlin/dioxus-admin-workbench) 中的 `az-dioxus-admin-shell` 和 `az-ui-components`，AIO 不保存壳层、组件或 CSS 副本。
@@ -76,12 +123,7 @@ cargo run -p az-app-aio-first-party --no-default-features --features server
 ## 初始化应用与 Git 全栈插件
 
 ```bash
-# npm 安装（安装后命令仍为 `aio`）
-npm install --global @addzero/aio
-# 或临时执行
-npx @addzero/aio --help
-
-# Rust 源码安装
+# npm 尚未正式发布；当前从源码安装，目标包名为 @addzero/aio
 cargo install --path cli
 aio init my-app --title "我的应用"
 aio plugin init my-pages --title "业务页面"
@@ -97,9 +139,18 @@ aio plugin install https://example.com/team/my-pages.git
 aio plugin list
 aio plugin sync
 aio plugin validate ../my-pages
-aio plugin publish ../my-pages
 aio plugin uninstall https://example.com/team/my-pages.git
 ```
+
+构建在线插件后，可以在不含 `.git` 的目录中打包和发布：
+
+```bash
+aio plugin validate ../my-kmp-service
+aio plugin package ../my-kmp-service --git https://example.com/team/service.git --version 1.0.0
+aio plugin publish ../my-kmp-service/dist/plugin.aio-plugin
+```
+
+发布凭证通过 `AIO_PLUGIN_PUBLISH_TOKEN` 提供；默认目标是官方插件中心，私有中心可覆盖 `AIO_PLUGIN_PUBLISH_URL`。Kotlin、TypeScript 的构建命令见各语言规约，构建不会在生产安装阶段执行。
 
 语言决定常规初始化目标：Rust 固定生成源码插件，Kotlin 默认生成 `process`，TypeScript 默认生成 `wasm-component`。`--runtime` 是 Kotlin/TypeScript 的高级覆盖选项，通常只在生成静态页面或非默认目标时传入；Rust 不接受运行目标选择。Rust 页面扩展实现 `ApplicationPlugin` 后由 Dill 聚合，Service 和 Controller 则按具体类型注册和构造，`TypeId` 是唯一运行时身份。
 
@@ -115,7 +166,7 @@ path = "client"
 path = "server"
 ```
 
-应用仓库只在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。多语言仓库提交清单和 artifact 后使用 `aio plugin publish`：CLI 会确认两者与当前完整提交 SHA 中的字节一致，再上传并等待宿主完成健康检查和原子切换。CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
+源码应用在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。在线发布则使用 `.aio-plugin` 二进制包，以包摘要锁定版本；这两条路径的构建和更新边界不同。CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
 
 社区开发入口是仓库 Skill `.agents/skills/aio-plugin-development`。完整运行边界见 [`docs/plugin`](docs/plugin/README.md)，市场条目位于 [`marketplace/registry`](marketplace/registry/README.md)。公网壳已通过 Wasmtime 执行 `aio:plugin/page@1` Component，按租户、来源和 revision 管理可销毁实例，并用 PostgreSQL 保存每个租户的 Git 来源、提交、活动版本和生命周期事件。Kotlin/TypeScript 可执行插件由容器监督器在线安装和回滚；当前只开放预置 digest 镜像与零额外能力档。
 

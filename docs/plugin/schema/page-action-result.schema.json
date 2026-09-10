@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/page-action-result.schema.json",
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio-platform/main/docs/plugin/schema/page-action-result.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PageActionResult",
   "type": "object",

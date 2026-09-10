@@ -1,6 +1,6 @@
 # Kotlin 插件开发规约
 
-Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm。
+Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm。页面模型、事件处理、服务端和共享逻辑全部属于同一个功能 Git 仓库，不拆分客户端和服务端仓库。
 
 ## 客户端与可移植逻辑
 
@@ -63,4 +63,4 @@ aio plugin validate
 
 只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，Component 示例见 [aio-plugin-kmp-component](https://github.com/zjarlin/aio-plugin-kmp-component)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。
 
-三种目标都在清单声明 `[plugin.marketplace]`。提交清单和 artifact 后，CI 使用来源绑定的凭证执行 `aio plugin publish`；该命令会确认字节属于当前完整提交，并等待静态页面挂载、Wasmtime 实例或 JVM 容器完成激活。
+三种目标都在清单声明 `[plugin.marketplace]`。完成本地构建后执行 `aio plugin package . --version 1.0.0`，再用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin`。包内容摘要锁定实际运行字节，产物可以被 Git 忽略，发布不依赖 CI。CLI 会等待静态页面、Wasmtime 实例或 JVM 容器激活；完整规则见 [二进制发布](publish.md)。

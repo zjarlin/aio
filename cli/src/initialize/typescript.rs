@@ -241,18 +241,18 @@ fn process_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
 
 fn page_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是 TypeScript `page-definition` 插件。类型化模型生成 `dist/pages.json`，宿主在安装时校验并挂载页面，不创建运行实例。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\naio plugin validate\n```\n\n提交清单、`pnpm-lock.yaml` 和 `dist/pages.json` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新；静态页面插件不能声明动作页面。\n"
+        "# {title}\n\n这是 TypeScript `page-definition` 插件。类型化模型生成 `dist/pages.json`，宿主在安装时校验并挂载页面，不创建运行实例。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\naio plugin validate\n```\n\n构建完成后执行 `aio plugin package . --version 1.0.0`，再用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin` 即可在线更新。`dist/pages.json` 不要求提交到 Git，发布不依赖 CI；静态页面插件不能声明动作页面。\n"
     )
 }
 
 fn component_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是实现 `aio:plugin/page@1` 的 TypeScript Wasm Component 插件。它返回语言无关的 PageDefinition，不直接接管宿主 DOM。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\nwasm-tools validate --features component-model dist/plugin.wasm\nwasm-tools component wit dist/plugin.wasm\naio plugin validate\n```\n\n提交清单、`pnpm-lock.yaml` 和 `dist/plugin.wasm` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新；生产宿主不会执行 pnpm。\n"
+        "# {title}\n\n这是实现 `aio:plugin/page@1` 的 TypeScript Wasm Component 插件。它返回语言无关的 PageDefinition，不直接接管宿主 DOM。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\nwasm-tools validate --features component-model dist/plugin.wasm\nwasm-tools component wit dist/plugin.wasm\naio plugin validate\n```\n\n构建完成后执行 `aio plugin package . --version 1.0.0`，再用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin` 即可在线更新。`dist/plugin.wasm` 不要求提交到 Git，发布不依赖 CI；生产宿主不会执行 pnpm。\n"
     )
 }
 
 fn process_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是使用 Node 标准库承载的 TypeScript `process` 插件。它监听 `AIO_PLUGIN_PORT`，页面动作使用严格 `PluginRequest`，状态由宿主持久化。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\naio plugin validate\n```\n\n提交清单、`pnpm-lock.yaml` 和 `dist/service/server.js` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新；生产宿主不会执行 pnpm。\n"
+        "# {title}\n\n这是使用 Node 标准库承载的 TypeScript `process` 插件。它监听 `AIO_PLUGIN_PORT`，页面动作使用严格 `PluginRequest`，状态由宿主持久化。\n\n```bash\ncorepack enable\npnpm install --frozen-lockfile --ignore-scripts\npnpm typecheck\npnpm test\npnpm build\naio plugin validate\n```\n\n构建完成后执行 `aio plugin package . --version 1.0.0`，再用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin` 即可在线更新。`dist/service/server.js` 不要求提交到 Git，发布不依赖 CI；生产宿主不会执行 pnpm。\n"
     )
 }

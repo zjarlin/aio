@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/plugin-request.schema.json",
+  "$id": "https://raw.githubusercontent.com/zjarlin/aio-platform/main/docs/plugin/schema/plugin-request.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PluginRequest",
   "$comment": "AIO Plugin JSON contract aio:plugin@1.0.0",

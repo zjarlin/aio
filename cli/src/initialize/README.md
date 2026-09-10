@@ -4,4 +4,4 @@
 
 语言直接决定常规模板：Rust 固定生成源码插件，Kotlin 默认生成 `process`，TypeScript 默认生成 `wasm-component`。`--runtime` 只对 Kotlin/TypeScript 开放，作为 `page-definition` 或其他模板的高级覆盖参数，常规初始化无需传入；Rust 页面扩展实现 trait 后由 Dill 按具体 `TypeId` 聚合，不提供运行目标选择。
 
-模板组合为 Rust 源码插件，以及 Kotlin 与 TypeScript 各自的 `page-definition`、`wasm-component`、`process`。Kotlin Component 当前明确标记为预览，其余组合为稳定目标。多语言模板都生成锁定工具链、功能目录 README、严格请求模型和预构建产物说明；生产安装器仍只读取开发者提交的 artifact。
+模板组合为 Rust 源码插件，以及 Kotlin 与 TypeScript 各自的 `page-definition`、`wasm-component`、`process`。Kotlin Component 当前明确标记为预览。多语言模板生成锁定工具链、功能目录 README、严格请求模型和本地构建说明；在线发布通过统一 CLI 上传二进制包，生产安装器不执行构建，也不要求 artifact 提交到 Git。

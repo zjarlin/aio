@@ -37,7 +37,7 @@ fn document(file_name: &'static str, mut schema: Schema) -> PluginSchema {
     object.insert(
         "$id".to_owned(),
         Value::String(format!(
-            "https://raw.githubusercontent.com/zjarlin/aio/main/docs/plugin/schema/{file_name}"
+            "https://raw.githubusercontent.com/zjarlin/aio-platform/main/docs/plugin/schema/{file_name}"
         )),
     );
     object.insert(

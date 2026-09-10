@@ -10,7 +10,7 @@ use anyhow::{Result, bail};
 use initialize::{
     ApplicationOptions, PluginLanguage, PluginTemplate, RepositoryPluginOptions, parse_runtime,
 };
-use repository_plugin::{PluginSource, PublicationOptions};
+use repository_plugin::{PackageOptions, PluginSource, PublicationOptions};
 
 fn main() -> Result<()> {
     run(env::args().skip(1).collect())
@@ -76,6 +76,11 @@ fn run_plugin_command(arguments: &[String]) -> Result<()> {
             Ok(())
         }
         "publish" => repository_plugin::publish(parse_plugin_publish_arguments(&arguments[1..])?),
+        "package" if arguments[1..].iter().any(|argument| is_help(argument)) => {
+            println!("{}", plugin_package_usage());
+            Ok(())
+        }
+        "package" => repository_plugin::package(parse_plugin_package_arguments(&arguments[1..])?),
         "uninstall" => {
             let git = exactly_one(&arguments[1..], "缺少要卸载的 Git 地址")?;
             repository_plugin::uninstall(&env::current_dir()?, git)
@@ -170,19 +175,49 @@ fn parse_plugin_source(arguments: &[String]) -> Result<PluginSource> {
 }
 
 fn parse_plugin_publish_arguments(arguments: &[String]) -> Result<PublicationOptions> {
+    let (options, _) = parse_plugin_release_arguments(arguments, false)?;
+    Ok(options)
+}
+
+fn parse_plugin_package_arguments(arguments: &[String]) -> Result<PackageOptions> {
+    let (options, output) = parse_plugin_release_arguments(arguments, true)?;
+    Ok(PackageOptions {
+        root: options.root,
+        git: options.git,
+        version: options
+            .version
+            .ok_or_else(|| anyhow::anyhow!("plugin package 需要 --version <SemVer>"))?,
+        output,
+    })
+}
+
+fn parse_plugin_release_arguments(
+    arguments: &[String],
+    packaging: bool,
+) -> Result<(PublicationOptions, Option<PathBuf>)> {
     let mut root = None;
     let mut git = None;
-    let mut revision = None;
+    let mut version = None;
+    let mut output = None;
     let mut index = 0;
     while index < arguments.len() {
         match arguments[index].as_str() {
-            "--git" | "--rev" => {
+            "--git" | "--version" | "-o" | "--output" => {
                 let value = arguments
                     .get(index + 1)
                     .ok_or_else(|| anyhow::anyhow!("选项 {} 缺少值", arguments[index]))?;
                 match arguments[index].as_str() {
-                    "--git" => git = Some(value.clone()),
-                    "--rev" => revision = Some(value.clone()),
+                    "--git" if git.is_none() => git = Some(value.clone()),
+                    "--version" if version.is_none() => version = Some(value.clone()),
+                    "-o" | "--output" if packaging && output.is_none() => {
+                        output = Some(PathBuf::from(value))
+                    }
+                    "-o" | "--output" if !packaging => {
+                        bail!("plugin publish 不接受输出文件选项，请使用 plugin package")
+                    }
+                    "--git" | "--version" | "-o" | "--output" => {
+                        bail!("选项 {} 重复", arguments[index])
+                    }
                     _ => unreachable!(),
                 }
                 index += 2;
@@ -191,14 +226,20 @@ fn parse_plugin_publish_arguments(arguments: &[String]) -> Result<PublicationOpt
                 root = Some(PathBuf::from(value));
                 index += 1;
             }
-            option => bail!("未知插件发布选项: {option}"),
+            option => bail!("未知插件打包或发布选项: {option}"),
         }
     }
-    Ok(PublicationOptions {
-        root: root.unwrap_or(env::current_dir()?),
-        git,
-        revision,
-    })
+    if packaging && root.is_none() {
+        bail!("plugin package 缺少插件目录");
+    }
+    Ok((
+        PublicationOptions {
+            root: root.map(Ok).unwrap_or_else(env::current_dir)?,
+            git,
+            version,
+        },
+        output,
+    ))
 }
 
 fn exactly_one<'a>(arguments: &'a [String], missing: &str) -> Result<&'a str> {
@@ -225,7 +266,7 @@ fn is_help(argument: &str) -> bool {
 }
 
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n  aio plugin init --help\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin publish [<仓库目录>] [--git <HTTPS Git>] [--rev <完整提交 SHA>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n  aio plugin init --help\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin package <目录> --version <SemVer> [--git <HTTPS Git>] [-o <文件.aio-plugin>]\n  aio plugin publish [<目录或文件.aio-plugin>] [--git <HTTPS Git>] [--version <SemVer>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
 }
 
 fn plugin_init_usage() -> &'static str {
@@ -233,7 +274,11 @@ fn plugin_init_usage() -> &'static str {
 }
 
 fn plugin_publish_usage() -> &'static str {
-    "用法:\n  aio plugin publish [<仓库目录>] [--git <HTTPS Git>] [--rev <完整提交 SHA>]\n\n环境变量:\n  AIO_PLUGIN_PUBLISH_URL     AIO 宿主发布接口\n  AIO_PLUGIN_PUBLISH_TOKEN   与租户和 Git 来源绑定的发布凭证\n\nGitHub Actions 会自动读取 GITHUB_SERVER_URL、GITHUB_REPOSITORY 和 GITHUB_SHA。发布前会校验仓库清单和 artifact，并确认两者与完整提交 SHA 中的字节完全一致。"
+    "用法:\n  aio plugin publish [<目录或文件.aio-plugin>] [--git <HTTPS Git>] [--version <SemVer>]\n\n默认直接发布到官方插件中心，不依赖 CI。目录可从自己的 origin 推导来源，并从 Cargo.toml 或 package.json 推导版本。已有插件包保留包内来源和版本。\n\n环境变量:\n  AIO_PLUGIN_PUBLISH_TOKEN   插件市场创建的来源绑定发布凭证\n  AIO_PLUGIN_PUBLISH_URL     可选，覆盖官方插件中心发布接口\n\n发布前校验包的清单、版本和内容摘要。构建产物不需要提交到 Git。"
+}
+
+fn plugin_package_usage() -> &'static str {
+    "用法:\n  aio plugin package <目录> --version <SemVer> [--git <HTTPS Git>] [-o <文件.aio-plugin>]\n\n从已经构建的插件目录生成可搬运的二进制包。来源默认读取该目录自己的 origin；没有 Git 仓库时指定 --git 即可。默认输出 <目录>/dist/plugin.aio-plugin。\n\n示例:\n  aio plugin package hello --git https://example.com/team/hello.git --version 1.0.0\n  aio plugin publish hello/dist/plugin.aio-plugin"
 }
 
 #[cfg(test)]
@@ -328,16 +373,42 @@ mod tests {
             "plugin".to_owned(),
             "--git".to_owned(),
             "https://example.com/plugin.git".to_owned(),
-            "--rev".to_owned(),
-            "a".repeat(40),
+            "--version".to_owned(),
+            "1.2.3".to_owned(),
         ])?;
         assert_eq!(options.root, PathBuf::from("plugin"));
         assert_eq!(
             options.git.as_deref(),
             Some("https://example.com/plugin.git")
         );
-        assert_eq!(options.revision, Some("a".repeat(40)));
-        assert!(plugin_publish_usage().contains("GITHUB_SHA"));
+        assert_eq!(options.version.as_deref(), Some("1.2.3"));
+        assert!(!plugin_publish_usage().contains("GITHUB_SHA"));
+        assert!(parse_plugin_publish_arguments(&["--rev".to_owned(), "a".repeat(40)]).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn parses_binary_package_output_and_requires_version() -> Result<()> {
+        let options = parse_plugin_package_arguments(&[
+            "hello".to_owned(),
+            "--version".to_owned(),
+            "1.0.0".to_owned(),
+            "-o".to_owned(),
+            "hello.aio-plugin".to_owned(),
+        ])?;
+        assert_eq!(options.root, PathBuf::from("hello"));
+        assert_eq!(options.output, Some(PathBuf::from("hello.aio-plugin")));
+        assert!(parse_plugin_package_arguments(&["hello".to_owned()]).is_err());
+        assert!(parse_plugin_publish_arguments(&["-o".to_owned(), "out".to_owned()]).is_err());
+        assert!(
+            parse_plugin_publish_arguments(&[
+                "--git".to_owned(),
+                "one".to_owned(),
+                "--git".to_owned(),
+                "two".to_owned()
+            ])
+            .is_err()
+        );
         Ok(())
     }
 }

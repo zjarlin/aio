@@ -16,12 +16,10 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 az-plugin-manifest = { workspace = true, features = ["schema", "validation"] }
-base64.workspace = true
-flate2.workspace = true
+az-plugin-package.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sha2.workspace = true
 toml.workspace = true
 toml_edit.workspace = true
 

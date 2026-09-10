@@ -1,6 +1,6 @@
 # TypeScript 插件开发规约
 
-TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入不成熟的编译链。
+TypeScript 本身不等于 WebAssembly。页面模型、服务和共享逻辑在同一个功能 Git 仓库内，按职责分模块；不要为了前后端分别建仓库，也不要只为获得 `.wasm` 后缀引入编译链。
 
 省略 `--runtime` 时初始化默认的 Component 仓库；静态页面和 Node 进程是显式覆盖目标：
 
@@ -43,8 +43,8 @@ aio plugin validate
 
 安装阶段不执行任意生命周期脚本；确需原生构建时必须在市场条目中标记，交由隔离构建器显式运行。产物、来源提交和依赖锁三者必须可追溯。
 
-ComponentizeJS 目前仍是实验性工具；SpiderMonkey 的预初始化快照不保证字节级可重复。因此不得仅提交源码并让生产安装器现场构建：必须同时提交 Component artifact 和 pnpm 锁文件，并由完整 Git 提交 SHA 锁定实际运行字节。
+ComponentizeJS 的预初始化快照不保证字节级可重复。依赖锁文件应提交 Git，但 Component artifact 不要求提交：在作者工具链构建后，使用 `.aio-plugin` 包和 SHA-256 锁定实际运行字节，生产安装器不现场重建。
 
-Node `process` 插件同样必须提交编译后的 JavaScript artifact 与 pnpm 锁文件；生产安装器只读取 artifact，不执行 `pnpm`、`npm` 或仓库脚本。可执行示例见 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。
+Node `process` 插件同样把编译后的 JavaScript artifact 放入二进制包，并提交源码依赖锁文件。生产安装器只读取包，不执行 `pnpm`、`npm` 或仓库脚本。可执行示例见 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。
 
-三种目标都在清单声明 `[plugin.marketplace]`。提交清单和 artifact 后，CI 使用来源绑定的凭证执行 `aio plugin publish`；该命令会确认字节属于当前完整提交，并等待静态页面挂载、Wasmtime 实例或 Node 容器完成激活。
+三种目标都在清单声明 `[plugin.marketplace]`。构建完成后执行 `aio plugin package . --version 1.0.0`，再使用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin`。不依赖 CI，也不要求提交编译产物；CLI 会等待静态页面、Wasmtime 实例或 Node 容器完成激活。完整规则见 [二进制发布](publish.md)。

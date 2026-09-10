@@ -1,6 +1,6 @@
-# AIO 插件协议
+# aio-platform 插件协议
 
-AIO 宿主负责壳、租户组合、权限、安装事务和回滚。社区仓库负责贡献页面、服务或两者。租户只保存 Git 来源与锁定提交，不复制插件源码，也不以市场条目作为运行时身份。
+aio-platform 提供开发契约和 CLI，aio-idea 宿主负责租户组合、权限、安装事务和回滚。一个功能仓库同时拥有页面、服务和共享逻辑，子插件可以与父插件同库。Git 安装锁定源码提交；插件中心发布锁定 `.aio-plugin` 包内容 SHA-256，完整二进制与元数据存入 PostgreSQL，不以市场条目作为 Rust 运行时身份。
 
 ## 运行形态
 
@@ -17,7 +17,7 @@ Wasm 是多语言 ABI 的优先选项，但不是所有插件的唯一运行时�
 
 ## 仓库清单
 
-Rust 第一阶段使用两个独立 crate：
+Rust 源码模式在同一个 Git 仓库内使用 client、server crate，可增加 shared crate 保存共享模型和逻辑；不得拆成前后端两个仓库：
 
 ```toml
 [plugin.client]
@@ -29,7 +29,7 @@ path = "server"
 
 至少声明一端。`client` 导出 `register(&mut dill::CatalogBuilder)`；`server` 导出同名注册函数和 `router(&dill::Catalog)`。宿主生成装配代码，运行时扩展只依赖具体 Rust 类型的 `TypeId`。
 
-在线安装的多语言仓库统一声明一个已经构建好的运行产物，不改变 Git 安装模型：
+在线插件统一声明已经构建好的运行产物，再通过 `aio plugin package` 打成可搬运的二进制包：
 
 ```toml
 [plugin.runtime]
@@ -104,7 +104,7 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
 
 ## 租户组合
 
-每个租户拥有独立的组合文件和锁文件。组合文件可跟踪分支、标签或提交，生产锁文件只保存解析后的完整提交 SHA：
+在线租户组合保存在 PostgreSQL，锁定已发布包的完整内容 SHA-256。源码装配和首次引导组合仍可跟踪 Git 分支、标签或提交，生产锁文件保存解析后的完整 Git SHA：
 
 ```toml
 [[plugins]]
@@ -112,11 +112,11 @@ git = "https://github.com/example/aio-plugin-orders.git"
 rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 ```
 
-安装流程固定为：解析来源、拉取到隔离区、校验清单和预构建 artifact、按运行目标实例化或健康检查、写锁定提交、原子切换。公网安装器不执行 `npm`、`pnpm`、Gradle、Cargo 或仓库自定义脚本；构建和测试必须在插件作者 CI 或受控发布器中完成并随完整 Git 提交交付。进程切换会先准备新实例；监督器停止失败时不修改活动组合，数据库切换失败时恢复先前实例。卸载执行相反切换并停止进程/Wasm 实例；失败时不修改活动版本。
+安装流程为：从插件中心读取二进制包、校验内容摘要与能力声明、恢复版本缓存、实例化或健康检查、原子切换租户活动版本。未收录且未发布的 Git 仓库走受限拉取流程，仍须有已构建产物。公网安装器不执行 `npm`、`pnpm`、Gradle、Cargo 或仓库自定义脚本；构建可以在作者本机完成，不依赖 CI，也不要求向 Git 提交二进制。监督器停止失败时不修改活动组合，数据库切换失败时恢复先前实例；卸载同步停止进程/Wasm 实例。
 
 ## 市场
 
-`marketplace/registry/` 是可审计的静态目录。每个插件一个 TOML，合并后即可被索引；是否要求人工审核由仓库分支保护决定，不进入协议。市场只负责发现，租户始终可以直接配置未收录的 Git 仓库。
+正式插件市场读取 PostgreSQL。`aio plugin publish` 上传的包通过验证与激活后，清单元数据直接进入官方市场。`marketplace/registry/` 是可选的冷启动发现目录，不是在线市场的唯一来源；租户也可以配置未收录 Git 仓库。发布凭证与租户安装权限分开管理。
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md)、[TypeScript 规约](ts-plugin-convention.md) 和 [在线发布规约](publish.md)。
 
@@ -140,7 +140,8 @@ aio plugin init aio-plugin-node --language typescript --runtime process
 
 ```bash
 aio plugin validate
-aio plugin publish
+aio plugin package . --version 1.0.0
+aio plugin publish dist/plugin.aio-plugin
 ```
 
-`validate` 不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。对 `wasm-component`，校验器还会在无导入、限 fuel/内存的 Wasmtime 实例中调用 `definition()`，验证实际返回的 `PageDefinition` 与子插件页面声明一致。提交清单和 artifact 后，`publish` 会再次验证并确认当前字节与完整 Git SHA 一致，再调用宿主保存接口并等待新版本完成健康检查和原子激活。
+`validate` 不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。对 `wasm-component`，校验器还会在无导入、限 fuel/内存的 Wasmtime 实例中调用 `definition()`，验证实际返回的 `PageDefinition` 与子插件页面声明一致。`package` 校验预构建产物并生成完整二进制包，`publish` 直接上传并等待健康检查和原子激活；两者都不要求已提交产物或 GitHub Actions 环境。

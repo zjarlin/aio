@@ -344,12 +344,10 @@ version = "2026.5.10"
 dependencies = [
  "anyhow",
  "az-plugin-manifest",
- "base64",
- "flate2",
+ "az-plugin-package",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "tempfile",
  "toml",
  "toml_edit 0.25.13+spec-1.1.0",
@@ -429,6 +427,21 @@ dependencies = [
  "wasmtime",
  "wit-component 0.244.0",
  "wit-parser 0.244.0",
+]
+
+[[package]]
+name = "az-plugin-package"
+version = "2026.5.10"
+dependencies = [
+ "anyhow",
+ "az-plugin-manifest",
+ "base64",
+ "flate2",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "url",
 ]
 
 [[package]]
