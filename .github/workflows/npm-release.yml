@@ -1,0 +1,121 @@
+name: npm release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: 校验发布来源
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: 校验发布版本
+        run: node npm/aio/scripts/check-release.cjs "${GITHUB_REF_NAME}"
+      - name: 校验标签提交属于 main
+        shell: bash
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          tag_commit="$(git rev-parse "${GITHUB_SHA}^{commit}")"
+          git merge-base --is-ancestor "$tag_commit" refs/remotes/origin/main
+
+  build:
+    name: 构建 ${{ matrix.id }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: darwin-arm64
+            runner: macos-15
+            target: aarch64-apple-darwin
+            executable: aio
+          - id: darwin-x64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            executable: aio
+          - id: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            executable: aio
+          - id: linux-x64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            executable: aio
+          - id: win32-x64
+            runner: windows-2025
+            target: x86_64-pc-windows-msvc
+            executable: aio.exe
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: 安装 Linux musl 工具链
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+      - name: 构建 CLI
+        run: cargo build --locked --release -p az-aio-cli --target ${{ matrix.target }}
+      - name: 验证 CLI 可执行
+        shell: bash
+        run: '"target/${{ matrix.target }}/release/${{ matrix.executable }}" --help'
+      - name: 整理构建产物
+        shell: bash
+        run: |
+          mkdir -p npm-artifact
+          cp "target/${{ matrix.target }}/release/${{ matrix.executable }}" npm-artifact/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.id }}
+          path: npm-artifact/${{ matrix.executable }}
+          if-no-files-found: error
+
+  publish:
+    name: 发布 npm 包
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          path: npm/artifacts
+      - name: 校验发布版本
+        run: node npm/aio/scripts/check-release.cjs "${GITHUB_REF_NAME}"
+      - name: 测试 npm 入口
+        run: npm test --prefix npm/aio
+      - name: 生成平台包
+        run: node npm/aio/scripts/stage-platform-packages.cjs npm/artifacts npm/platform-packages
+      - name: 检查发布内容
+        run: |
+          npm pack --dry-run ./npm/aio
+          for package in ./npm/platform-packages/*; do npm pack --dry-run "$package"; done
+      - name: 发布平台包和入口包
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node npm/aio/scripts/publish-packages.cjs npm/platform-packages

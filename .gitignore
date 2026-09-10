@@ -7,3 +7,5 @@
 .dioxus/
 .dioxus-buddy/
 /client/dist/
+/npm/artifacts/
+/npm/platform-packages/
