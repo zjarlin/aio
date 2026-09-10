@@ -1,5 +1,5 @@
 pub const WORKBENCH_GIT: &str = "https://github.com/zjarlin/dioxus-admin-workbench.git";
-pub const WORKBENCH_REV: &str = "86475520ed70465457fec636ebb001b1c9dc0bd8";
+pub const WORKBENCH_REV: &str = "819ae159ab7dcba65d33d056d528ae8f7ec32ae2";
 
 pub const GITIGNORE: &str = "/target\n/.aio/plugins\n";
 
@@ -43,6 +43,7 @@ impl ApplicationPlugin for HomePlugin {
                 id: "workspace",
                 label: "工作区",
             },
+            menu_path: Vec::new(),
             required_permission: None,
             render: HomePage,
         }]
@@ -212,7 +213,7 @@ pub fn plugins_source(clients: &[String], servers: &[String]) -> String {
         .collect::<String>();
     let server_registrations = servers
         .iter()
-        .map(|dependency| format!("    {dependency}::register(&mut builder);\n"))
+        .map(|dependency| format!("    {dependency}::register(&mut builder)?;\n"))
         .collect::<String>();
     let server_routers = servers
         .iter()
@@ -306,7 +307,7 @@ pub fn repository_client_readme() -> &'static str {
 }
 
 pub fn repository_server_readme() -> &'static str {
-    "# 服务能力\n\n此 crate 只负责注册服务并装配 HTTP 路由，不拥有前端职责。\n"
+    "# 服务能力\n\n此 crate 只负责注册服务并装配 HTTP 路由，不拥有前端职责。`register` 返回 `anyhow::Result<()>`，宿主会传播装配失败。\n"
 }
 
 pub fn repository_client_source(title: &str) -> String {
@@ -329,6 +330,7 @@ impl ApplicationPlugin for PagesPlugin {
                 id: "workspace",
                 label: "工作区",
             },
+            menu_path: Vec::new(),
             required_permission: None,
             render: PluginPage,
         }]
@@ -371,8 +373,9 @@ impl StatusService {
     }
 }
 
-pub fn register(builder: &mut CatalogBuilder) {
+pub fn register(builder: &mut CatalogBuilder) -> Result<()> {
     builder.add_value(StatusService);
+    Ok(())
 }
 
 pub fn router(catalog: &Catalog) -> Result<Router> {

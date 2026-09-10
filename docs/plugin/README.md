@@ -27,7 +27,7 @@ path = "client"
 path = "server"
 ```
 
-至少声明一端。`client` 导出 `register(&mut dill::CatalogBuilder)`；`server` 导出同名注册函数和 `router(&dill::Catalog)`。宿主生成装配代码，运行时扩展只依赖具体 Rust 类型的 `TypeId`。
+至少声明一端。`client` 导出 `register(&mut dill::CatalogBuilder)`；`server` 导出 `register(&mut dill::CatalogBuilder) -> anyhow::Result<()>` 和 `router(&dill::Catalog)`。宿主生成的装配代码会传播服务端注册错误，运行时扩展只依赖具体 Rust 类型的 `TypeId`。
 
 在线插件统一声明已经构建好的运行产物，再通过 `aio plugin package` 打成可搬运的二进制包：
 

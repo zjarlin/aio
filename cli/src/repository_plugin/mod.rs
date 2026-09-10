@@ -480,7 +480,7 @@ mod tests {
         assert!(cargo.contains("sample_pages_client"));
         assert!(cargo.contains("sample_pages_server"));
         assert!(registrations.contains("sample_pages_client::register"));
-        assert!(registrations.contains("sample_pages_server::register"));
+        assert!(registrations.contains("sample_pages_server::register(&mut builder)?"));
         assert_eq!(read_project(&application)?.plugins, vec![source.clone()]);
         let lock = read_lock(&application)?;
         assert_eq!(lock.plugins.len(), 1);

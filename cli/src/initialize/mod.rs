@@ -259,6 +259,7 @@ mod tests {
         assert!(path.join("src/server.rs").is_file());
         assert!(path.join("Dockerfile").is_file());
         assert!(fs::read_to_string(path.join("src/plugins.rs"))?.contains("home::register"));
+        assert!(fs::read_to_string(path.join("src/pages/home.rs"))?.contains("menu_path"));
         Ok(())
     }
 
@@ -278,6 +279,11 @@ mod tests {
         assert!(path.join("server/src/lib.rs").is_file());
         assert!(path.join("client/README.md").is_file());
         assert!(path.join("server/README.md").is_file());
+        assert!(fs::read_to_string(path.join("client/src/lib.rs"))?.contains("menu_path"));
+        assert!(
+            fs::read_to_string(path.join("server/src/lib.rs"))?
+                .contains("register(builder: &mut CatalogBuilder) -> Result<()>")
+        );
         let manifest = fs::read_to_string(path.join("aio-plugin.toml"))?;
         assert!(manifest.contains("plugin.client"));
         assert!(manifest.contains("plugin.server"));
