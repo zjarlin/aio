@@ -15,6 +15,7 @@ fn package() -> Result<PluginPackage> {
         None,
         MANIFEST.to_owned(),
         b"[]",
+        Default::default(),
     )
 }
 
@@ -45,7 +46,7 @@ fn content_version_covers_every_identity_field() -> Result<()> {
         |package| package.artifact_sha256 = "0".repeat(64),
         |package| package.rev = "0".repeat(64),
         |package| package.artifact_base64 = STANDARD.encode(b"{}"),
-        |package| package.format_version = 2,
+        |package| package.format_version = 0,
     ];
     for change in modifications {
         let mut tampered = original.clone();
@@ -105,6 +106,7 @@ fn rejects_invalid_versions_sources_and_legacy_publication() -> Result<()> {
             None,
             reserved_artifact,
             b"[]",
+            Default::default(),
         )
         .is_err()
     );
@@ -129,7 +131,8 @@ fn rejects_invalid_versions_sources_and_legacy_publication() -> Result<()> {
             "1.0.0".to_owned(),
             None,
             "[plugin.client]\npath='.'\n".to_owned(),
-            b"[]"
+            b"[]",
+            Default::default(),
         )
         .is_err()
     );

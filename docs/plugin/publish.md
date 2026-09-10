@@ -20,11 +20,12 @@ aio plugin publish ./orders.aio-plugin
 
 ## 版本与内容
 
-包由共享库 `az-plugin-package` 编解码，是包含清单和二进制 artifact 的确定性 gzip JSON 容器。HTTP 直接发送包字节，类型为 `application/vnd.aio.plugin+gzip`，不设置 `Content-Encoding`。当前限制为清单 128 KiB、artifact 32 MiB、压缩包与解压 JSON 各 48 MiB；多 gzip 成员、尾随数据、无效路径、缺失市场声明和摘要篡改均会被拒绝。
+包由共享库 `az-plugin-package` 编解码，当前格式为 2，是包含清单、后端 artifact 和可选前端编译资产的确定性 gzip JSON 容器。HTTP 直接发送包字节，类型为 `application/vnd.aio.plugin+gzip`，不设置 `Content-Encoding`。限制为清单 128 KiB、前后端合计 32 MiB、前端最多 256 个文件、压缩包与解压 JSON 各 48 MiB；多 gzip 成员、尾随数据、无效路径、缺失市场声明和摘要篡改均会被拒绝。格式 1 的未发布包需要重新打包。
 
 - `version` 是发布者的 SemVer 版本号，同一 Git 来源不能用同一版本号覆盖不同内容。
 - `rev` 是来源、版本、清单、可选源码参考和 artifact 摘要共同确定的完整 SHA-256，正式锁定实际运行包。
 - `artifact_sha256` 校验二进制 artifact 字节。
+- `frontend` 按相对路径保存各文件的 `content_base64` 与 `sha256`，整个集合也参与 `rev`；只修改前端同样必须发布新版本。
 - `source_revision` 是可选完整 Git SHA，只作源码参考，不证明构建可复现，也不用于从 Git 下载包。
 
 市场元数据必须在 `aio-plugin.toml` 中声明：
@@ -38,6 +39,8 @@ tags = ["orders"]
 ```
 
 当前在线目标为 `page-definition`、`wasm-component` 和 `process`。Rust 源码 `client/server` 声明不是可运行二进制包，必须使用源码装配流程；不能把尚未编译的 Dioxus crate 宣称为已交付在线插件。
+
+前端联合包的文件契约见 [frontend-bundle.md](frontend-bundle.md)。共享 CLI 已实现打包，但当前公开宿主尚未接通隔离挂载和调用桥，因此不得把这一契约描述为已经上线的 Dioxus 热替换能力。
 
 ## 发布凭证
 

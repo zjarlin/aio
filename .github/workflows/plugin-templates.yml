@@ -124,7 +124,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: zjarlin/aio-idea
-          ref: 53793e88c686e21b0719088c03fb0b15425f32db
+          ref: a4b7f4cab26be73a417e5321bc6368027d23da3e
           path: aio-idea
 
       - name: 验证生成 Component 的租户隔离

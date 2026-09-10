@@ -100,6 +100,36 @@ fn does_not_inherit_parent_git_metadata() -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn packages_frontend_build_and_backend_together_without_git_or_scripts() -> Result<()> {
+    let directory = plugin_directory()?;
+    let root = directory.path();
+    let manifest = fs::read_to_string(root.join("aio-plugin.toml"))?;
+    fs::write(
+        root.join("aio-plugin.toml"),
+        format!("{manifest}\n[plugin.frontend]\npath='dist/web'\n"),
+    )?;
+    fs::create_dir_all(root.join("dist/web/assets"))?;
+    fs::write(root.join("dist/web/index.html"), "<!doctype html>")?;
+    fs::write(root.join("dist/web/assets/frontend.wasm"), b"\0asm")?;
+    fs::write(
+        root.join("dist/pages.json"),
+        r#"[{"id":"hello","label":"Hello","icon":null,"scene":{"id":"workspace","label":"Workspace"},"body":{"kind":"frontend","entry":"index.html"}}]"#,
+    )?;
+    let package = prepare_package(
+        root,
+        Some("https://example.com/fullstack.git".to_owned()),
+        Some("1.0.0".to_owned()),
+    )?;
+    assert_eq!(package.verify()?.frontend.len(), 2);
+    assert_eq!(package.source_revision, None);
+    let output = root.join("complete.aio-plugin");
+    fs::write(&output, package.encode()?)?;
+    fs::remove_dir_all(root.join("dist"))?;
+    assert_eq!(read_package(&output, None, None)?, package);
+    Ok(())
+}
+
 fn plugin_directory() -> Result<TempDir> {
     let directory = tempdir()?;
     write_plugin(directory.path())?;

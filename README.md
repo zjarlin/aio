@@ -39,7 +39,7 @@ flowchart TD
 
 在线二进制包由插件作者在自己的工具链中构建，`aio plugin publish` 直接上传到插件中心，不需要 GitHub Actions，也不要求把编译产物提交到 Git。中心保存完整包，按内容 SHA-256 锁定运行字节；清单、能力、健康检查或激活失败不会替换上一活动版本。已成功发布的包可以下载或从数据库离线重装，Git registry 仅作为额外发现来源。
 
-目前在线 UI 使用 `PageDefinition`。任意 Dioxus 前端二进制与后端的联合在线装载尚未交付；源码 Dioxus 路径与跨语言 Component 路径不能混称为同一种热替换能力。Rust/Dioxus 全栈二进制包和 npm 正式发布仍是待完成项。
+目前在线 UI 使用 `PageDefinition`。共享包协议已支持前端编译资产与后端共同打包、摘要校验和版本锁定，见[联合包契约](docs/plugin/frontend-bundle.md)。Dioxus 二进制前端的隔离挂载、前后端通信桥及跨平台运行验收尚未交付；源码 Dioxus 路径与跨语言 Component 路径不能混称为同一种热替换能力。宿主必须在接通挂载能力之前拒绝激活前端联合包，npm 正式发布也仍待完成。
 
 开发规约：[总览](docs/plugin/README.md)、[Rust/Dioxus](docs/plugin/rs-plugin-convention.md)、[Kotlin](docs/plugin/kt-plugin-convention.md)、[TypeScript](docs/plugin/ts-plugin-convention.md)、[二进制发布](docs/plugin/publish.md)。AI 开发入口为 `.agents/skills/aio-plugin-development/SKILL.md`。
 

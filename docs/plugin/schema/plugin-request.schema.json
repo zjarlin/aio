@@ -99,6 +99,23 @@
         {
           "type": "object",
           "properties": {
+            "entry": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "const": "frontend"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "entry"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "button": {
               "type": "string"
             },

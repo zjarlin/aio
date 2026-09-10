@@ -1,5 +1,5 @@
 use std::{
-    io::{Read as _, Write as _},
+    io::Write as _,
     net::{TcpListener, TcpStream},
 };
 
@@ -89,6 +89,7 @@ fn package() -> Result<PluginPackage> {
         "https://example.com/plugin.git".to_owned(), "1.0.0".to_owned(), None,
         "[plugin.runtime]\nkind='page-definition'\nartifact='pages.json'\n[plugin.marketplace]\ntitle='Pages'\nsummary='Demo pages'\nlicense='MIT'\ntags=['test']\n".to_owned(),
         b"[]",
+        Default::default(),
     )
 }
 
@@ -97,7 +98,7 @@ fn read_request(stream: &mut TcpStream) -> Result<(String, Vec<u8>)> {
     let mut request = Vec::new();
     let (header_end, content_length) = loop {
         let mut chunk = [0_u8; 8192];
-        let read = stream.read(&mut chunk)?;
+        let read = std::io::Read::read(stream, &mut chunk)?;
         ensure!(read > 0, "发布测试请求提前结束");
         request.extend_from_slice(&chunk[..read]);
         ensure!(request.len() <= 1024 * 1024, "发布测试请求过大");
@@ -118,7 +119,7 @@ fn read_request(stream: &mut TcpStream) -> Result<(String, Vec<u8>)> {
     };
     while request.len() < header_end + content_length {
         let mut chunk = [0_u8; 8192];
-        let read = stream.read(&mut chunk)?;
+        let read = std::io::Read::read(stream, &mut chunk)?;
         ensure!(read > 0, "发布测试请求正文提前结束");
         request.extend_from_slice(&chunk[..read]);
     }

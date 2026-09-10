@@ -1,13 +1,15 @@
 use anyhow::{Context as _, Result, ensure};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use url::Url;
 
 use crate::{
-    FORMAT_VERSION, MAX_ARTIFACT_BYTES, MAX_MANIFEST_BYTES, PluginPackage, VerifiedPluginPackage,
+    FORMAT_VERSION, FrontendAsset, MAX_ARTIFACT_BYTES, MAX_MANIFEST_BYTES, PluginPackage,
+    VerifiedPluginPackage,
 };
 
-const PACKAGE_DIGEST_DOMAIN: &[u8] = b"aio-plugin-package-v1\0";
+const PACKAGE_DIGEST_DOMAIN: &[u8] = b"aio-plugin-package-v2\0";
 const MAX_BASE64_BYTES: usize = MAX_ARTIFACT_BYTES.div_ceil(3) * 4;
 
 impl PluginPackage {
@@ -17,11 +19,23 @@ impl PluginPackage {
         source_revision: Option<String>,
         manifest_toml: String,
         artifact: &[u8],
+        frontend: BTreeMap<String, Vec<u8>>,
     ) -> Result<Self> {
         ensure!(
             artifact.len() <= MAX_ARTIFACT_BYTES,
             "插件 artifact 超过 32 MiB"
         );
+        ensure!(
+            frontend.len() <= az_plugin_manifest::MAX_FRONTEND_FILES,
+            "前端资产数量超过限制"
+        );
+        let total = frontend
+            .values()
+            .try_fold(artifact.len(), |total, bytes| {
+                total.checked_add(bytes.len())
+            })
+            .context("插件产物大小溢出")?;
+        ensure!(total <= MAX_ARTIFACT_BYTES, "前后端产物合计超过 32 MiB");
         let mut package = Self {
             format_version: FORMAT_VERSION,
             git: normalize_git_source(&git)?,
@@ -30,6 +44,18 @@ impl PluginPackage {
             manifest_toml,
             artifact_base64: STANDARD.encode(artifact),
             artifact_sha256: format!("{:x}", Sha256::digest(artifact)),
+            frontend: frontend
+                .into_iter()
+                .map(|(path, content)| {
+                    (
+                        path,
+                        FrontendAsset {
+                            content_base64: STANDARD.encode(&content),
+                            sha256: format!("{:x}", Sha256::digest(&content)),
+                        },
+                    )
+                })
+                .collect(),
             rev: String::new(),
         };
         package.rev = package.content_revision()?;
@@ -109,7 +135,12 @@ impl PluginPackage {
             self.artifact_sha256 == format!("{:x}", Sha256::digest(&artifact)),
             "插件 artifact SHA-256 校验失败"
         );
-        Ok(VerifiedPluginPackage { manifest, artifact })
+        let frontend = self.verify_frontend(&manifest, artifact.len())?;
+        Ok(VerifiedPluginPackage {
+            manifest,
+            artifact,
+            frontend,
+        })
     }
 
     fn content_revision(&self) -> Result<String> {
@@ -120,6 +151,10 @@ impl PluginPackage {
             &self.source_revision,
             &self.manifest_toml,
             &self.artifact_sha256,
+            self.frontend
+                .iter()
+                .map(|(path, asset)| (path, &asset.sha256))
+                .collect::<BTreeMap<_, _>>(),
         ))
         .context("序列化插件包内容身份失败")?;
         let mut digest = Sha256::new();

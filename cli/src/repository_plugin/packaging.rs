@@ -61,6 +61,13 @@ pub(super) fn prepare_package(
         .context("Rust 源码插件不能直接在线发布，请先构建可独立运行的产物")?;
     let artifact_path = az_plugin_manifest::artifact_path(&root, &runtime.artifact)?;
     let artifact = read_bounded(&artifact_path, MAX_ARTIFACT_BYTES)?;
+    let mut frontend = std::collections::BTreeMap::new();
+    let mut remaining = MAX_ARTIFACT_BYTES - artifact.len();
+    for (relative, path) in az_plugin_manifest::frontend_files(&root, &manifest)? {
+        let content = read_bounded(&path, remaining)?;
+        remaining -= content.len();
+        frontend.insert(relative, content);
+    }
     az_plugin_manifest::validate_repository(&root)?;
     let repository = own_git_repository(&root);
     let git = git
@@ -76,7 +83,14 @@ pub(super) fn prepare_package(
     let source_revision = repository
         .then(|| git_text(&root, &["rev-parse", "HEAD"]))
         .flatten();
-    PluginPackage::new(git, version, source_revision, manifest_toml, &artifact)
+    PluginPackage::new(
+        git,
+        version,
+        source_revision,
+        manifest_toml,
+        &artifact,
+        frontend,
+    )
 }
 
 pub(super) fn read_package(

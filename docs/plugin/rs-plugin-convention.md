@@ -29,7 +29,7 @@ Service、Controller 分开并由 Dill 创建。`register` 只注册具体类型
 
 ## 二进制边界
 
-直接发布的包必须包含可独立运行的 PageDefinition、Wasm Component 或 process artifact，不能上传尚未编译的 `client/server` crate。Rust 编写的 Component 同样实现 [WIT 协议](wit/page.wit)，使用统一的 [二进制发布流程](publish.md)。Dioxus 自定义前端二进制与后端的联合在线装载尚未完成，不能将当前源码模板描述为这一能力。
+直接发布的包必须包含可独立运行的 PageDefinition、Wasm Component 或 process artifact，不能上传尚未编译的 `client/server` crate。Rust 编写的 Component 同样实现 [WIT 协议](wit/page.wit)，使用统一的 [二进制发布流程](publish.md)。[联合包契约](frontend-bundle.md) 已能将 Dioxus 编译输出和后端装入同一个有界、可校验的包；自定义前端的隔离挂载和后端调用桥尚未完成，不能将当前源码模板描述为这一能力。
 
 ## 验证
 

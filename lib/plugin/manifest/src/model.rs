@@ -23,6 +23,8 @@ pub struct PluginManifest {
     #[serde(default)]
     pub runtime: Option<RuntimeManifest>,
     #[serde(default)]
+    pub frontend: Option<FrontendManifest>,
+    #[serde(default)]
     pub capabilities: CapabilityManifest,
     #[serde(default)]
     pub subplugins: Vec<SubpluginManifest>,
@@ -64,6 +66,13 @@ pub struct RuntimeManifest {
     pub health_check: Option<String>,
     #[serde(default)]
     pub shutdown_timeout_seconds: Option<u64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+pub struct FrontendManifest {
+    pub path: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -129,6 +138,9 @@ pub struct SceneDefinition {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum PageBody {
+    Frontend {
+        entry: String,
+    },
     Counter {
         title: String,
         button: String,

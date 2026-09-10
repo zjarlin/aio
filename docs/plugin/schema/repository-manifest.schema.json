@@ -38,6 +38,18 @@
       },
       "additionalProperties": false
     },
+    "FrontendManifest": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
     "MarketplaceManifest": {
       "type": "object",
       "properties": {
@@ -80,6 +92,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/RepositoryPackage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "frontend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FrontendManifest"
             },
             {
               "type": "null"

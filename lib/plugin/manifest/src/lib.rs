@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "validation")]
+mod frontend;
 mod model;
 #[cfg(feature = "schema")]
 mod schema;
@@ -8,10 +10,15 @@ mod validation;
 #[cfg(feature = "validation")]
 mod wasm_component;
 
+#[cfg(feature = "validation")]
+pub use frontend::{
+    MAX_FRONTEND_FILES, frontend_files, validate_frontend_pages, validate_frontend_path,
+};
 pub use model::{
-    CapabilityManifest, ComponentResponse, MarketplaceManifest, PageActionDefinition,
-    PageActionResult, PageBody, PageDefinition, PluginManifest, PluginRequest, PluginRuntime,
-    RepositoryManifest, RepositoryPackage, RuntimeManifest, SceneDefinition, SubpluginManifest,
+    CapabilityManifest, ComponentResponse, FrontendManifest, MarketplaceManifest,
+    PageActionDefinition, PageActionResult, PageBody, PageDefinition, PluginManifest,
+    PluginRequest, PluginRuntime, RepositoryManifest, RepositoryPackage, RuntimeManifest,
+    SceneDefinition, SubpluginManifest,
 };
 #[cfg(feature = "schema")]
 pub use schema::{PluginSchema, schemas};
