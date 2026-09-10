@@ -2,11 +2,11 @@
 
 TypeScript 本身不等于 WebAssembly。不要只为获得 `.wasm` 后缀引入不成熟的编译链。
 
-初始化当前稳定的 TypeScript 静态页面、Component 或进程仓库：
+省略 `--runtime` 时初始化默认的 Component 仓库；静态页面和 Node 进程是显式覆盖目标：
 
 ```bash
+aio plugin init ../aio-plugin-ts --title "TS 页面" --language typescript
 aio plugin init ../aio-plugin-ts-pages --title "TS 静态页面" --language typescript --runtime page-definition
-aio plugin init ../aio-plugin-ts --title "TS 页面" --language typescript --runtime wasm-component
 aio plugin init ../aio-plugin-node --title "Node 服务" --language typescript --runtime process
 ```
 

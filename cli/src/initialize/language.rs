@@ -1,5 +1,4 @@
-use anyhow::{Result, bail, ensure};
-use az_plugin_manifest::PluginRuntime;
+use anyhow::{Result, bail};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum PluginLanguage {
@@ -18,60 +17,79 @@ impl PluginLanguage {
             _ => bail!("插件语言必须是 rust、kotlin 或 typescript: {value}"),
         }
     }
+}
 
-    pub fn default_runtime(self) -> PluginRuntime {
-        match self {
-            Self::Rust => PluginRuntime::RustSource,
-            Self::Kotlin => PluginRuntime::Process,
-            Self::TypeScript => PluginRuntime::WasmComponent,
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PluginTemplate {
+    Rust,
+    KotlinPages,
+    KotlinComponent,
+    KotlinService,
+    TypeScriptPages,
+    TypeScriptComponent,
+    TypeScriptService,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PluginRuntimeOverride {
+    PageDefinition,
+    WasmComponent,
+    Process,
+}
+
+impl PluginTemplate {
+    pub fn resolve(
+        language: PluginLanguage,
+        runtime: Option<PluginRuntimeOverride>,
+    ) -> Result<Self> {
+        match (language, runtime) {
+            (PluginLanguage::Rust, None) => Ok(Self::Rust),
+            (PluginLanguage::Rust, Some(_)) => {
+                bail!("Rust 源码插件无需 --runtime；实现插件 trait 后由 Dill 按 TypeId 自动聚合")
+            }
+            (PluginLanguage::Kotlin, None | Some(PluginRuntimeOverride::Process)) => {
+                Ok(Self::KotlinService)
+            }
+            (PluginLanguage::Kotlin, Some(PluginRuntimeOverride::PageDefinition)) => {
+                Ok(Self::KotlinPages)
+            }
+            (PluginLanguage::Kotlin, Some(PluginRuntimeOverride::WasmComponent)) => {
+                Ok(Self::KotlinComponent)
+            }
+            (PluginLanguage::TypeScript, None | Some(PluginRuntimeOverride::WasmComponent)) => {
+                Ok(Self::TypeScriptComponent)
+            }
+            (PluginLanguage::TypeScript, Some(PluginRuntimeOverride::PageDefinition)) => {
+                Ok(Self::TypeScriptPages)
+            }
+            (PluginLanguage::TypeScript, Some(PluginRuntimeOverride::Process)) => {
+                Ok(Self::TypeScriptService)
+            }
         }
     }
 
-    pub fn validate_runtime(self, runtime: PluginRuntime) -> Result<()> {
-        let supported = matches!(
-            (self, runtime),
-            (Self::Rust, PluginRuntime::RustSource)
-                | (Self::Kotlin, PluginRuntime::Process)
-                | (Self::Kotlin, PluginRuntime::PageDefinition)
-                | (Self::Kotlin, PluginRuntime::WasmComponent)
-                | (Self::TypeScript, PluginRuntime::WasmComponent)
-                | (Self::TypeScript, PluginRuntime::Process)
-                | (Self::TypeScript, PluginRuntime::PageDefinition)
-        );
-        ensure!(
-            supported,
-            "当前脚手架只支持 rust+rust-source、kotlin+page-definition、kotlin+wasm-component、kotlin+process、typescript+page-definition、typescript+wasm-component、typescript+process"
-        );
-        Ok(())
-    }
-
-    pub fn as_str(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
-            Self::Rust => "rust",
-            Self::Kotlin => "kotlin",
-            Self::TypeScript => "typescript",
+            Self::Rust => "Rust 源码插件（Dill/TypeId 自动聚合）",
+            Self::KotlinPages => "Kotlin 静态页面",
+            Self::KotlinComponent => "Kotlin Wasm Component（预览）",
+            Self::KotlinService => "Kotlin 服务",
+            Self::TypeScriptPages => "TypeScript 静态页面",
+            Self::TypeScriptComponent => "TypeScript Wasm Component",
+            Self::TypeScriptService => "Node.js 服务",
         }
     }
 }
 
-pub fn parse_runtime(value: &str) -> Result<PluginRuntime> {
+pub fn parse_runtime(value: &str) -> Result<PluginRuntimeOverride> {
     match value {
-        "rust-source" => Ok(PluginRuntime::RustSource),
-        "page-definition" => Ok(PluginRuntime::PageDefinition),
-        "wasm-component" => Ok(PluginRuntime::WasmComponent),
-        "process" => Ok(PluginRuntime::Process),
-        _ => bail!(
-            "插件运行目标必须是 rust-source、page-definition、wasm-component 或 process: {value}"
-        ),
-    }
-}
-
-pub fn runtime_name(runtime: PluginRuntime) -> &'static str {
-    match runtime {
-        PluginRuntime::RustSource => "rust-source",
-        PluginRuntime::PageDefinition => "page-definition",
-        PluginRuntime::WasmComponent => "wasm-component",
-        PluginRuntime::Process => "process",
+        "page-definition" => Ok(PluginRuntimeOverride::PageDefinition),
+        "wasm-component" => Ok(PluginRuntimeOverride::WasmComponent),
+        "process" => Ok(PluginRuntimeOverride::Process),
+        "rust-source" => {
+            bail!("Rust 源码插件无需 --runtime；实现插件 trait 后由 Dill 按 TypeId 自动聚合")
+        }
+        _ => bail!("插件模板覆盖必须是 page-definition、wasm-component 或 process: {value}"),
     }
 }
 
@@ -80,42 +98,56 @@ mod tests {
     use super::*;
 
     #[test]
-    fn assigns_stable_default_runtime_to_each_language() {
+    fn assigns_stable_default_template_to_each_language() -> Result<()> {
         assert_eq!(
-            PluginLanguage::Rust.default_runtime(),
-            PluginRuntime::RustSource
+            PluginTemplate::resolve(PluginLanguage::Rust, None)?,
+            PluginTemplate::Rust
         );
         assert_eq!(
-            PluginLanguage::Kotlin.default_runtime(),
-            PluginRuntime::Process
+            PluginTemplate::resolve(PluginLanguage::Kotlin, None)?,
+            PluginTemplate::KotlinService
         );
         assert_eq!(
-            PluginLanguage::TypeScript.default_runtime(),
-            PluginRuntime::WasmComponent
+            PluginTemplate::resolve(PluginLanguage::TypeScript, None)?,
+            PluginTemplate::TypeScriptComponent
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn resolves_advanced_template_overrides() -> Result<()> {
+        assert_eq!(
+            PluginTemplate::resolve(
+                PluginLanguage::Kotlin,
+                Some(PluginRuntimeOverride::WasmComponent)
+            )?,
+            PluginTemplate::KotlinComponent
+        );
+        assert_eq!(
+            PluginTemplate::resolve(
+                PluginLanguage::TypeScript,
+                Some(PluginRuntimeOverride::PageDefinition)
+            )?,
+            PluginTemplate::TypeScriptPages
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_runtime_for_trait_driven_rust_plugins() {
+        assert!(
+            PluginTemplate::resolve(PluginLanguage::Rust, Some(PluginRuntimeOverride::Process))
+                .is_err()
         );
     }
 
     #[test]
-    fn accepts_published_language_runtime_combinations() {
-        assert!(
-            PluginLanguage::Kotlin
-                .validate_runtime(PluginRuntime::WasmComponent)
-                .is_ok()
-        );
-        assert!(
-            PluginLanguage::TypeScript
-                .validate_runtime(PluginRuntime::RustSource)
-                .is_err()
-        );
-        assert!(
-            PluginLanguage::Kotlin
-                .validate_runtime(PluginRuntime::PageDefinition)
-                .is_ok()
-        );
-        assert!(
-            PluginLanguage::TypeScript
-                .validate_runtime(PluginRuntime::PageDefinition)
-                .is_ok()
-        );
+    fn runtime_override_excludes_rust_source() {
+        let error = parse_runtime("rust-source").expect_err("rust-source 不应是模板覆盖选项");
+        assert!(error.to_string().contains("Rust 源码插件无需 --runtime"));
+        assert!(error.to_string().contains("TypeId"));
+
+        let error = parse_runtime("native").expect_err("未知模板覆盖应被拒绝");
+        assert!(!error.to_string().contains("rust-source"));
     }
 }

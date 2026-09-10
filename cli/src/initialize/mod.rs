@@ -12,7 +12,7 @@ use std::{
 use anyhow::{Context as _, Result, bail, ensure};
 use az_plugin_manifest::PluginRuntime;
 
-pub use language::{PluginLanguage, parse_runtime, runtime_name};
+pub use language::{PluginLanguage, PluginTemplate, parse_runtime};
 
 pub struct ApplicationOptions {
     pub path: PathBuf,
@@ -20,12 +20,12 @@ pub struct ApplicationOptions {
     pub title: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct RepositoryPluginOptions {
     pub path: PathBuf,
     pub name: Option<String>,
     pub title: Option<String>,
-    pub language: PluginLanguage,
-    pub runtime: PluginRuntime,
+    pub template: PluginTemplate,
 }
 
 pub fn application(options: ApplicationOptions) -> Result<()> {
@@ -86,30 +86,49 @@ pub fn application(options: ApplicationOptions) -> Result<()> {
 }
 
 pub fn repository_plugin(options: RepositoryPluginOptions) -> Result<()> {
-    options.language.validate_runtime(options.runtime)?;
     let name = resolve_package_name(&options.path, options.name)?;
     let title = options.title.unwrap_or_else(|| name.clone());
-    let language = options.language;
-    let runtime = options.runtime;
+    let template = options.template;
     let client_name = format!("{name}-client");
     let server_name = format!("{name}-server");
     prepare_directory(&options.path)?;
-    match language {
-        PluginLanguage::Rust => {
+    match template {
+        PluginTemplate::Rust => {
             rust_repository_plugin(&options.path, &name, &title, &client_name, &server_name)?;
         }
-        PluginLanguage::Kotlin => {
-            kotlin::repository_plugin(&options.path, &name, &title, runtime)?;
+        PluginTemplate::KotlinPages => {
+            kotlin::repository_plugin(&options.path, &name, &title, PluginRuntime::PageDefinition)?;
         }
-        PluginLanguage::TypeScript => {
-            typescript::repository_plugin(&options.path, &name, &title, runtime)?;
+        PluginTemplate::KotlinComponent => {
+            kotlin::repository_plugin(&options.path, &name, &title, PluginRuntime::WasmComponent)?;
+        }
+        PluginTemplate::KotlinService => {
+            kotlin::repository_plugin(&options.path, &name, &title, PluginRuntime::Process)?;
+        }
+        PluginTemplate::TypeScriptPages => {
+            typescript::repository_plugin(
+                &options.path,
+                &name,
+                &title,
+                PluginRuntime::PageDefinition,
+            )?;
+        }
+        PluginTemplate::TypeScriptComponent => {
+            typescript::repository_plugin(
+                &options.path,
+                &name,
+                &title,
+                PluginRuntime::WasmComponent,
+            )?;
+        }
+        PluginTemplate::TypeScriptService => {
+            typescript::repository_plugin(&options.path, &name, &title, PluginRuntime::Process)?;
         }
     }
     println!(
-        "已初始化插件: {} ({} + {})",
+        "已初始化插件: {} ({})",
         options.path.display(),
-        language.as_str(),
-        runtime_name(runtime)
+        template.label()
     );
     Ok(())
 }
@@ -252,8 +271,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("问候".to_owned()),
-            language: PluginLanguage::Rust,
-            runtime: PluginRuntime::RustSource,
+            template: PluginTemplate::Rust,
         })?;
 
         assert!(path.join("client/src/lib.rs").is_file());
@@ -275,8 +293,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("Kotlin 问候".to_owned()),
-            language: PluginLanguage::Kotlin,
-            runtime: PluginRuntime::Process,
+            template: PluginTemplate::KotlinService,
         })?;
 
         assert!(path.join("kotlin").is_file());
@@ -310,8 +327,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("Kotlin 页面".to_owned()),
-            language: PluginLanguage::Kotlin,
-            runtime: PluginRuntime::PageDefinition,
+            template: PluginTemplate::KotlinPages,
         })?;
 
         assert!(path.join("kotlin").is_file());
@@ -338,8 +354,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("Kotlin Component 问候".to_owned()),
-            language: PluginLanguage::Kotlin,
-            runtime: PluginRuntime::WasmComponent,
+            template: PluginTemplate::KotlinComponent,
         })?;
 
         assert!(path.join("kotlin").is_file());
@@ -367,8 +382,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("TypeScript 问候".to_owned()),
-            language: PluginLanguage::TypeScript,
-            runtime: PluginRuntime::WasmComponent,
+            template: PluginTemplate::TypeScriptComponent,
         })?;
 
         assert!(path.join("pnpm-lock.yaml").is_file());
@@ -393,8 +407,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("Node 问候".to_owned()),
-            language: PluginLanguage::TypeScript,
-            runtime: PluginRuntime::Process,
+            template: PluginTemplate::TypeScriptService,
         })?;
 
         assert!(path.join("pnpm-lock.yaml").is_file());
@@ -417,8 +430,7 @@ mod tests {
             path: path.clone(),
             name: None,
             title: Some("TypeScript 页面".to_owned()),
-            language: PluginLanguage::TypeScript,
-            runtime: PluginRuntime::PageDefinition,
+            template: PluginTemplate::TypeScriptPages,
         })?;
 
         assert!(path.join("pnpm-lock.yaml").is_file());
@@ -432,22 +444,5 @@ mod tests {
         assert!(source.contains("hello-ts-pages"));
         assert!(source.contains("TypeScript 页面"));
         Ok(())
-    }
-
-    #[test]
-    fn rejects_unsupported_template_before_creating_directory() {
-        let root = tempfile::tempdir().expect("创建临时目录");
-        let path = root.path().join("unsupported");
-
-        let result = repository_plugin(RepositoryPluginOptions {
-            path: path.clone(),
-            name: None,
-            title: None,
-            language: PluginLanguage::Rust,
-            runtime: PluginRuntime::Process,
-        });
-
-        assert!(result.is_err());
-        assert!(!path.exists());
     }
 }

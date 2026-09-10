@@ -19,12 +19,12 @@ Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm�
 
 ## 目录与验证
 
-初始化 KMP 静态页面、预览 Component 或 `process` 仓库：
+省略 `--runtime` 时初始化默认的 `process` 仓库；静态页面和预览 Component 是显式覆盖目标：
 
 ```bash
+aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin
 aio plugin init ../aio-plugin-kmp-pages --title "KMP 页面" --language kotlin --runtime page-definition
 aio plugin init ../aio-plugin-kmp-component --title "KMP Component" --language kotlin --runtime wasm-component
-aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin --runtime process
 ```
 
 跨平台代码放在 Toolchain 模块的 `src/`，平台适配分别放入 `src@wasmJs/`、`src@wasmWasi/` 或 `src@jvm/`。每个功能包包含 `README.md`。

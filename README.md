@@ -79,10 +79,11 @@ cargo run -p az-app-aio-first-party --no-default-features --features server
 cargo install --path cli
 aio init my-app --title "我的应用"
 aio plugin init my-pages --title "业务页面"
+aio plugin init my-kmp-service --title "KMP 服务" --language kotlin
+aio plugin init my-ts-component --title "TS 页面" --language typescript
 aio plugin init my-kmp-pages --title "KMP 页面" --language kotlin --runtime page-definition
-aio plugin init my-kmp-service --title "KMP 服务" --language kotlin --runtime process
+aio plugin init my-kmp-component --title "KMP Component" --language kotlin --runtime wasm-component
 aio plugin init my-ts-pages --title "TS 静态页面" --language typescript --runtime page-definition
-aio plugin init my-ts-component --title "TS 页面" --language typescript --runtime wasm-component
 aio plugin init my-node-service --title "Node 服务" --language typescript --runtime process
 
 cd my-app
@@ -92,6 +93,8 @@ aio plugin sync
 aio plugin validate ../my-pages
 aio plugin uninstall https://example.com/team/my-pages.git
 ```
+
+语言决定常规初始化目标：Rust 固定生成源码插件，Kotlin 默认生成 `process`，TypeScript 默认生成 `wasm-component`。`--runtime` 是 Kotlin/TypeScript 的高级覆盖选项，通常只在生成静态页面或非默认目标时传入；Rust 不接受运行目标选择。Rust 页面扩展实现 `ApplicationPlugin` 后由 Dill 聚合，Service 和 Controller 则按具体类型注册和构造，`TypeId` 是唯一运行时身份。
 
 新应用直接消费 `az-dioxus-admin-shell::PluginApplication`，同时提供 Web、Desktop 和 Server 三个互斥构建目标。本地页面与插件客户端实现 `ApplicationPlugin`；插件服务端通过 Dill 注册 Service/Controller，再贡献 Router。Dill 聚合具体插件类型并按 `TypeId` 拒绝重复类型，页面 id 只承担业务导航身份。
 

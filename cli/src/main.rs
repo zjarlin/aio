@@ -7,7 +7,9 @@ mod repository_plugin;
 use std::{env, path::PathBuf};
 
 use anyhow::{Result, bail};
-use initialize::{ApplicationOptions, PluginLanguage, RepositoryPluginOptions, parse_runtime};
+use initialize::{
+    ApplicationOptions, PluginLanguage, PluginTemplate, RepositoryPluginOptions, parse_runtime,
+};
 use repository_plugin::PluginSource;
 
 fn main() -> Result<()> {
@@ -60,10 +62,11 @@ fn run_plugin_command(arguments: &[String]) -> Result<()> {
     };
 
     match command {
-        "init" => {
-            let options = parse_plugin_init_arguments(&arguments[1..])?;
-            initialize::repository_plugin(options)
+        "init" if arguments[1..].iter().any(|argument| is_help(argument)) => {
+            println!("{}", plugin_init_usage());
+            Ok(())
         }
+        "init" => initialize::repository_plugin(parse_plugin_init_arguments(&arguments[1..])?),
         "install" => {
             let source = parse_plugin_source(&arguments[1..])?;
             repository_plugin::install(&env::current_dir()?, source)
@@ -136,14 +139,12 @@ fn parse_plugin_init_arguments(arguments: &[String]) -> Result<RepositoryPluginO
         index += 2;
     }
     let language = language.unwrap_or_default();
-    let runtime = runtime.unwrap_or_else(|| language.default_runtime());
-    language.validate_runtime(runtime)?;
+    let template = PluginTemplate::resolve(language, runtime)?;
     Ok(RepositoryPluginOptions {
         path: PathBuf::from(path),
         name,
         title,
-        language,
-        runtime,
+        template,
     })
 }
 
@@ -182,14 +183,20 @@ fn print_usage() {
     println!("{}", usage());
 }
 
+fn is_help(argument: &str) -> bool {
+    matches!(argument, "--help" | "-h")
+}
+
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>] [--runtime <rust-source|page-definition|process|wasm-component>]\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n  aio plugin init --help\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+}
+
+fn plugin_init_usage() -> &'static str {
+    "用法:\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n\n自动选择:\n  未指定语言 / rust   Rust 源码插件，由 trait + Dill/TypeId 自动聚合\n  kotlin              Kotlin 服务\n  typescript          TypeScript Wasm Component\n\n高级模板覆盖（仅 Kotlin/TypeScript）:\n  --runtime page-definition   静态 PageDefinition\n  --runtime wasm-component    可在线替换的 Wasm Component\n  --runtime process           JVM/Node 隔离服务\n\n示例:\n  aio plugin init hello\n  aio plugin init orders --language kotlin\n  aio plugin init dashboard --language typescript\n  aio plugin init reports --language kotlin --runtime page-definition\n  aio plugin init worker --language typescript --runtime process"
 }
 
 #[cfg(test)]
 mod tests {
-    use az_plugin_manifest::PluginRuntime;
-
     use super::*;
 
     #[test]
@@ -203,8 +210,7 @@ mod tests {
         ])?;
 
         assert_eq!(options.path, PathBuf::from("plugin"));
-        assert_eq!(options.language, PluginLanguage::Kotlin);
-        assert_eq!(options.runtime, PluginRuntime::Process);
+        assert_eq!(options.template, PluginTemplate::KotlinService);
         Ok(())
     }
 
@@ -216,7 +222,7 @@ mod tests {
             "typescript".to_owned(),
         ])?;
 
-        assert_eq!(options.runtime, PluginRuntime::WasmComponent);
+        assert_eq!(options.template, PluginTemplate::TypeScriptComponent);
         Ok(())
     }
 
@@ -231,5 +237,47 @@ mod tests {
         ]);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_redundant_runtime_for_rust_plugin() {
+        let result = parse_plugin_init_arguments(&[
+            "plugin".to_owned(),
+            "--runtime".to_owned(),
+            "process".to_owned(),
+        ]);
+
+        let error = result.expect_err("Rust 插件不应要求运行目标");
+        assert!(error.to_string().contains("trait"));
+        assert!(error.to_string().contains("TypeId"));
+    }
+
+    #[test]
+    fn primary_usage_hides_runtime_override() {
+        let primary_command = usage()
+            .lines()
+            .find(|line| line.starts_with("  aio plugin init <"))
+            .expect("主帮助应展示插件初始化命令");
+        assert!(!primary_command.contains("--runtime"));
+        assert!(plugin_init_usage().contains("高级模板覆盖"));
+        assert!(plugin_init_usage().contains("trait + Dill/TypeId"));
+    }
+
+    #[test]
+    fn detailed_help_matches_runtime_override_parser() {
+        for runtime in ["page-definition", "wasm-component", "process"] {
+            assert!(parse_runtime(runtime).is_ok());
+            let option = format!("--runtime {runtime}");
+            assert!(plugin_init_usage().contains(option.as_str()));
+        }
+        assert!(parse_runtime("rust-source").is_err());
+        assert!(!plugin_init_usage().contains("rust-source"));
+    }
+
+    #[test]
+    fn plain_help_can_be_used_as_plugin_directory() {
+        assert!(!is_help("help"));
+        assert!(is_help("--help"));
+        assert!(is_help("-h"));
     }
 }

@@ -13,6 +13,8 @@ AIO 宿主负责壳、租户组合、权限、安装事务和回滚。社区仓�
 
 Wasm 是多语言 ABI 的优先选项，但不是所有插件的唯一运行时。浏览器插件不得直接接管宿主 DOM；它返回 `PageDefinition` 和事件结果，由宿主统一渲染。服务端 Wasm 只获得清单声明且租户允许的 WASI 能力。需要任意网络、原生数据库驱动或长期后台任务时使用 `process`。
 
+这里的运行形态描述多语言 artifact 如何被宿主执行，不是 Rust trait 的注入身份。Rust 插件固定使用源码装配，不接受 `--runtime` 选择；页面扩展实现 `ApplicationPlugin` 后由 Dill 聚合，Service 和 Controller 按具体类型注册和构造，运行时唯一性统一由 `TypeId` 判断。Kotlin 默认使用 `process`，TypeScript 默认使用 `wasm-component`，只有静态页面或非默认目标需要显式覆盖 `--runtime`。
+
 ## 仓库清单
 
 Rust 第一阶段使用两个独立 crate：
@@ -118,19 +120,21 @@ rev = "9d0b7d16f9f5a4c5a3b4c0e1e6c43ae8d47aa001"
 
 语言细节见 [Rust 规约](rs-plugin-convention.md)、[Kotlin 规约](kt-plugin-convention.md)、[TypeScript 规约](ts-plugin-convention.md) 和 [在线发布规约](publish.md)。
 
-CLI 可以直接生成当前稳定的七种仓库骨架：
+CLI 可以直接生成七种仓库骨架。前三条是各语言的常规初始化，不需要指定运行目标：
 
 ```bash
-aio plugin init aio-plugin-rust --language rust --runtime rust-source
+aio plugin init aio-plugin-rust --language rust
+aio plugin init aio-plugin-kmp --language kotlin
+aio plugin init aio-plugin-ts --language typescript
+
+# Kotlin/TypeScript 的静态页面或非默认目标
 aio plugin init aio-plugin-kmp-pages --language kotlin --runtime page-definition
 aio plugin init aio-plugin-kmp-component --language kotlin --runtime wasm-component
-aio plugin init aio-plugin-kmp --language kotlin --runtime process
 aio plugin init aio-plugin-ts-pages --language typescript --runtime page-definition
-aio plugin init aio-plugin-ts --language typescript --runtime wasm-component
 aio plugin init aio-plugin-node --language typescript --runtime process
 ```
 
-省略 `--language` 时保持 Rust 默认；选择 Kotlin 或 TypeScript 时可以省略 `--runtime`，CLI 会选择上面对应的稳定目标。尚未发布模板的语言/运行时组合会在创建目录前失败，不生成半成品仓库。
+省略 `--language` 时使用 Rust。Rust 不暴露运行目标选项；Kotlin/TypeScript 省略 `--runtime` 时分别选择 `process` 和 `wasm-component`。尚未发布的语言/运行目标组合会在创建目录前失败，不生成半成品仓库。
 
 提交市场前必须在插件仓库执行语言自身的构建与测试，然后使用宿主共享校验器：
 
