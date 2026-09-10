@@ -10,7 +10,7 @@ use anyhow::{Result, bail};
 use initialize::{
     ApplicationOptions, PluginLanguage, PluginTemplate, RepositoryPluginOptions, parse_runtime,
 };
-use repository_plugin::PluginSource;
+use repository_plugin::{PluginSource, PublicationOptions};
 
 fn main() -> Result<()> {
     run(env::args().skip(1).collect())
@@ -71,6 +71,11 @@ fn run_plugin_command(arguments: &[String]) -> Result<()> {
             let source = parse_plugin_source(&arguments[1..])?;
             repository_plugin::install(&env::current_dir()?, source)
         }
+        "publish" if arguments[1..].iter().any(|argument| is_help(argument)) => {
+            println!("{}", plugin_publish_usage());
+            Ok(())
+        }
+        "publish" => repository_plugin::publish(parse_plugin_publish_arguments(&arguments[1..])?),
         "uninstall" => {
             let git = exactly_one(&arguments[1..], "缺少要卸载的 Git 地址")?;
             repository_plugin::uninstall(&env::current_dir()?, git)
@@ -164,6 +169,38 @@ fn parse_plugin_source(arguments: &[String]) -> Result<PluginSource> {
     })
 }
 
+fn parse_plugin_publish_arguments(arguments: &[String]) -> Result<PublicationOptions> {
+    let mut root = None;
+    let mut git = None;
+    let mut revision = None;
+    let mut index = 0;
+    while index < arguments.len() {
+        match arguments[index].as_str() {
+            "--git" | "--rev" => {
+                let value = arguments
+                    .get(index + 1)
+                    .ok_or_else(|| anyhow::anyhow!("选项 {} 缺少值", arguments[index]))?;
+                match arguments[index].as_str() {
+                    "--git" => git = Some(value.clone()),
+                    "--rev" => revision = Some(value.clone()),
+                    _ => unreachable!(),
+                }
+                index += 2;
+            }
+            value if !value.starts_with('-') && root.is_none() => {
+                root = Some(PathBuf::from(value));
+                index += 1;
+            }
+            option => bail!("未知插件发布选项: {option}"),
+        }
+    }
+    Ok(PublicationOptions {
+        root: root.unwrap_or(env::current_dir()?),
+        git,
+        revision,
+    })
+}
+
 fn exactly_one<'a>(arguments: &'a [String], missing: &str) -> Result<&'a str> {
     match arguments {
         [] => bail!("{missing}"),
@@ -188,11 +225,15 @@ fn is_help(argument: &str) -> bool {
 }
 
 fn usage() -> &'static str {
-    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n  aio plugin init --help\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
+    "用法:\n  aio init <目录> [--name <包名>] [--title <标题>]\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n  aio plugin init --help\n  aio plugin install <git> [--rev <分支、标签或提交>]\n  aio plugin publish [<仓库目录>] [--git <HTTPS Git>] [--rev <完整提交 SHA>]\n  aio plugin uninstall <git>\n  aio plugin sync\n  aio plugin list\n  aio plugin validate [<仓库目录>]\n  aio plugin schema [<输出目录>]\n  aio marketplace build [<registry> <output>]"
 }
 
 fn plugin_init_usage() -> &'static str {
     "用法:\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n\n自动选择:\n  未指定语言 / rust   Rust 源码插件，由 trait + Dill/TypeId 自动聚合\n  kotlin              Kotlin 服务\n  typescript          TypeScript Wasm Component\n\n高级模板覆盖（仅 Kotlin/TypeScript）:\n  --runtime page-definition   静态 PageDefinition\n  --runtime wasm-component    可在线替换的 Wasm Component\n  --runtime process           JVM/Node 隔离服务\n\n示例:\n  aio plugin init hello\n  aio plugin init orders --language kotlin\n  aio plugin init dashboard --language typescript\n  aio plugin init reports --language kotlin --runtime page-definition\n  aio plugin init worker --language typescript --runtime process"
+}
+
+fn plugin_publish_usage() -> &'static str {
+    "用法:\n  aio plugin publish [<仓库目录>] [--git <HTTPS Git>] [--rev <完整提交 SHA>]\n\n环境变量:\n  AIO_PLUGIN_PUBLISH_URL     AIO 宿主发布接口\n  AIO_PLUGIN_PUBLISH_TOKEN   与租户和 Git 来源绑定的发布凭证\n\nGitHub Actions 会自动读取 GITHUB_SERVER_URL、GITHUB_REPOSITORY 和 GITHUB_SHA。发布前会校验仓库清单和 artifact，并确认两者与完整提交 SHA 中的字节完全一致。"
 }
 
 #[cfg(test)]
@@ -279,5 +320,24 @@ mod tests {
         assert!(!is_help("help"));
         assert!(is_help("--help"));
         assert!(is_help("-h"));
+    }
+
+    #[test]
+    fn parses_plugin_publish_defaults_and_overrides() -> Result<()> {
+        let options = parse_plugin_publish_arguments(&[
+            "plugin".to_owned(),
+            "--git".to_owned(),
+            "https://example.com/plugin.git".to_owned(),
+            "--rev".to_owned(),
+            "a".repeat(40),
+        ])?;
+        assert_eq!(options.root, PathBuf::from("plugin"));
+        assert_eq!(
+            options.git.as_deref(),
+            Some("https://example.com/plugin.git")
+        );
+        assert_eq!(options.revision, Some("a".repeat(40)));
+        assert!(plugin_publish_usage().contains("GITHUB_SHA"));
+        Ok(())
     }
 }

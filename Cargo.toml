@@ -25,6 +25,7 @@ arc-swap = "1.7.1"
 async-trait = "0.1.89"
 automod = { package = "az-automod", version = "=2026.6.15", git = "https://github.com/zjarlin/addzero-lib-rust.git", rev = "e9c3235ba2b3e72026de004bc16da382e8ac1a19" }
 axum = { version = "0.8.6", features = ["http1", "json", "tokio"] }
+base64 = "0.22.1"
 dioxus = { version = "0.7.9", default-features = false, features = ["macro", "html", "signals", "router"] }
 convert_case = "0.8.0"
 deunicode = "1.6.2"
@@ -34,8 +35,10 @@ az-dioxus-admin-shell = { version = "=2026.8.17", path = "lib/dioxus-admin-workb
 az-ui-components = { version = "=2026.8.17", path = "lib/dioxus-admin-workbench/crates/ui/components" }
 dotenvy = "0.15.7"
 evalexpr = "13.1.0"
+flate2 = "1.1.9"
 icons = { version = "0.18.3", features = ["dioxus"] }
 regex = "1.12.2"
+reqwest = { version = "0.12.24", default-features = false, features = ["blocking", "rustls-tls"] }
 semver = "1.0.28"
 dill = "0.15.0"
 schemars = "1.2.1"

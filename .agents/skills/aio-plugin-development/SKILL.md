@@ -24,9 +24,10 @@ description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 
 - 当前公网宿主已经激活容器化 `process` 监督器；只为预置 digest 镜像和零额外能力清单声明在线可安装，额外网络、文件系统或数据库能力仍必须标注为未开放。
 - 公网安装阶段不得执行仓库脚本。构建和测试在插件作者 CI 或受控发布器中完成，安装器只校验已提交 artifact 并原子切换；进程监督器停止或数据库切换失败时保留并恢复上一版本。
 - Component 需要在 push 后在线更新时，必须使用来源和租户绑定的发布凭证；CI 只提交完整 SHA、清单、artifact 与 SHA-256，不能使用跨来源的共享令牌。规约和 Actions 示例见 `docs/plugin/publish.md`。
+- `page-definition`、`wasm-component` 和 `process` 的 CI 发布统一执行 `aio plugin publish`，禁止在各语言仓库重复拼接上传 JSON 或轮询逻辑。命令会拒绝未提交或与当前完整 Git SHA 不一致的清单和 artifact。
 
 ## 完成验证
 
 Rust 插件至少执行 `cargo fmt --all --check`、`cargo test --workspace`，再安装进一个临时 AIO 宿主，分别检查 Web 与 Server feature。Kotlin 与 TypeScript 按各自规约产出后，还要在插件仓库执行 `aio plugin validate`；该命令使用与宿主共享的 `az-plugin-manifest` 校验清单、artifact、子插件依赖图、PageDefinition 和 Component ABI。
 
-需要进入社区市场时，在 `marketplace/registry/` 增加单独条目；展示名称、说明和标签只属于市场元数据，不进入运行时插件身份。
+需要进入社区市场时，在 `aio-plugin.toml` 声明 `[plugin.marketplace]`，并可在 `marketplace/registry/` 增加用于冷启动发现的单独条目；展示名称、说明和标签只属于市场元数据，不进入运行时插件身份。配置来源绑定凭证后执行 `aio plugin publish`，确认后台任务进入 `active`。

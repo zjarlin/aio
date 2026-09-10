@@ -22,46 +22,32 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
 
 ## CI 请求
 
-发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。artifact 必须是该 SHA 中已跟踪的原始字节；CI 可以重建源码验证工具链，但必须在发布前恢复并重新校验提交内 artifact。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列重新校验 WIT ABI、无导入限制、页面定义和租户实例健康检查；校验或激活失败时保持旧活动 revision。
+发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。artifact 必须是该 SHA 中已跟踪的原始字节；CI 可以重建源码验证工具链，但必须在发布前恢复提交内 artifact。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列校验 PageDefinition、Component ABI 或 process 清单，并执行对应的实例健康检查；校验或激活失败时保持旧活动 revision。
+
+统一使用 `aio plugin publish` 组装请求，CI 不应自行拼接 JSON、Base64、摘要和轮询脚本。该命令先执行共享协议校验，然后逐字节比较工作树中的清单和 artifact 与当前 Git 提交中的 blob；任何未提交、构建后未恢复或 SHA 不一致都会在上传前失败。
 
 ```yaml
-- name: 发布已验证的 Component
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AIO_PLUGIN_PUBLISH_URL != '' && secrets.AIO_PLUGIN_PUBLISH_TOKEN != ''
+- name: 检出固定版本的 AIO CLI
+  uses: actions/checkout@v4
+  with:
+    repository: zjarlin/aio
+    ref: ${{ vars.AIO_CLI_REVISION }} # 必须配置为审核过的完整提交 SHA
+    path: aio-host-source
+    submodules: recursive
+
+- name: 验证 AIO 插件协议
+  run: cargo +nightly run --manifest-path aio-host-source/Cargo.toml --bin aio -- plugin validate "$GITHUB_WORKSPACE"
+
+- name: 发布已验证的插件
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AIO_PLUGIN_PUBLISH_URL != ''
   env:
     AIO_PLUGIN_PUBLISH_URL: ${{ vars.AIO_PLUGIN_PUBLISH_URL }}
     AIO_PLUGIN_PUBLISH_TOKEN: ${{ secrets.AIO_PLUGIN_PUBLISH_TOKEN }}
   run: |
-    artifact_file="$RUNNER_TEMP/plugin.wasm.base64"
-    response_file="$RUNNER_TEMP/aio-publish-response.json"
-    base64 --wrap=0 dist/plugin.wasm | tr -d '\n' > "$artifact_file"
-    artifact_sha256="$(sha256sum dist/plugin.wasm | awk '{print $1}')"
-    jq -n \
-      --arg git "${{ github.server_url }}/${{ github.repository }}.git" \
-      --arg rev "$GITHUB_SHA" \
-      --rawfile manifest aio-plugin.toml \
-      --rawfile artifact_base64 "$artifact_file" \
-      --arg artifact_sha256 "$artifact_sha256" \
-      '{git:$git, rev:$rev, manifest_toml:$manifest, artifact_base64:$artifact_base64, artifact_sha256:$artifact_sha256}' \
-      | gzip -c \
-      | curl --fail-with-body --show-error --request POST \
-          --header 'content-encoding: gzip' \
-          --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" \
-          --header 'content-type: application/json' \
-          --data-binary @- "$AIO_PLUGIN_PUBLISH_URL" \
-      | tee "$response_file"
-    job_id="$(jq -er '.data.job_id' "$response_file")"
-    job_url="${AIO_PLUGIN_PUBLISH_URL%/plugins/publish}/publish-jobs/$job_id"
-    for attempt in $(seq 1 90); do
-      response="$(curl --fail-with-body --silent --show-error \
-        --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" "$job_url")"
-      state="$(jq -er '.data.state' <<< "$response")"
-      case "$state" in
-        active) exit 0 ;;
-        failed) jq -r '.data.detail' <<< "$response" >&2; exit 1 ;;
-      esac
-      sleep 2
-    done
-    exit 1
+    if [ -z "$AIO_PLUGIN_PUBLISH_TOKEN" ]; then
+      exit 0
+    fi
+    cargo +nightly run --manifest-path aio-host-source/Cargo.toml --bin aio -- plugin publish "$GITHUB_WORKSPACE"
 ```
 
 发布接口会立即返回当前状态（`queued`、`running`、`active` 或 `failed`）：

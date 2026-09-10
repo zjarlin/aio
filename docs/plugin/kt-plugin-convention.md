@@ -62,3 +62,5 @@ aio plugin validate
 ```
 
 只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，Component 示例见 [aio-plugin-kmp-component](https://github.com/zjarlin/aio-plugin-kmp-component)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。
+
+三种目标都在清单声明 `[plugin.marketplace]`。提交清单和 artifact 后，CI 使用来源绑定的凭证执行 `aio plugin publish`；该命令会确认字节属于当前完整提交，并等待静态页面挂载、Wasmtime 实例或 JVM 容器完成激活。

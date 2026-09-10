@@ -301,6 +301,7 @@ mod tests {
         assert!(path.join("model/README.md").is_file());
         assert!(path.join("service/README.md").is_file());
         assert!(fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"process\""));
+        assert_marketplace_title(&path, "Kotlin 问候")?;
         assert!(
             fs::read_to_string(
                 path.join("model/src/site/addzero/aio/plugin/hello_kotlin/RuntimeModel.kt")
@@ -337,6 +338,7 @@ mod tests {
             fs::read_to_string(path.join("aio-plugin.toml"))?
                 .contains("kind = \"page-definition\"")
         );
+        assert_marketplace_title(&path, "Kotlin 页面")?;
         let source = fs::read_to_string(
             path.join("model/src/site/addzero/aio/plugin/hello_kotlin_pages/PageDefinition.kt"),
         )?;
@@ -364,6 +366,7 @@ mod tests {
         assert!(
             fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"wasm-component\"")
         );
+        assert_marketplace_title(&path, "Kotlin Component 问候")?;
         let source = fs::read_to_string(path.join(
             "model/src/site/addzero/aio/plugin/hello_kotlin_component/contract/PluginContract.kt",
         ))?;
@@ -392,6 +395,7 @@ mod tests {
         assert!(
             fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"wasm-component\"")
         );
+        assert_marketplace_title(&path, "TypeScript 问候")?;
         let source = fs::read_to_string(path.join("src/plugin/component.ts"))?;
         assert!(source.contains("hello-typescript"));
         assert!(source.contains("TypeScript 问候"));
@@ -414,6 +418,7 @@ mod tests {
         assert!(path.join("src/service/README.md").is_file());
         assert!(path.join("test/service/README.md").is_file());
         assert!(fs::read_to_string(path.join("aio-plugin.toml"))?.contains("kind = \"process\""));
+        assert_marketplace_title(&path, "Node 问候")?;
         let source = fs::read_to_string(path.join("src/service/server.ts"))?;
         assert!(source.contains("hello-node"));
         assert!(source.contains("Node 问候"));
@@ -440,9 +445,20 @@ mod tests {
             fs::read_to_string(path.join("aio-plugin.toml"))?
                 .contains("kind = \"page-definition\"")
         );
+        assert_marketplace_title(&path, "TypeScript 页面")?;
         let source = fs::read_to_string(path.join("src/pages/definition.ts"))?;
         assert!(source.contains("hello-ts-pages"));
         assert!(source.contains("TypeScript 页面"));
+        Ok(())
+    }
+
+    fn assert_marketplace_title(path: &Path, expected: &str) -> Result<()> {
+        let manifest = az_plugin_manifest::read_manifest(path)?;
+        let marketplace = manifest
+            .plugin
+            .marketplace
+            .context("多语言模板应声明市场元数据")?;
+        assert_eq!(marketplace.title, expected);
         Ok(())
     }
 }

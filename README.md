@@ -91,6 +91,7 @@ aio plugin install https://example.com/team/my-pages.git
 aio plugin list
 aio plugin sync
 aio plugin validate ../my-pages
+aio plugin publish ../my-pages
 aio plugin uninstall https://example.com/team/my-pages.git
 ```
 
@@ -108,6 +109,6 @@ path = "client"
 path = "server"
 ```
 
-应用仓库只在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。生产发布器必须在隔离构建通过后切换整套版本；CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
+应用仓库只在 `aio.toml` 配置 Git 来源和可选 revision，`.aio/plugins.lock` 保存解析后的提交与前后端包。`aio plugin sync` 负责 checkout、读取清单、发现 Cargo 包、更新 feature 依赖并生成两端注册入口；`uninstall` 反向删除注册、依赖和缓存。多语言仓库提交清单和 artifact 后使用 `aio plugin publish`：CLI 会确认两者与当前完整提交 SHA 中的字节一致，再上传并等待宿主完成健康检查和原子切换。CLI 不加载动态库，也不在安装阶段执行插件自定义脚本。
 
 社区开发入口是仓库 Skill `.agents/skills/aio-plugin-development`。完整运行边界见 [`docs/plugin`](docs/plugin/README.md)，市场条目位于 [`marketplace/registry`](marketplace/registry/README.md)。公网壳已通过 Wasmtime 执行 `aio:plugin/page@1` Component，按租户、来源和 revision 管理可销毁实例，并用 PostgreSQL 保存每个租户的 Git 来源、提交、活动版本和生命周期事件。Kotlin/TypeScript 可执行插件由容器监督器在线安装和回滚；当前只开放预置 digest 镜像与零额外能力档。

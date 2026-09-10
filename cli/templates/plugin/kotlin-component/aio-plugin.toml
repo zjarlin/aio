@@ -3,6 +3,12 @@ kind = "wasm-component"
 artifact = "dist/plugin.wasm"
 host_version = ">=2026.9.9"
 
+[plugin.marketplace]
+title = __TITLE_LITERAL__
+summary = "使用 Kotlin Toolchain 构建的 AIO Wasm Component 页面与服务。"
+license = "MIT"
+tags = ["kotlin", "kmp", "wasm-component", "preview"]
+
 [plugin.capabilities]
 network = []
 filesystem = []

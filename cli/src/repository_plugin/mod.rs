@@ -1,5 +1,6 @@
 mod git;
 mod manifest;
+mod publication;
 mod schema;
 
 use std::{collections::HashSet, fs, path::Path};
@@ -8,6 +9,7 @@ use anyhow::{Context as _, Result, ensure};
 use toml_edit::{DocumentMut, InlineTable, Item, Value};
 
 pub use manifest::PluginSource;
+pub use publication::{PublicationOptions, publish};
 pub use schema::write_schemas;
 
 use crate::initialize::template;

@@ -358,6 +358,7 @@ fn process_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
         ("__PACKAGE_PATH__", package_path),
         ("site.addzero.aio.plugin.kmpservice", package),
         ("kmp-process", name.to_owned()),
+        ("__MARKETPLACE_TITLE__", title_literal.clone()),
         ("\"KMP 服务\"", title_literal.clone()),
         ("\"Kotlin 进程插件 v2 已在线\"", title_literal),
     ];
@@ -368,18 +369,18 @@ fn process_plugin(path: &Path, name: &str, title: &str) -> Result<()> {
 
 fn page_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `page-definition` 插件。页面模型位于 commonMain，并同时通过 JVM 与 wasmJs 编译；JVM 生成器只负责输出语言无关的安装产物。\n\n```bash\n./kotlin check\n./kotlin build -m model -p jvm -p wasmJs\n./kotlin run -m generator -p jvm -- dist/pages.json\naio plugin validate\n```\n\n发布前提交 `dist/pages.json`；静态页面插件没有运行实例，也不能声明动作页面。\n"
+        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `page-definition` 插件。页面模型位于 commonMain，并同时通过 JVM 与 wasmJs 编译；JVM 生成器只负责输出语言无关的安装产物。\n\n```bash\n./kotlin check\n./kotlin build -m model -p jvm -p wasmJs\n./kotlin run -m generator -p jvm -- dist/pages.json\naio plugin validate\n```\n\n提交清单和 `dist/pages.json` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新。静态页面插件没有运行实例，也不能声明动作页面。\n"
     )
 }
 
 fn process_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `process` 插件。页面和请求模型位于 commonMain，JVM 服务只负责 HTTP 适配。\n\n```bash\n./kotlin check\n./kotlin build -m model -p wasmJs\n./kotlin package -m service -p jvm -f executable-jar\nmkdir -p dist\ncp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar\naio plugin validate\n```\n\n发布前提交 `dist/plugin.jar`，生产安装器不会执行 Kotlin 构建。\n"
+        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `process` 插件。页面和请求模型位于 commonMain，JVM 服务只负责 HTTP 适配。\n\n```bash\n./kotlin check\n./kotlin build -m model -p wasmJs\n./kotlin package -m service -p jvm -f executable-jar\nmkdir -p dist\ncp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar\naio plugin validate\n```\n\n提交清单和 `dist/plugin.jar` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新；生产宿主不会执行 Kotlin 构建。\n"
     )
 }
 
 fn component_readme(title: &str) -> String {
     format!(
-        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `wasm-component` 插件。协议模型位于 commonMain，并同时通过 JVM、wasmJs 与 wasmWasi 编译；WIT 适配层只暴露 `definition` 与 `handle`。\n\n```bash\n./kotlin check\nWIT_BINDGEN=/path/to/wit-bindgen ./scripts/generate-bindings.sh --check\n./scripts/build-component.sh\naio plugin validate\n```\n\n发布前提交 `dist/plugin.wasm`。当前 Kotlin Component 工具链仍是预览能力，仓库已锁定生成器版本且默认不授予网络、文件系统或数据库能力。\n"
+        "# {title}\n\n这是使用 Kotlin Toolchain 构建的 AIO `wasm-component` 插件。协议模型位于 commonMain，并同时通过 JVM、wasmJs 与 wasmWasi 编译；WIT 适配层只暴露 `definition` 与 `handle`。\n\n```bash\n./kotlin check\nWIT_BINDGEN=/path/to/wit-bindgen ./scripts/generate-bindings.sh --check\n./scripts/build-component.sh\naio plugin validate\n```\n\n提交清单和 `dist/plugin.wasm` 后，配置来源绑定的发布凭证并执行 `aio plugin publish` 即可在线更新。当前 Kotlin Component 工具链仍是预览能力，仓库已锁定生成器版本且默认不授予网络、文件系统或数据库能力。\n"
     )
 }

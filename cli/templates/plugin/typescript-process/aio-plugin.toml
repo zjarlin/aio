@@ -7,6 +7,12 @@ entrypoint = ["node", "{artifact}"]
 health_check = "/health"
 shutdown_timeout_seconds = 10
 
+[plugin.marketplace]
+title = __MARKETPLACE_TITLE__
+summary = "使用 TypeScript 构建并由 AIO 容器监督器运行的 Node.js 服务。"
+license = "MIT"
+tags = ["typescript", "node", "process"]
+
 [plugin.capabilities]
 network = []
 filesystem = []

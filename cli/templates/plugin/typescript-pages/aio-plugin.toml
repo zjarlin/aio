@@ -2,6 +2,12 @@
 kind = "page-definition"
 artifact = "dist/pages.json"
 
+[plugin.marketplace]
+title = __TITLE__
+summary = "使用 TypeScript 类型模型生成的静态 AIO 页面。"
+license = "MIT"
+tags = ["typescript", "page-definition"]
+
 [plugin.capabilities]
 network = []
 filesystem = []

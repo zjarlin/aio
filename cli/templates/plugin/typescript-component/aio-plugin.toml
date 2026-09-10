@@ -2,6 +2,12 @@
 kind = "wasm-component"
 artifact = "dist/plugin.wasm"
 
+[plugin.marketplace]
+title = __MARKETPLACE_TITLE__
+summary = "使用 TypeScript 和 Component Model 构建的动态 AIO 页面与服务。"
+license = "MIT"
+tags = ["typescript", "wasm-component"]
+
 [plugin.capabilities]
 network = []
 filesystem = []

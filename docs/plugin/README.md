@@ -71,7 +71,7 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
 
 [`schema/`](schema/) 保存上述模型的 JSON Schema。执行 `aio plugin schema [<输出目录>]` 可生成相同契约，用于多语言类型生成、IDE 补全和 CI 结构校验；完整语义仍以 `aio plugin validate` 为准。
 
-源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时已支持 `wasm-component` 和 `process` 在线安装、停用、启用、卸载和回滚。`process` 运行在按租户、来源和 revision 隔离的容器网络中，使用非 root 用户、只读根文件系统、资源配额与 capability 丢弃；当前只开放零额外能力档，非空网络、文件系统或数据库声明会在启动前被拒绝。
+源码宿主 CLI 只负责 `rust-source` 的 Cargo 装配。公网运行时支持 `page-definition`、`wasm-component` 和 `process` 在线发布、安装、停用、启用、卸载和回滚。`process` 运行在按租户、来源和 revision 隔离的容器网络中，使用非 root 用户、只读根文件系统、资源配额与 capability 丢弃；当前只开放零额外能力档，非空网络、文件系统或数据库声明会在启动前被拒绝。
 
 当前 `PageDefinition.body` 支持以下稳定形态：
 
@@ -140,6 +140,7 @@ aio plugin init aio-plugin-node --language typescript --runtime process
 
 ```bash
 aio plugin validate
+aio plugin publish
 ```
 
-该命令不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。对 `wasm-component`，校验器还会在无导入、限 fuel/内存的 Wasmtime 实例中调用 `definition()`，验证实际返回的 `PageDefinition` 与子插件页面声明一致。
+`validate` 不执行仓库脚本；它只读取已生成 artifact，校验清单、页面声明与 Wasm Component WIT 边界。对 `wasm-component`，校验器还会在无导入、限 fuel/内存的 Wasmtime 实例中调用 `definition()`，验证实际返回的 `PageDefinition` 与子插件页面声明一致。提交清单和 artifact 后，`publish` 会再次验证并确认当前字节与完整 Git SHA 一致，再调用宿主保存接口并等待新版本完成健康检查和原子激活。

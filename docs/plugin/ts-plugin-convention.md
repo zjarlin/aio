@@ -46,3 +46,5 @@ aio plugin validate
 ComponentizeJS 目前仍是实验性工具；SpiderMonkey 的预初始化快照不保证字节级可重复。因此不得仅提交源码并让生产安装器现场构建：必须同时提交 Component artifact 和 pnpm 锁文件，并由完整 Git 提交 SHA 锁定实际运行字节。
 
 Node `process` 插件同样必须提交编译后的 JavaScript artifact 与 pnpm 锁文件；生产安装器只读取 artifact，不执行 `pnpm`、`npm` 或仓库脚本。可执行示例见 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。
+
+三种目标都在清单声明 `[plugin.marketplace]`。提交清单和 artifact 后，CI 使用来源绑定的凭证执行 `aio plugin publish`；该命令会确认字节属于当前完整提交，并等待静态页面挂载、Wasmtime 实例或 Node 容器完成激活。
