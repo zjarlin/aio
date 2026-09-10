@@ -19,7 +19,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-component.git",
-    "rev": "0b4e0082b55c81bdeb26f20e6c7cc56cbdf069b2",
+    "rev": "e8ac7b4dcde12ed508bf1bce979d4029c78c62a0",
     "title": "Kotlin Multiplatform Wasm Component",
     "summary": "使用 Kotlin Toolchain 构建 JVM、wasmJs 与 wasmWasi commonMain，并在 Wasmtime 中按租户运行动态动作页面和服务。",
     "license": "MIT",
@@ -40,7 +40,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
-    "rev": "0e74ef5dd8c2fa80d6a652254a1239081a1847ac",
+    "rev": "04da4ba46af19cca332c1eb529f8140bc7fdab70",
     "title": "Kotlin Multiplatform Counter",
     "summary": "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。",
     "license": "MIT",
@@ -59,7 +59,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
-    "rev": "d225811457d2444d4dc85e27b0955d84e5155024",
+    "rev": "386e9e6a5da5421930c318d1dbf0e5b7820330db",
     "title": "Kotlin Multiplatform Service",
     "summary": "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。",
     "license": "MIT",
@@ -79,7 +79,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
-    "rev": "768c07cc558c775a1f1863dca856b750a9f359d0",
+    "rev": "0113c4b863d81f5a234c9e77d8b111ca13cb797f",
     "title": "TypeScript Wasm Component",
     "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建无状态动作页面，由宿主按租户持久化页面状态。",
     "license": "MIT",
@@ -98,7 +98,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-pages.git",
-    "rev": "4b7bfc18f866d6fcde8050a2d36dc6983268a6fb",
+    "rev": "16c4af55273d44f606fdd09c80846b01f8e289ab",
     "title": "TypeScript Static Pages",
     "summary": "使用 TypeScript 生成语言无关的 PageDefinition JSON 静态页面，不创建运行时实例。",
     "license": "MIT",
@@ -116,7 +116,7 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "0747e31128d625a999babffc21766ab137882691",
+    "rev": "18eb6ef925d4cb03425dea9ffe15721260efc096",
     "title": "TypeScript Process Service",
     "summary": "使用固定 pnpm 与 TypeScript 工具链构建无状态 Node 服务，由宿主按租户持久化动作页面并代理后端路由。",
     "license": "MIT",

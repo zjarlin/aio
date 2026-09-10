@@ -1,5 +1,5 @@
 git = "https://github.com/zjarlin/aio-plugin-kmp-service.git"
-rev = "d225811457d2444d4dc85e27b0955d84e5155024"
+rev = "386e9e6a5da5421930c318d1dbf0e5b7820330db"
 title = "Kotlin Multiplatform Service"
 summary = "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。"
 license = "MIT"

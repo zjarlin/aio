@@ -28,7 +28,7 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
 
 ```yaml
 - name: 检出固定版本的 AIO CLI
-  uses: actions/checkout@v4
+  uses: actions/checkout@v7
   with:
     repository: zjarlin/aio
     ref: ${{ vars.AIO_CLI_REVISION }} # 必须配置为审核过的完整提交 SHA
