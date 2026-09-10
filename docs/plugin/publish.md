@@ -22,7 +22,7 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
 
 ## CI 请求
 
-发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列重新校验 WIT ABI、无导入限制、页面定义和租户实例健康检查；校验或激活失败时保持旧活动 revision。
+发布仅接受完整 `GITHUB_SHA`、`aio-plugin.toml`、Base64 artifact 和 SHA-256。artifact 必须是该 SHA 中已跟踪的原始字节；CI 可以重建源码验证工具链，但必须在发布前恢复并重新校验提交内 artifact。宿主不会运行 `pnpm`、Gradle、Cargo 或仓库脚本。请求先把清单元数据和 artifact 写入 PostgreSQL/版本缓存并返回 `job_id`，随后由后台队列重新校验 WIT ABI、无导入限制、页面定义和租户实例健康检查；校验或激活失败时保持旧活动 revision。
 
 ```yaml
 - name: 发布已验证的 Component
@@ -32,6 +32,7 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
     AIO_PLUGIN_PUBLISH_TOKEN: ${{ secrets.AIO_PLUGIN_PUBLISH_TOKEN }}
   run: |
     artifact_file="$RUNNER_TEMP/plugin.wasm.base64"
+    response_file="$RUNNER_TEMP/aio-publish-response.json"
     base64 --wrap=0 dist/plugin.wasm | tr -d '\n' > "$artifact_file"
     artifact_sha256="$(sha256sum dist/plugin.wasm | awk '{print $1}')"
     jq -n \
@@ -46,19 +47,36 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
           --header 'content-encoding: gzip' \
           --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" \
           --header 'content-type: application/json' \
-          --data-binary @- "$AIO_PLUGIN_PUBLISH_URL"
+          --data-binary @- "$AIO_PLUGIN_PUBLISH_URL" \
+      | tee "$response_file"
+    job_id="$(jq -er '.data.job_id' "$response_file")"
+    job_url="${AIO_PLUGIN_PUBLISH_URL%/plugins/publish}/publish-jobs/$job_id"
+    for attempt in $(seq 1 90); do
+      response="$(curl --fail-with-body --silent --show-error \
+        --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" "$job_url")"
+      state="$(jq -er '.data.state' <<< "$response")"
+      case "$state" in
+        active) exit 0 ;;
+        failed) jq -r '.data.detail' <<< "$response" >&2; exit 1 ;;
+      esac
+      sleep 2
+    done
+    exit 1
 ```
 
 发布接口会立即返回当前状态（`queued`、`running`、`active` 或 `failed`）：
 
 ```json
-{"job_id":"...","state":"queued","revision":"<GITHUB_SHA>"}
+{"data":{"job_id":"...","state":"queued","detail":"已持久化 artifact，等待后台验证","revision":"<GITHUB_SHA>"}}
 ```
 
-使用同一租户的登录会话查询后台进度；`failed` 响应包含原因，上一活动版本继续提供服务：
+使用来源绑定的发布 token 或同一租户的管理员登录会话查询后台进度；`failed` 响应包含原因，上一活动版本继续提供服务：
 
 ```bash
 curl --fail --cookie "aio_session=<登录会话>" \
+  https://aio.addzero.site/api/runtime/publish-jobs/<job_id>
+
+curl --fail --header "authorization: Bearer <发布令牌>" \
   https://aio.addzero.site/api/runtime/publish-jobs/<job_id>
 ```
 

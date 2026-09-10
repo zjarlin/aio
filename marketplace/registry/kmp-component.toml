@@ -1,5 +1,5 @@
 git = "https://github.com/zjarlin/aio-plugin-kmp-component.git"
-rev = "98df8dc14a0779eb63e19faf2a31d2408de3adcd"
+rev = "0b4e0082b55c81bdeb26f20e6c7cc56cbdf069b2"
 title = "Kotlin Multiplatform Wasm Component"
 summary = "使用 Kotlin Toolchain 构建 JVM、wasmJs 与 wasmWasi commonMain，并在 Wasmtime 中按租户运行动态动作页面和服务。"
 license = "MIT"
