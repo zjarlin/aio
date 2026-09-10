@@ -41,7 +41,9 @@ curl --fail --request DELETE --cookie "aio_session=<登录会话>" \
       --rawfile artifact_base64 "$artifact_file" \
       --arg artifact_sha256 "$artifact_sha256" \
       '{git:$git, rev:$rev, manifest_toml:$manifest, artifact_base64:$artifact_base64, artifact_sha256:$artifact_sha256}' \
+      | gzip -c \
       | curl --fail-with-body --show-error --request POST \
+          --header 'content-encoding: gzip' \
           --header "authorization: Bearer $AIO_PLUGIN_PUBLISH_TOKEN" \
           --header 'content-type: application/json' \
           --data-binary @- "$AIO_PLUGIN_PUBLISH_URL"
