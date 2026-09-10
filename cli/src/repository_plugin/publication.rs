@@ -418,10 +418,7 @@ fn git_output(root: &Path, arguments: &[&str]) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        io::{Read as _, Write as _},
-        net::TcpListener,
-    };
+    use std::net::TcpListener;
 
     use anyhow::{Result, anyhow};
     use flate2::read::GzDecoder;
