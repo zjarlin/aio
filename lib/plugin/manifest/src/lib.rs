@@ -16,9 +16,9 @@ pub use frontend::{
 };
 pub use model::{
     CapabilityManifest, ComponentResponse, FrontendManifest, MarketplaceManifest,
-    PageActionDefinition, PageActionResult, PageBody, PageDefinition, PluginManifest,
-    PluginRequest, PluginRuntime, RepositoryManifest, RepositoryPackage, RuntimeManifest,
-    SceneDefinition, SubpluginManifest,
+    MenuGroupDefinition, PageActionDefinition, PageActionResult, PageBody, PageDefinition,
+    PluginManifest, PluginRequest, PluginRuntime, RepositoryManifest, RepositoryPackage,
+    RuntimeManifest, SceneDefinition, SubpluginManifest,
 };
 #[cfg(feature = "schema")]
 pub use schema::{PluginSchema, schemas};

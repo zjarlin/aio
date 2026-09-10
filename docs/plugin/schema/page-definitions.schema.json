@@ -8,6 +8,30 @@
     "$ref": "#/$defs/PageDefinition"
   },
   "$defs": {
+    "MenuGroupDefinition": {
+      "description": "页面在当前场景菜单树中的一个目录节点。",
+      "type": "object",
+      "properties": {
+        "icon": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ]
+    },
     "PageActionDefinition": {
       "type": "object",
       "properties": {
@@ -137,6 +161,13 @@
         },
         "label": {
           "type": "string"
+        },
+        "menu_path": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MenuGroupDefinition"
+          }
         },
         "required_permission": {
           "type": [

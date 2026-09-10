@@ -291,11 +291,20 @@ pub fn artifact_path(root: &Path, relative: &str) -> Result<PathBuf> {
 
 pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
     let mut ids = HashSet::new();
+    let mut scenes = HashMap::<String, String>::new();
+    let mut groups = HashMap::<String, (String, Option<String>, String, Option<String>)>::new();
     for page in pages {
         validate_name(&page.id, "页面 id")?;
         validate_name(&page.label, "页面标题")?;
         validate_name(&page.scene.id, "页面场景 id")?;
         validate_name(&page.scene.label, "页面场景标题")?;
+        if let Some(label) = scenes.insert(page.scene.id.clone(), page.scene.label.clone()) {
+            ensure!(
+                label == page.scene.label,
+                "同一场景 id 的标题不一致: {}",
+                page.scene.id
+            );
+        }
         ensure!(
             ids.insert(page.id.as_str()),
             "插件页面 id 重复: {}",
@@ -306,6 +315,37 @@ pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
         }
         if let Some(permission) = &page.required_permission {
             validate_name(permission, "页面权限")?;
+        }
+        let mut path_ids = HashSet::new();
+        let mut parent = None::<String>;
+        for group in &page.menu_path {
+            validate_name(&group.id, "菜单分组 id")?;
+            validate_name(&group.label, "菜单分组标题")?;
+            if let Some(icon) = &group.icon {
+                validate_name(icon, "菜单分组图标")?;
+            }
+            ensure!(
+                path_ids.insert(group.id.as_str()),
+                "菜单分组路径形成循环: {} -> {}",
+                page.id,
+                group.id
+            );
+            let location = (
+                page.scene.id.clone(),
+                parent.clone(),
+                group.label.clone(),
+                group.icon.clone(),
+            );
+            if let Some(existing) = groups.get(&group.id) {
+                ensure!(
+                    existing == &location,
+                    "同一菜单分组 id 的场景、父节点或展示信息不一致: {}",
+                    group.id
+                );
+            } else {
+                groups.insert(group.id.clone(), location);
+            }
+            parent = Some(group.id.clone());
         }
         match &page.body {
             PageBody::Frontend { entry } => {
@@ -352,6 +392,12 @@ pub fn validate_page_definitions(pages: &[PageDefinition]) -> Result<()> {
                 }
             }
         }
+    }
+    for group in groups.keys() {
+        ensure!(
+            !ids.contains(group.as_str()),
+            "菜单分组 id 与页面 id 冲突: {group}"
+        );
     }
     Ok(())
 }

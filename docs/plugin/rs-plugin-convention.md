@@ -13,6 +13,8 @@ aio plugin init ../aio-plugin-hello --name aio-plugin-hello --title "Hello" --la
 
 页面插件实现 `az_dioxus_admin_shell::ApplicationPlugin`，并在 `register` 中把具体实现绑定到 Dill。宿主聚合该 trait 的全部实现并按具体类型的 `TypeId` 校验唯一性，不需要字符串插件身份或 artifact 运行目标；页面 `id` 只用于导航。交互控件使用 `az-ui-components`，样式由宿主提供，插件不得携带 CSS、Stylesheet 或 inline style。
 
+`ApplicationPage.menu_path` 声明页面在当前场景 root 下的目录路径。多个插件可以贡献同一个 `ApplicationMenuGroup`，壳按目录 id 聚合为一棵树；分组不对应 Rust 运行时插件身份，也不包含页面渲染函数。
+
 ```rust
 pub fn register(builder: &mut dill::CatalogBuilder) {
     builder

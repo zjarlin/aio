@@ -73,6 +73,7 @@ fn rejects_blank_page_fields() {
             id: "scene".to_owned(),
             label: "Scene".to_owned(),
         },
+        menu_path: Vec::new(),
         required_permission: None,
         body: PageBody::Text {
             title: "Title".to_owned(),
@@ -89,6 +90,38 @@ fn accepts_empty_pages_for_service_only_runtime() -> Result<()> {
 }
 
 #[test]
+fn validates_nested_menu_paths_and_rejects_conflicts() -> Result<()> {
+    let page = |id: &str, group_label: &str| PageDefinition {
+        id: id.to_owned(),
+        label: id.to_owned(),
+        icon: None,
+        scene: crate::SceneDefinition {
+            id: "system".to_owned(),
+            label: "系统".to_owned(),
+        },
+        menu_path: vec![crate::MenuGroupDefinition {
+            id: "system-management".to_owned(),
+            label: group_label.to_owned(),
+            icon: Some("settings".to_owned()),
+        }],
+        required_permission: None,
+        body: PageBody::Text {
+            title: id.to_owned(),
+            content: id.to_owned(),
+        },
+    };
+    validate_page_definitions(&[page("users", "系统管理"), page("roles", "系统管理")])?;
+    let error = validate_page_definitions(&[page("users", "系统管理"), page("roles", "基础设施")])
+        .expect_err("同一分组不能声明冲突标题");
+    assert!(error.to_string().contains("展示信息不一致"));
+
+    let mut cyclic = page("dictionary", "系统管理");
+    cyclic.menu_path.push(cyclic.menu_path[0].clone());
+    assert!(validate_page_definitions(&[cyclic]).is_err());
+    Ok(())
+}
+
+#[test]
 fn validates_runtime_page_actions() -> Result<()> {
     let mut pages = [PageDefinition {
         id: "actions".to_owned(),
@@ -98,6 +131,7 @@ fn validates_runtime_page_actions() -> Result<()> {
             id: "examples".to_owned(),
             label: "Examples".to_owned(),
         },
+        menu_path: Vec::new(),
         required_permission: None,
         body: PageBody::Actions {
             title: "Counter".to_owned(),
@@ -132,6 +166,7 @@ fn rejects_invalid_runtime_page_state() {
             id: "examples".to_owned(),
             label: "Examples".to_owned(),
         },
+        menu_path: Vec::new(),
         required_permission: None,
         body: PageBody::Actions {
             title: "Counter".to_owned(),
@@ -188,6 +223,7 @@ fn rejects_account_action_without_a_declared_page() -> Result<()> {
             id: "account".to_owned(),
             label: "Account".to_owned(),
         },
+        menu_path: Vec::new(),
         required_permission: None,
         body: PageBody::Text {
             title: "Profile".to_owned(),

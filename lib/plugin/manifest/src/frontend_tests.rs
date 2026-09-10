@@ -26,6 +26,7 @@ fn rejects_nonportable_and_escaping_frontend_paths() {
         "assets/NUL.txt",
         "assets/COM1.js",
         "assets/file.",
+        "__aio_bridge.js",
     ] {
         assert!(validate_frontend_path(path).is_err(), "{path:?}");
     }

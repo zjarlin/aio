@@ -14,6 +14,7 @@ pub fn validate_frontend_path(path: &str) -> Result<()> {
     ensure!(
         !path.is_empty()
             && path.len() <= 240
+            && path != "__aio_bridge.js"
             && path.split('/').all(|segment| {
                 !segment.is_empty()
                     && segment != "."

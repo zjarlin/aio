@@ -122,8 +122,21 @@ pub struct PageDefinition {
     pub icon: Option<String>,
     pub scene: SceneDefinition,
     #[serde(default)]
+    pub menu_path: Vec<MenuGroupDefinition>,
+    #[serde(default)]
     pub required_permission: Option<String>,
     pub body: PageBody,
+}
+
+/// 页面在当前场景菜单树中的一个目录节点。
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+pub struct MenuGroupDefinition {
+    pub id: String,
+    pub label: String,
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

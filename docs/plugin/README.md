@@ -86,6 +86,23 @@ Wasm Component 必须实现 [`aio:plugin/page@1`](wit/page.wit)：`definition() 
 }
 ```
 
+顶部场景是菜单树的 root。页面用 `menu_path` 声明 root 下任意深度的目录路径；目录不拥有业务页面，多个独立插件可以向相同目录贡献叶子。例如 RBAC 与字典插件共同进入系统管理，文件插件进入基础设施：
+
+```json
+{
+  "id": "dictionary",
+  "label": "字典管理",
+  "icon": "book-open",
+  "scene": { "id": "system", "label": "系统" },
+  "menu_path": [
+    { "id": "system-management", "label": "系统管理", "icon": "settings" }
+  ],
+  "body": { "kind": "text", "title": "字典管理", "content": "..." }
+}
+```
+
+同一目录 id 的场景、父目录、标题和图标必须一致；目录路径不能循环，目录 id 不能与页面 id 冲突。省略 `menu_path` 的页面是该场景 root 的直接子页面。账户区贡献的页面仍是独立全屏入口，不进入场景树。
+
 纯文本页面把 `body` 改为 `{ "kind": "text", "title": "...", "content": "..." }`。`counter` 由宿主维护当前浏览器中的本地计数，适合静态示例，不调用插件运行时，也不在刷新后保留值。渲染阶段的 `UiOp`、HTML、CSS 和 Dioxus `Element` 都不能作为持久化协议。
 
 需要由插件处理按钮事件时，`wasm-component` 或 `process` 页面使用 `actions` 页面体：
