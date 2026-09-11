@@ -11,9 +11,9 @@
   },
   {
     "git": "https://github.com/zjarlin/aio-plugin-dioxus-fullstack.git",
-    "rev": "80475dfba5508016a977ba34c931253b0fce5fe7",
+    "rev": "2d08be28be88eade7715537bf882af0b9f9b87a5",
     "title": "Dioxus 全栈示例",
-    "summary": "同仓 Dioxus Web 前端和 Rust Wasm Component 后端，通过隔离通信桥调用计数服务。",
+    "summary": "同仓 Dioxus Web 前端和 Rust Wasm Component 后端，本地 Signal 计数与显式服务调用各自独立。",
     "license": "MIT",
     "tags": ["example", "rust", "dioxus", "wasm-component", "full-stack"],
     "runtime": "wasm-component",
