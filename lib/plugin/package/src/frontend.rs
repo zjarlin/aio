@@ -5,7 +5,7 @@ use az_plugin_manifest::{MAX_FRONTEND_FILES, RepositoryManifest, validate_fronte
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sha2::{Digest as _, Sha256};
 
-use crate::{MAX_ARTIFACT_BYTES, PluginPackage};
+use crate::{MAX_BUNDLE_BYTES, PluginPackage};
 
 impl PluginPackage {
     pub(super) fn verify_frontend(
@@ -62,14 +62,14 @@ impl PluginPackage {
             }
             ensure!(
                 asset.content_base64.len()
-                    <= MAX_ARTIFACT_BYTES.saturating_sub(total).div_ceil(3) * 4,
-                "前后端产物合计超过 32 MiB"
+                    <= MAX_BUNDLE_BYTES.saturating_sub(total).div_ceil(3) * 4,
+                "前后端产物合计超过 64 MiB"
             );
             let bytes = STANDARD
                 .decode(&asset.content_base64)
                 .context("前端资产 base64 无效")?;
             total = total.checked_add(bytes.len()).context("前端资产大小溢出")?;
-            ensure!(total <= MAX_ARTIFACT_BYTES, "前后端产物合计超过 32 MiB");
+            ensure!(total <= MAX_BUNDLE_BYTES, "前后端产物合计超过 64 MiB");
             ensure!(
                 asset.sha256 == format!("{:x}", Sha256::digest(&bytes)),
                 "前端资产 SHA-256 校验失败: {path}"

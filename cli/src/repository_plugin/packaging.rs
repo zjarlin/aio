@@ -7,7 +7,8 @@ use std::{
 
 use anyhow::{Context as _, Result, ensure};
 use az_plugin_package::{
-    MAX_ARTIFACT_BYTES, MAX_MANIFEST_BYTES, MAX_PACKAGE_BYTES, PluginPackage, normalize_git_source,
+    MAX_ARTIFACT_BYTES, MAX_BUNDLE_BYTES, MAX_MANIFEST_BYTES, MAX_PACKAGE_BYTES, PluginPackage,
+    normalize_git_source,
 };
 
 #[derive(Debug)]
@@ -62,7 +63,7 @@ pub(super) fn prepare_package(
     let artifact_path = az_plugin_manifest::artifact_path(&root, &runtime.artifact)?;
     let artifact = read_bounded(&artifact_path, MAX_ARTIFACT_BYTES)?;
     let mut frontend = std::collections::BTreeMap::new();
-    let mut remaining = MAX_ARTIFACT_BYTES - artifact.len();
+    let mut remaining = MAX_BUNDLE_BYTES - artifact.len();
     for (relative, path) in az_plugin_manifest::frontend_files(&root, &manifest)? {
         let content = read_bounded(&path, remaining)?;
         remaining -= content.len();

@@ -22,6 +22,9 @@ fn rejects_nonportable_and_escaping_frontend_paths() {
         "a?b",
         "a#b",
         "a%2fb",
+        "vendors/@scope/../../secret",
+        "vendors/@scope/%2e%2e/secret",
+        "https://user@host/file.js",
         "a\0b",
         "assets/NUL.txt",
         "assets/COM1.js",
@@ -31,6 +34,17 @@ fn rejects_nonportable_and_escaping_frontend_paths() {
         assert!(validate_frontend_path(path).is_err(), "{path:?}");
     }
     assert!(validate_frontend_path("assets/screen-42_bg.wasm").is_ok());
+    assert!(validate_frontend_path("vendors/@js-joda/core/dist/js-joda.js").is_ok());
+}
+
+#[test]
+fn collects_scoped_package_assets() -> Result<()> {
+    let root = tempfile::tempdir()?;
+    let asset = "vendors/@js-joda/core/dist/js-joda.js";
+    fs::create_dir_all(root.path().join("dist/web/vendors/@js-joda/core/dist"))?;
+    fs::write(root.path().join("dist/web").join(asset), "export {}")?;
+    assert!(frontend_files(root.path(), &manifest()?)?.contains_key(asset));
+    Ok(())
 }
 
 #[test]

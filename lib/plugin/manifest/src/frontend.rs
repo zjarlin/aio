@@ -24,7 +24,7 @@ pub fn validate_frontend_path(path: &str) -> Result<()> {
                     && !is_reserved_segment(segment)
                     && segment
                         .bytes()
-                        .all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte))
+                        .all(|byte| byte.is_ascii_alphanumeric() || b"._-@".contains(&byte))
             }),
         "前端资产必须使用规范化的相对路径: {path}"
     );

@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 pub const FORMAT_VERSION: u32 = 2;
 pub const PACKAGE_CONTENT_TYPE: &str = "application/vnd.aio.plugin+gzip";
 pub const MAX_ARTIFACT_BYTES: usize = 32 * 1024 * 1024;
+pub const MAX_BUNDLE_BYTES: usize = 64 * 1024 * 1024;
 pub const MAX_MANIFEST_BYTES: usize = 128 * 1024;
 pub const MAX_PACKAGE_BYTES: usize = 48 * 1024 * 1024;
-pub const MAX_PACKAGE_JSON_BYTES: usize = 48 * 1024 * 1024;
+pub const MAX_PACKAGE_JSON_BYTES: usize = 96 * 1024 * 1024;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

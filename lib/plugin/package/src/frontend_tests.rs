@@ -99,11 +99,37 @@ fn rejects_undeclared_missing_colliding_and_traversing_assets() {
 #[test]
 fn enforces_combined_byte_and_file_count_limits() {
     let mut large = files();
-    large.insert("assets/large.wasm".to_owned(), vec![0; MAX_ARTIFACT_BYTES]);
+    large.insert("assets/large.wasm".to_owned(), vec![0; MAX_BUNDLE_BYTES]);
     assert!(package(MANIFEST, large).is_err());
     let mut files = files();
     for index in 0..MAX_FRONTEND_FILES {
         files.insert(format!("assets/{index}.js"), vec![]);
     }
     assert!(package(MANIFEST, files).is_err());
+}
+
+#[test]
+fn fullstack_bundle_can_exceed_backend_artifact_limit() -> Result<()> {
+    let mut assets = files();
+    assets.insert(
+        "assets/compose.wasm".to_owned(),
+        vec![0; crate::MAX_ARTIFACT_BYTES],
+    );
+    let package = package(MANIFEST, assets)?;
+    assert_eq!(
+        package.verify()?.frontend["assets/compose.wasm"].len(),
+        crate::MAX_ARTIFACT_BYTES
+    );
+    let mut oversized = package.clone();
+    oversized
+        .frontend
+        .get_mut("assets/compose.wasm")
+        .unwrap()
+        .content_base64 = STANDARD.encode(vec![0; MAX_BUNDLE_BYTES]);
+    assert!(
+        oversized
+            .verify_frontend(&az_plugin_manifest::parse_manifest(MANIFEST)?, PAGES.len())
+            .is_err()
+    );
+    Ok(())
 }

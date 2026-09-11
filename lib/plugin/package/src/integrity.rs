@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use url::Url;
 
 use crate::{
-    FORMAT_VERSION, FrontendAsset, MAX_ARTIFACT_BYTES, MAX_MANIFEST_BYTES, PluginPackage,
-    VerifiedPluginPackage,
+    FORMAT_VERSION, FrontendAsset, MAX_ARTIFACT_BYTES, MAX_BUNDLE_BYTES, MAX_MANIFEST_BYTES,
+    PluginPackage, VerifiedPluginPackage,
 };
 
 const PACKAGE_DIGEST_DOMAIN: &[u8] = b"aio-plugin-package-v2\0";
@@ -35,7 +35,7 @@ impl PluginPackage {
                 total.checked_add(bytes.len())
             })
             .context("插件产物大小溢出")?;
-        ensure!(total <= MAX_ARTIFACT_BYTES, "前后端产物合计超过 32 MiB");
+        ensure!(total <= MAX_BUNDLE_BYTES, "前后端产物合计超过 64 MiB");
         let mut package = Self {
             format_version: FORMAT_VERSION,
             git: normalize_git_source(&git)?,
