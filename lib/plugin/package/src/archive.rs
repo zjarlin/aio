@@ -11,7 +11,7 @@ impl PluginPackage {
         let json = serde_json::to_vec(self).context("序列化插件包失败")?;
         ensure!(
             json.len() <= MAX_PACKAGE_JSON_BYTES,
-            "插件包 JSON 超过 48 MiB"
+            "插件包 JSON 超过 96 MiB"
         );
         let mut encoder = GzBuilder::new()
             .mtime(0)
@@ -34,7 +34,7 @@ impl PluginPackage {
             .context("解压插件包失败")?;
         ensure!(
             json.len() <= MAX_PACKAGE_JSON_BYTES,
-            "插件包解压后超过 48 MiB"
+            "插件包解压后超过 96 MiB"
         );
         ensure!(decoder.get_ref().is_empty(), "插件包 gzip 尾部包含额外数据");
         let package: Self = serde_json::from_slice(&json).context("解析插件包失败")?;
