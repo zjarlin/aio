@@ -64,8 +64,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # 固定动作提交
         with:
+          toolchain: nightly
           targets: ${{ matrix.target }}
       - name: 安装 Linux musl 工具链
         if: runner.os == 'Linux'
