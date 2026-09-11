@@ -32,7 +32,7 @@ pub fn application(options: ApplicationOptions) -> Result<()> {
     let name = resolve_package_name(&options.path, options.name)?;
     let title = options.title.unwrap_or_else(|| name.clone());
     prepare_directory(&options.path)?;
-    create_directory(&options.path.join("src/pages"))?;
+    create_directory(&options.path.join("src"))?;
     write(
         &options.path.join("Cargo.toml"),
         &template::application_cargo(&name),
@@ -66,12 +66,6 @@ pub fn application(options: ApplicationOptions) -> Result<()> {
     write(
         &options.path.join("src/server.rs"),
         &template::application_server(&name),
-    )?;
-    write(&options.path.join("src/pages/mod.rs"), "pub mod home;\n")?;
-    write(&options.path.join("src/pages/home.rs"), template::HOME_PAGE)?;
-    write(
-        &options.path.join("src/pages/README.md"),
-        template::PAGES_README,
     )?;
     write(
         &options.path.join("Dockerfile"),
@@ -242,7 +236,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn initializes_application_with_page_plugin_entry() -> Result<()> {
+    fn initializes_shell_without_builtin_pages() -> Result<()> {
         let root = tempdir()?;
         let path = root.path().join("demo-app");
 
@@ -255,11 +249,11 @@ mod tests {
         assert!(path.join("aio.toml").is_file());
         assert!(path.join("index.html").is_file());
         assert!(path.join("rust-toolchain.toml").is_file());
-        assert!(path.join("src/pages/home.rs").is_file());
+        assert!(!path.join("src/pages").exists());
         assert!(path.join("src/server.rs").is_file());
         assert!(path.join("Dockerfile").is_file());
-        assert!(fs::read_to_string(path.join("src/plugins.rs"))?.contains("home::register"));
-        assert!(fs::read_to_string(path.join("src/pages/home.rs"))?.contains("menu_path"));
+        assert!(!fs::read_to_string(path.join("src/plugins.rs"))?.contains("home::register"));
+        assert!(!fs::read_to_string(path.join("src/main.rs"))?.contains("mod pages"));
         Ok(())
     }
 

@@ -1,137 +1,22 @@
 [
   {
-    "git": "https://github.com/zjarlin/aio-plugin-hello.git",
-    "rev": "ebf4548f48bdc2dec9a2ef1741cb686af189651f",
-    "title": "Hello Counter",
-    "summary": "带点击加一页面和 Wasm Component 后端处理器的最小 AIO 全栈插件。",
+    "git": "https://github.com/zjarlin/aio-plugin-kmp-example.git",
+    "rev": "11f51de97e2c1bca3fc7937cef4dffe27e0bdc36",
+    "title": "KMP 全栈示例",
+    "summary": "Compose Web 前端、Ktor 后端与共享 Kotlin 模型，包含任务列表和本地计数交互。",
     "license": "MIT",
-    "tags": [
-      "example",
-      "counter",
-      "wasm-component"
-    ],
-    "runtime": "wasm-component",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
-  },
-  {
-    "git": "https://github.com/zjarlin/aio-plugin-kmp-component.git",
-    "rev": "e8ac7b4dcde12ed508bf1bce979d4029c78c62a0",
-    "title": "Kotlin Multiplatform Wasm Component",
-    "summary": "使用 Kotlin Toolchain 构建 JVM、wasmJs 与 wasmWasi commonMain，并在 Wasmtime 中按租户运行动态动作页面和服务。",
-    "license": "MIT",
-    "tags": [
-      "example",
-      "kotlin",
-      "kmp",
-      "wasm-component",
-      "full-stack",
-      "preview"
-    ],
-    "runtime": "wasm-component",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
-  },
-  {
-    "git": "https://github.com/zjarlin/aio-plugin-kmp-counter.git",
-    "rev": "04da4ba46af19cca332c1eb529f8140bc7fdab70",
-    "title": "Kotlin Multiplatform Counter",
-    "summary": "使用 Kotlin Toolchain 编译 JVM 与 wasmJs commonMain，并生成两个 AIO PageDefinition 页面的示例插件。",
-    "license": "MIT",
-    "tags": [
-      "example",
-      "kotlin",
-      "kmp",
-      "page-definition"
-    ],
-    "runtime": "page-definition",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
-  },
-  {
-    "git": "https://github.com/zjarlin/aio-plugin-kmp-service.git",
-    "rev": "386e9e6a5da5421930c318d1dbf0e5b7820330db",
-    "title": "Kotlin Multiplatform Service",
-    "summary": "使用 Kotlin Toolchain 构建 commonMain 无状态动作 reducer 和 JVM 可执行 JAR，由宿主按租户持久化页面状态。",
-    "license": "MIT",
-    "tags": [
-      "example",
-      "kotlin",
-      "kmp",
-      "process",
-      "full-stack"
-    ],
+    "tags": ["example", "kotlin", "compose", "ktor", "full-stack"],
     "runtime": "process",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
+    "capabilities": { "network": [], "filesystem": [], "database": false }
   },
   {
-    "git": "https://github.com/zjarlin/aio-plugin-ts-component.git",
-    "rev": "0113c4b863d81f5a234c9e77d8b111ca13cb797f",
-    "title": "TypeScript Wasm Component",
-    "summary": "使用固定 TypeScript、JCO 和 ComponentizeJS 工具链构建无状态动作页面，由宿主按租户持久化页面状态。",
+    "git": "https://github.com/zjarlin/aio-plugin-dioxus-fullstack.git",
+    "rev": "80475dfba5508016a977ba34c931253b0fce5fe7",
+    "title": "Dioxus 全栈示例",
+    "summary": "同仓 Dioxus Web 前端和 Rust Wasm Component 后端，通过隔离通信桥调用计数服务。",
     "license": "MIT",
-    "tags": [
-      "example",
-      "typescript",
-      "wasm-component",
-      "full-stack"
-    ],
+    "tags": ["example", "rust", "dioxus", "wasm-component", "full-stack"],
     "runtime": "wasm-component",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
-  },
-  {
-    "git": "https://github.com/zjarlin/aio-plugin-ts-pages.git",
-    "rev": "16c4af55273d44f606fdd09c80846b01f8e289ab",
-    "title": "TypeScript Static Pages",
-    "summary": "使用 TypeScript 生成语言无关的 PageDefinition JSON 静态页面，不创建运行时实例。",
-    "license": "MIT",
-    "tags": [
-      "example",
-      "typescript",
-      "page-definition"
-    ],
-    "runtime": "page-definition",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
-  },
-  {
-    "git": "https://github.com/zjarlin/aio-plugin-ts-service.git",
-    "rev": "18eb6ef925d4cb03425dea9ffe15721260efc096",
-    "title": "TypeScript Process Service",
-    "summary": "使用固定 pnpm 与 TypeScript 工具链构建无状态 Node 服务，由宿主按租户持久化动作页面并代理后端路由。",
-    "license": "MIT",
-    "tags": [
-      "example",
-      "typescript",
-      "node",
-      "process",
-      "full-stack"
-    ],
-    "runtime": "process",
-    "capabilities": {
-      "network": [],
-      "filesystem": [],
-      "database": false
-    }
+    "capabilities": { "network": [], "filesystem": [], "database": false }
   }
 ]
