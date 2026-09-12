@@ -3,6 +3,8 @@ use az_plugin_delivery::BuildEnvironment;
 pub fn settings(environment: BuildEnvironment) -> &'static [(&'static str, &'static str)] {
     match environment {
         BuildEnvironment::Rust => &[
+            ("NO_DOWNLOADS", "1"),
+            ("DX_TELEMETRY_ENABLED", "false"),
             ("CARGO_HOME", "/cache/cargo"),
             ("CARGO_NET_GIT_FETCH_WITH_CLI", "false"),
             ("CARGO_UNSTABLE_GIT", "shallow-deps"),
