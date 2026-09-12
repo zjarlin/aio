@@ -40,13 +40,13 @@ dx components add <name> \
 ## 实施流程
 
 1. 从实际路由、页面截图或失败请求复现问题，确认 HTTP 状态、JSON 业务码和浏览器控制台状态。
-2. 定位页面所有者：通用壳层改独立 `dioxus-admin-workbench`，AIO 接入改 `app/src/admin_shell`，Studio 配置改 `ui.rs`，发布后动态页面改 `page_runtime.rs`。
+2. 定位页面所有者：通用壳层改独立 `dioxus-admin-workbench`，产品装配归 `aio-idea`，Studio 页面与解释器归独立 `aio-plugin-studio`。平台仓库不再拥有 `app/`、Studio 或生成业务代码。
 3. 先复用现有官方组件；缺少组件时才用固定 registry 提取源码。图标继续使用仓库 `icons`，按钮必须提供可访问名称。
 4. 表格先声明列树和稳定 row key，再提供 renderer。可编辑列必须同时声明 `editable`、`can_edit` 和 `render_editor`；合并单元格只传 `DataTableSpan`；操作列只触发 Dialog 或明确命令。
 5. 元数据遵循可推导可省略：REST 方法与路径组成身份，显示名称等可从稳定字段推导的值不重复持久化。
 6. 发布应用壳只消费 `ProgramImage` 和生成页面函数；Controller 与 Service 由 Dill 按 `TypeId` 聚合，禁止字符串插件身份。
 7. PostgreSQL 只保存 `PageDefinition` 等正式定义，不保存渲染阶段 `UiOp`、Dioxus `Element`、HTML、CSS 或 JavaScript。
-8. 修改运行时行为后重建 wasm，停止旧 8080 进程再启动新服务，避免旧二进制读取新 schema。
+8. 修改运行时行为后重建对应插件前后端，只重启本任务创建的开发服务。正式数据迁移先在副本预演，不停止不明归属的进程。
 
 ## 完成门槛
 
@@ -54,9 +54,11 @@ dx components add <name> \
 
 ```bash
 cargo fmt --all --check
-cargo test -p az-studio
-cargo test -p az-aio-app
+cargo test --workspace
+# 下列业务验证在独立 aio-plugin-studio 仓库中执行
+cd ../aio-plugin-studio
+cargo test -p az-studio -p az-aio-app
 cd app && dx build --platform web --release
 ```
 
-启动 `./scripts/preview.zsh` 后，在桌面和移动端视口验证目标路由。至少检查：页面非空、表格列与操作可用、对话框不溢出、无重叠、控制台无错误、关键保存请求返回成功业务码。
+启动 Studio 仓库的 `./scripts/preview.zsh` 后，在桌面和移动端视口验证目标路由。至少检查：页面非空、表格列与操作可用、对话框不溢出、无重叠、控制台无错误、关键保存请求返回成功业务码。

@@ -1,33 +1,25 @@
 ---
 name: aio-plugin-development
-description: 为 AIO 创建、迁移或验证社区插件时使用，覆盖 Git 仓库清单、页面与服务能力、Rust/Kotlin/TypeScript 运行目标、市场条目和可安装性验证。不用于修改 AIO 宿主自身页面。
+description: 为 AIO 创建、迁移或验证全栈运行时插件，覆盖同仓前后端、WIT、真实前端资源、宿主能力和可安装性；不用于修改宿主业务页面。
 ---
 
-# AIO 插件开发
+# AIO 全栈插件开发
 
-先阅读仓库根 `AGENTS.md` 和 `docs/plugin/README.md`。根据插件实现语言只继续阅读一份规约：
+先阅读根 `AGENTS.md` 和 `docs/refactor/README.md`，确认当前切换状态，再阅读对应语言规约。已有规约或 CLI 与已批准的 v2 边界冲突时，直接迁移调用点，不能增加旧协议适配层。
 
-- Rust：`docs/plugin/rs-plugin-convention.md`
-- Kotlin：`docs/plugin/kt-plugin-convention.md`
-- TypeScript：`docs/plugin/ts-plugin-convention.md`
+- 一个插件一个 Git 仓库，统一 `frontend/`、`backend/`、`shared/`；强耦合子功能同仓、同版本，不独立安装或回滚。
+- 前端编译完整 Web 包，真实 UI 留在自身框架。KMP 必须验证 `@Composable`、`ComposeViewport` 和实际 canvas；不能把 JSON 控件描述当作 Compose UI 交付。
+- 后端默认 Wasm Component；只有 JVM/Node/原生 SDK 等实际需求才选 process。数据库通过宿主能力访问，不因需要 PostgreSQL 就改成 process。
+- v2 唯一契约是 `lib/plugin/contract/wit/plugin.wit`。导出 `describe`、`health`、`lifecycle`、`handle`；请求响应正文是二进制，页面定义仅为入口、导航、权限和挂载面。
+- WIT 生成语言绑定，业务代码不得手工实现 ABI。Rust Dill/TypeId 仅用于进程内注入；来源 UUID、包摘要、页面 ID 分别用于安装、版本、导航。
+- 能力声明是申请，实例实际授权由宿主提供。数据库连接凭据不进入 Wasm；业务数据按插件/租户隔离，请求结束时未提交事务回滚。
+- Cookie 由宿主写入；插件前端只通过受限桥调用服务，不共享宿主 DOM、语言对象或会话秘密。
+- 构建由作者工具链完成；生产安装只处理已编译包，禁止执行安装脚本。前后端、路由、页面和实例锁定同一整包版本。
+- 平台和产品不能新增业务插件 Cargo 依赖。编译时 Rust 装配是 host extension，不是运行时市场插件。
+- 新 v2 包在现役校验/发布链完成迁移前不得推到旧公网宿主。检查 `docs/refactor/README.md` 中的上线门槛，不把开发预览当作生产验收。
 
-## 交付边界
+## 验证
 
-- 一个功能 Git 仓库包含前端、后端、共享逻辑和可选子插件，不拆成前后端两个仓库。源码装配锁定 Git SHA；在线发布锁定 `.aio-plugin` 包内容 SHA-256。
-- `aio-plugin.toml` 只描述可发现的构建产物和运行目标，不声明字符串运行时身份。Git 来源与提交只承担安装身份，Rust 运行时扩展继续由 Dill 按具体 `TypeId` 聚合。
-- 页面、服务和共享模型分开；前后端可以只提供一端，但不得把服务端依赖带进浏览器 Wasm。
-- Rust 页面只使用 `az-ui-components` 和 `az-dioxus-admin-shell`，不自带 CSS，不复制宿主组件。
-- 多语言插件优先使用稳定的 AIO WIT/PageDefinition 边界；需要数据库、长任务、网络监听或系统权限时使用隔离进程或容器，不把 WASI 权限扩大成宿主权限。
-- 在线 Wasm 插件必须使用 `docs/plugin/wit/page.wit`，在 `[plugin.runtime]` 声明 `kind = "wasm-component"` 与预构建 artifact，并验证 `definition`、`handle` 两个导出。
-- Wasm Component 实例按租户、来源和 revision 隔离；安装/启用先通过 `definition` 校验页面，停用/卸载/回滚必须销毁对应实例，不能只切换数据库状态。
-- KMP 静态页面插件可以用 commonMain 模型和 JVM 生成器产出 `PageDefinition` JSON，声明 `kind = "page-definition"`；使用仓库内 `kotlin` wrapper 验证 JVM 与 wasmJs，把生成产物放入二进制包，不要求提交到 Git。
-- 当前公网宿主已经激活容器化 `process` 监督器；只为预置 digest 镜像和零额外能力清单声明在线可安装，额外网络、文件系统或数据库能力仍必须标注为未开放。
-- 公网安装阶段不得执行仓库脚本。构建和测试在插件作者工具链中完成，安装器校验二进制包并原子切换；进程监督器停止或数据库切换失败时保留并恢复上一版本。
-- 在线发布使用来源和租户绑定的发布凭证。先读 `docs/plugin/publish.md`，再执行 `aio plugin package . --version <SemVer>` 和 `aio plugin publish dist/plugin.aio-plugin`。已有包可在没有 Git 的目录直接上传；不要求 GitHub Actions、Git 证明或已提交 artifact。
-- 各语言共用 `az-plugin-package` 协议和 CLI 上传/轮询实现，不在插件仓库拼接 JSON。PostgreSQL 保存包与元数据，同来源同版本不可覆盖不同内容；源码 SHA 只是可选溯源参考。
+Rust 使用独立 workbench 的 `az-ui-components`，不复制组件或 CSS。Kotlin 用仓库固定版本和 SHA256 的 Toolchain wrapper，按 `docs/plugin/kt-plugin-convention.md` 构建前后端。
 
-## 完成验证
-
-Rust 插件至少执行 `cargo fmt --all --check`、`cargo test --workspace`，再安装进一个临时 AIO 宿主，分别检查 Web 与 Server feature。Kotlin 与 TypeScript 按各自规约产出后，还要在插件仓库执行 `aio plugin validate`；该命令使用与宿主共享的 `az-plugin-manifest` 校验清单、artifact、子插件依赖图、PageDefinition 和 Component ABI。
-
-需要进入社区市场时，在 `aio-plugin.toml` 声明 `[plugin.marketplace]`，并可在 `marketplace/registry/` 增加用于冷启动发现的单独条目；展示名称、说明和标签只属于市场元数据，不进入运行时插件身份。配置来源绑定凭证后执行 `aio plugin publish`，确认后台任务进入 `active`。
+验证真实后端持久化、能力拒绝、租户隔离、失败不替换版本。浏览器覆盖桌面/移动端 canvas 或 DOM 非空、按钮服务调用、刷新、卸载、导航和控制台；不使用模拟计数冒充数据库。涉及身份和数据切换时先在数据库副本预演，保留旧发布与备份。

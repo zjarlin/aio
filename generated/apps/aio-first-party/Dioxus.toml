@@ -1,8 +1,0 @@
-[application]
-name = "az-app-aio-first-party"
-default_platform = "web"
-out_dir = "dist"
-
-[web.app]
-title = "AIO跨平台"
-base_path = "/app"

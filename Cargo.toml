@@ -1,11 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "app",
     "cli",
-    "generated/apps/*",
-    "app/plugins/studio",
-    "lib/biz/*",
     "lib/plugin/*",
 ]
 exclude = ["lib/dioxus-admin-workbench"]

@@ -1,0 +1,15 @@
+[package]
+name = "release-fixture"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { version = "=0.51.0", default-features = false, features = ["macros", "realloc", "std"] }
+
+[features]
+unhealthy = []

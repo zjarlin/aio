@@ -1,0 +1,70 @@
+package aio:plugin@2.0.0;
+
+interface transport {
+    record header { name: string, value: string }
+    record request { method: string, path: string, query: option<string>, headers: list<header>, body: list<u8> }
+    record response { status: u16, headers: list<header>, body: list<u8> }
+    enum phase { prepare, activate, deactivate }
+}
+
+interface metadata {
+    enum surface { workspace, fullscreen, account-entry, account-menu }
+    record scene { id: string, label: string }
+    record page-definition {
+        id: string,
+        label: string,
+        entry: string,
+        scene: option<scene>,
+        menu-path: list<string>,
+        permission: option<string>,
+        surface: surface,
+    }
+    record description { label: string, pages: list<page-definition> }
+}
+
+interface host {
+    record request-context {
+        tenant-id: option<string>,
+        user-id: option<string>,
+        session-id: option<string>,
+        request-id: string,
+    }
+    context: func() -> request-context;
+    now: func() -> u64;
+    random: func(length: u32) -> result<list<u8>, string>;
+    log: func(message: string);
+    authorize: func(permission: string) -> result<bool, string>;
+}
+
+interface database {
+    variant value { null, boolean(bool), integer(s64), real(f64), text(string), bytes(list<u8>), json(string) }
+    record rows { columns: list<string>, values: list<list<value>> }
+    begin: func() -> result<u32, string>;
+    query: func(transaction: u32, statement: string, parameters: list<value>) -> result<rows, string>;
+    execute: func(transaction: u32, statement: string, parameters: list<value>) -> result<u64, string>;
+    finish: func(transaction: u32, commit: bool) -> result<_, string>;
+}
+
+interface storage {
+    read: func(path: string) -> result<list<u8>, string>;
+    write: func(path: string, bytes: list<u8>) -> result<_, string>;
+    remove: func(path: string) -> result<_, string>;
+}
+
+interface management {
+    use transport.{request, response};
+    invoke: func(request: request) -> result<response, string>;
+}
+
+world plugin {
+    import host;
+    import database;
+    import storage;
+    import management;
+    use transport.{request, response, phase};
+    use metadata.{description};
+    export describe: func() -> description;
+    export health: func() -> result<_, string>;
+    export lifecycle: func(phase: phase) -> result<_, string>;
+    export handle: func(request: request) -> response;
+}

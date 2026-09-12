@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AIO Runtime Preview</title></head>
+<body>
+<iframe id="plugin" title="AIO Plugin" sandbox="allow-scripts" src="/assets/counter.html" width="100%" height="700" frameborder="0"></iframe>
+<script type="module">
+import { mountBridge } from '/bridge/host.mjs';
+const frame = document.getElementById('plugin');
+const resize = () => frame.height = String(window.innerHeight - 24);
+resize();
+window.addEventListener('resize', resize);
+const unmount = mountBridge(frame, async (request) => {
+  const response = await fetch('/invoke', { method: 'POST', headers: { 'content-type': 'application/json', 'x-aio-ticket': '__TICKET__' },
+    body: JSON.stringify({ ...request, body: Array.from(request.body) }) });
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+});
+window.addEventListener('pagehide', unmount, { once: true });
+</script>
+</body>
+</html>

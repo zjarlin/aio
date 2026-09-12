@@ -1,0 +1,11 @@
+export interface Header { name: string; value: string }
+export interface Request { method?: string; path: string; query?: string; headers?: Header[]; body?: Uint8Array }
+export interface Response { status: number; headers: Header[]; body: Uint8Array }
+declare global {
+  interface Window {
+    readonly aioPlugin: {
+      request(input: Request): Promise<Response>;
+      json<T>(method: string, path: string, value?: unknown): Promise<T>;
+    };
+  }
+}

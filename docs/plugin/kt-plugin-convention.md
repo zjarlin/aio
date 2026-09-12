@@ -1,66 +1,35 @@
-# Kotlin 插件开发规约
+# Kotlin 全栈插件规约
 
-Kotlin 插件根据能力选择目标，不强制把所有代码编译为 Wasm。页面模型、事件处理、服务端和共享逻辑全部属于同一个功能 Git 仓库，不拆分客户端和服务端仓库。
+新插件采用同仓 `frontend/`、`backend/`、`shared/`，共同发布和回滚。参考本地独立 `aio-plugin-kmp-example`；不要继续生成旧的 actions/PageBody 页面解释器。
 
-## 客户端与可移植逻辑
+## 模块
 
-- 共享业务逻辑放在 `commonMain`。
-- 只贡献宿主已有页面形态时，可以在 commonMain 建模，由 JVM 生成器产出 `PageDefinition` JSON，并声明 `kind = "page-definition"`。同一 commonMain 至少同时通过 JVM 与 wasmJs 编译。
-- 需要 AIO 原生页面时，目标是 `wasm-component` 并实现 [`aio:plugin/page@1`](wit/page.wit)；组件通过 `definition` 返回 `PageDefinition` JSON 数组，通过 `handle` 返回受限请求结果，不直接操作宿主 DOM。
-- 需要运行时按钮事件时使用 `actions` 页面体；`wasm-component` 在 `handle` 中返回新的 `PageBody`，`process` 在 `POST /aio/action` 返回相同结果。插件从宿主注入的当前 `body.state` 计算下一状态，不把租户页面状态保存在 JVM 或 Wasm 实例内。纯 `page-definition` 没有事件实例，校验器会拒绝动作页面。
-- 独立 Compose Multiplatform 页面只能作为隔离页面运行，不能伪装成 AIO 原生控件树。
-- Kotlin/Wasm Component 当前属于预览目标；进入市场时必须标记 `preview`，锁定 Kotlin、WIT 生成器和 `wasm-tools` 版本，并声明最低宿主版本。
+- `frontend`：`wasm-js/app`，真实 `@Composable` 与 `ComposeViewport`。Skiko/Skia 在浏览器 canvas 绘制，不由 Rust 重画控件。
+- `backend`：默认 `wasm-wasi/app`，构建 v2 Component。实现生成的 `PluginRootFunctions.Exports`，数据库操作通过 `Database` 能力，不持有 JDBC 或连接凭据。
+- `shared`：无 UI 依赖的跨平台业务模型；不引用 Compose、Dioxus 或宿主实现。
 
-## 服务端
+确实需要 JVM SDK、JDBC 驱动或常驻任务时，后端可以选 process；这不是访问宿主 PostgreSQL 的默认方式。
 
-纯计算、短请求处理可使用 `wasmWasi`，产物在 `[plugin.runtime]` 声明为 `wasm-component`。需要 JDBC、协程常驻任务、第三方 JVM SDK 或不受 WASI 支持的系统能力时，应构建可执行 JAR 并使用 `process`，不允许插件自行守护或退化成未隔离子进程。
+## 契约与工具链
 
-公网宿主已经通过容器监督器支持 `process` 在线安装、停用、启用、卸载和回滚。当前稳定权限档只接受预置且锁定 digest 的镜像，以及空 `network`、空 `filesystem`、`database = false` 的清单；声明额外能力会在启动前被拒绝。JVM 服务监听 `AIO_PLUGIN_PORT`，并提供清单中的健康检查、`GET /aio/definition` 和业务路由。
+唯一 WIT 源为 `aio-platform/lib/plugin/contract/wit/plugin.wit`，包名 `aio:plugin@2.0.0`。生成 `describe`、`health`、`lifecycle`、`handle` 和宿主能力绑定，不复制 ABI。描述只包含页面入口、场景根、菜单路径、权限与挂载面；二进制请求响应承载实际业务。
 
-## 目录与验证
+已验证参考版本：Toolchain `0.12.0-dev-4233`（wrapper SHA256 固定）、Kotlin `2.4.10`、Compose `1.12.0-beta03`、Material3 `1.12.0-alpha03`、Kotlin/wit-bindgen `700f2db5e1d01f7bee8d756750c6f631171f520e`、wasm-tools `1.240.0`。WASI Preview 1 使用官方 Wasmtime `43.0.2` reactor adapter 并验证 SHA256，不再使用伪随机或常量随机适配器。
 
-省略 `--runtime` 时初始化默认的 `process` 仓库；静态页面和预览 Component 是显式覆盖目标：
-
-```bash
-aio plugin init ../aio-plugin-kmp --title "KMP 服务" --language kotlin
-aio plugin init ../aio-plugin-kmp-pages --title "KMP 页面" --language kotlin --runtime page-definition
-aio plugin init ../aio-plugin-kmp-component --title "KMP Component" --language kotlin --runtime wasm-component
+```sh
+WIT_BINDGEN=/path/to/wit-bindgen sh scripts/generate-bindings.sh
+./kotlin test -m shared -p jvm
+sh scripts/build.sh
 ```
 
-跨平台代码放在 Toolchain 模块的 `src/`，平台适配分别放入 `src@wasmJs/`、`src@wasmWasi/` 或 `src@jvm/`。每个功能包包含 `README.md`。
+示例的 `build.sh` 将 HTML、JS、Wasm、Skiko 与资源放入 `dist/frontend`，并构建用户要求的 Ktor JVM 目标 `dist/plugin.jar`。`build-component.sh` 单独构建 v2 Kotlin Component 到 `dist/plugin.wasm`；同一包只选择一个后端目标。插件作者构建，生产安装不执行这些脚本。前端资源使用包内相对路径，不依赖公网字体或 CDN。
 
-仓库提交固定版本和 SHA256 校验的 `kotlin` wrapper，并使用 `project.yaml`、`module.yaml` 描述模块。典型验证命令：
+Ktor 示例的 `backend/service` 提供真实 HTTP 任务 CRUD，`shared` 保存序列化模型，Compose 前端通过宿主桥展示后端 mock 数据。JAR 不打入 JVM；进程执行器使用按摘要锁定的外部 JRE 镜像。mock 状态按租户隔离，但进程重启即重置，不能当作正式数据源。
 
-```bash
-./kotlin build -m model -p jvm -p wasmJs
-./kotlin test -m model -p jvm
-./kotlin run -m generator -p jvm -- dist/pages.json
-jq . dist/pages.json
-aio plugin validate
-```
+## 验证与发布状态
 
-Component 模板把同一模型编译到 JVM、wasmJs 和 wasmWasi，并使用 Kotlin 官方 fork 的 WIT 生成器与 `wasm-tools` 封装：
+必须验证实际 canvas、按钮服务调用、数据库持久化、刷新恢复、桌面/移动端尺寸与控制台。平台 `lib/plugin/runtime/tests/component.rs` 用真实 Kotlin Component 覆盖租户隔离、能力拒绝和实例重建；浏览器脚本为示例 `scripts/test-browser.mjs`。
 
-```bash
-./kotlin build -m model -p jvm -p wasmJs -p wasmWasi
-./kotlin test -m model -p jvm
-WIT_BINDGEN=/path/to/wit-bindgen ./scripts/generate-bindings.sh --check
-./scripts/build-component.sh
-aio plugin validate
-```
+v2 校验/发布链尚在迁移，示例的 `backend/component/aio-plugin.toml` 显式标注 `schema_version = 2`，旧 CLI 应拒绝它。不要删除版本标记、改回 v1 或以旧 `aio plugin publish` 命令绕过门禁。根清单选择既有 process 协议的 Ktor 目标；该目标的发布不代表 v2 上线。上线状态以 `docs/refactor/README.md` 为准。
 
-当前 Kotlin 运行时会导入 WASI Preview 1 `random_get`。零能力模板使用仓库内最小适配器消除最终宿主导入；它不提供密码学安全随机数，业务代码不得用 `Random.Default` 生成令牌。需要真实随机或其他 WASI 能力时，先扩展清单能力和宿主授权，不得绕过空导入校验。`aio plugin validate` 会实际实例化 Component 并调用 `definition()`，因此该函数必须是无状态、无外部导入且能返回与清单一致的页面。
-
-需要生成 Kotlin DTO 或在 CI 中做结构校验时，先执行 `aio plugin schema schemas` 获取正式 JSON Schema；不要从文档示例或某个宿主实现反推协议模型。
-
-可执行 JAR 使用 Toolchain 原生产物：
-
-```bash
-./kotlin package -m service -p jvm -f executable-jar
-cp build/tasks/_service_executableJarJvm/service-jvm-executable.jar dist/plugin.jar
-aio plugin validate
-```
-
-只运行实际声明目标的任务。产物生成后执行宿主协议校验，生产清单不得引用 Toolchain 临时目录。静态页面示例见 [aio-plugin-kmp-counter](https://github.com/zjarlin/aio-plugin-kmp-counter)，Component 示例见 [aio-plugin-kmp-component](https://github.com/zjarlin/aio-plugin-kmp-component)，进程服务示例见 [aio-plugin-kmp-service](https://github.com/zjarlin/aio-plugin-kmp-service)。
-
-三种目标都在清单声明 `[plugin.marketplace]`。完成本地构建后执行 `aio plugin package . --version 1.0.0`，再用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin`。包内容摘要锁定实际运行字节，产物可以被 Git 忽略，发布不依赖 CI。CLI 会等待静态页面、Wasmtime 实例或 JVM 容器激活；完整规则见 [二进制发布](publish.md)。
+v2 整包开发工具位于 `lib/plugin/bundle/examples/package.rs`，一起打包前端、Component 与 SQL。清单仅声明产物位置、宿主版本和能力，不再填写 `runtime.kind`，也不重复声明 describe 已提供的页面。使用完整 Git SHA；页面、后端和迁移一起决定摘要。进程内在线替换只允许相同迁移集合，迁移变更必须进入受控维护流程。

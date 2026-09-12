@@ -1,0 +1,34 @@
+[package]
+name = "az-plugin-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+az-plugin-contract = { path = "../contract" }
+az-plugin-bundle = { path = "../bundle" }
+semver.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+tokio = { workspace = true, features = ["fs", "rt-multi-thread"] }
+wasmtime = { workspace = true, features = ["async", "component-model-async"] }
+wasmtime-wasi = { version = "48.0.1", default-features = false, features = ["p2"] }
+getrandom = "0.4.2"
+tracing.workspace = true
+sqlparser = { version = "0.61.0", features = ["visitor"] }
+futures-util = "0.3.32"
+
+[dev-dependencies]
+tempfile = "3.23.0"
+axum.workspace = true
+serde.workspace = true
+mime_guess = "2.0.5"
+kuchikiki = "=0.8.8-speedreader"
+
+[lints]
+workspace = true
