@@ -43,6 +43,7 @@ pub(crate) fn permitted(name: &str) -> bool {
                 | "wasi:cli/terminal-stdout"
                 | "wasi:cli/terminal-stderr"
                 | "wasi:random/random"
+                | "wasi:random/insecure-seed"
         )
 }
 
@@ -56,6 +57,7 @@ mod tests {
             "aio:plugin/host@2.0.0",
             "wasi:io/streams@0.2.6",
             "wasi:cli/environment@0.2.9",
+            "wasi:random/insecure-seed@0.2.9",
         ] {
             assert!(permitted(name));
         }
@@ -69,6 +71,8 @@ mod tests {
             "wasi:io/poll@0.2.9+custom",
             "wasi:io/poll",
             "wasi:unknown/resource@0.2.9",
+            "wasi:random/insecure-seed@0.2.13",
+            "wasi:random/insecure-seed@0.3.0",
         ] {
             assert!(!permitted(name), "{name}");
         }
