@@ -30,6 +30,7 @@ pub use state::InvocationResources;
 pub use storage::ObjectStore;
 
 pub const FRONTEND_HOST: &str = include_str!("../../../../sdk/web/host.mjs");
+pub const FRONTEND_GUEST: &str = include_str!("../../../../sdk/web/guest.js");
 
 pub mod bindings {
     wasmtime::component::bindgen!({
