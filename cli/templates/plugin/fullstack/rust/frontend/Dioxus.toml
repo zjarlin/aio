@@ -5,4 +5,3 @@ default_platform = "web"
 [web.app]
 title = "Dioxus Fullstack Counter"
 base_path = "."
-

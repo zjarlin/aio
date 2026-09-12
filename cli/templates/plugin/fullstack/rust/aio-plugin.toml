@@ -15,4 +15,3 @@ tags = ["rust", "dioxus", "fullstack"]
 id = "counter"
 pages = ["dioxus-fullstack-counter"]
 routes = ["counter"]
-
