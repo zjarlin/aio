@@ -14,4 +14,4 @@ Rust 适配器使用固定 nightly 的 Cargo `shallow-deps` 功能，只拉取�
 
 在服务器执行 `node configure.cjs <Rust image ID> <Kotlin image ID> <TypeScript image ID>`，为宿主和工作进程生成一次性共享凭据。GitHub 发现凭据通过标准输入交给 `configure-github.cjs`，仅保存到宿主环境，不传给源码容器。安装 `aio-delivery.service` 后重启宿主并启用构建服务。
 
-`inspect.cjs` 只读取仓库、任务和租户升级状态；运维依赖可用 `npm --prefix /opt/aio-delivery/ops install pg@8.16.3 --save-exact --ignore-scripts` 安装。脚本读取服务器已有数据库配置，不输出凭据。
+`inspect.cjs` 只读取仓库、任务和租户升级状态；传入任务 ID 可查看该任务的完整错误。运维依赖可用 `npm --prefix /opt/aio-delivery/ops install pg@8.16.3 --save-exact --ignore-scripts` 安装。脚本读取服务器已有数据库配置，不输出凭据。

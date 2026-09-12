@@ -7,6 +7,13 @@ const { Client } = require('/opt/aio-delivery/ops/node_modules/pg');
   const client=new Client({connectionString:settings.AIO_DATABASE_URL});
   await client.connect();
   try {
+    if (process.argv[2]) {
+      const id=Number(process.argv[2]);
+      if (!Number.isSafeInteger(id)||id<1) throw new Error('任务 ID 必须为正整数');
+      const result=await client.query('SELECT id,git,source_revision,state,package_revision,error,created_at,updated_at FROM delivery_jobs WHERE id=$1',[id]);
+      console.log(JSON.stringify(result.rows,null,2));
+      return;
+    }
     const sources=await client.query('SELECT git,branch,desired_sha,enabled,updated_at FROM delivery_sources ORDER BY updated_at DESC LIMIT 20');
     const jobs=await client.query('SELECT id,git,source_revision,state,package_revision,left(error,1600) AS error,created_at,updated_at FROM delivery_jobs ORDER BY id DESC LIMIT 30');
     const rollouts=await client.query('SELECT tenant_id,source_id,revision,state,left(error,600) AS error,updated_at FROM delivery_rollouts ORDER BY updated_at DESC LIMIT 30');
