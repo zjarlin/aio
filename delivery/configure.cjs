@@ -26,7 +26,7 @@ const values = {
 };
 const workerFile = '/opt/aio-delivery/worker.env';
 const previous = fs.existsSync(workerFile) ? parseEnv(fs.readFileSync(workerFile, 'utf8')) : {};
-for (const key of ['AIO_BUILD_DNS', 'AIO_BUILD_HOSTS']) {
+for (const key of ['AIO_BUILD_DNS', 'AIO_BUILD_HOSTS', 'AIO_BUILD_HTTP_PROXY']) {
   if (process.env[key] || previous[key]) values[key] = process.env[key] || previous[key];
 }
 fs.writeFileSync('/opt/aio-delivery/worker.env', Object.entries(values).map(([key,value])=>`${key}=${value}`).join('\n')+'\n', { mode: 0o600 });
