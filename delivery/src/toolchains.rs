@@ -7,6 +7,7 @@ pub fn settings(environment: BuildEnvironment) -> &'static [(&'static str, &'sta
             ("CARGO_NET_GIT_FETCH_WITH_CLI", "false"),
             ("CARGO_UNSTABLE_GIT", "shallow-deps"),
             ("CARGO_HTTP_TIMEOUT", "30"),
+            ("CARGO_HTTP_MULTIPLEXING", "false"),
             ("CARGO_NET_RETRY", "3"),
         ],
         BuildEnvironment::Kotlin => &[

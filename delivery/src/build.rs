@@ -60,29 +60,23 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         fs::create_dir_all(&source)?;
         checked(Command::new("chown").arg("65534:65534").arg(&source))?;
         let fetch_name = format!("aio-fetch-{}", job.id);
-        for args in [
-            vec!["git", "init", "."],
-            vec![
-                "git",
-                "fetch",
-                "--depth=1",
-                "--",
-                &job.git,
-                &job.source_revision,
-            ],
-            vec!["git", "checkout", "--detach", "FETCH_HEAD"],
-        ] {
+        let _ = Command::new("docker")
+            .args(["rm", "-f", &fetch_name])
+            .output();
+        let result = checked(container(&fetch_name, &source)?.arg(&image).args([
+            "sh",
+            "-ec",
+            "git init . && git fetch --depth=1 -- \"$1\" \"$2\" && git checkout --detach FETCH_HEAD",
+            "aio-fetch",
+            &job.git,
+            &job.source_revision,
+        ]));
+        if result.is_err() {
             let _ = Command::new("docker")
                 .args(["rm", "-f", &fetch_name])
                 .output();
-            let result = checked(container(&fetch_name, &source)?.arg(&image).args(args));
-            if result.is_err() {
-                let _ = Command::new("docker")
-                    .args(["rm", "-f", &fetch_name])
-                    .output();
-            }
-            result.context(Retryable)?;
         }
+        result.context(Retryable)?;
         documentation = documents::collect(&source)?;
         fs::write(
             root.join("documentation.json"),

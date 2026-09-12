@@ -52,6 +52,11 @@ impl Worker {
                     })
                 })
             {
+                self.request(&format!("/api/internal/delivery/jobs/{}/defer", job.id))
+                    .timeout(Duration::from_secs(10))
+                    .json(&serde_json::json!({"lease": job.lease, "error": format!("{error:#}")}))
+                    .send()?
+                    .error_for_status()?;
                 return Err(anyhow::anyhow!("网络错误，保留产物等待租约重试: {error:#}"));
             }
         }
