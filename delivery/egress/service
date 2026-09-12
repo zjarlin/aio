@@ -1,0 +1,24 @@
+[Unit]
+Description=AIO build network egress
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aio-egress
+Group=aio-egress
+ExecStart=/opt/aio-delivery/egress/proxy -d /opt/aio-delivery/egress/state -f /opt/aio-delivery/egress/config.json
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWriteDirectories=/opt/aio-delivery/egress/state
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryLimit=268435456
+CPUQuota=100%
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target
