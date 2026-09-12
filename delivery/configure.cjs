@@ -24,6 +24,11 @@ const values = {
   AIO_BUILD_IMAGE_KOTLIN: images[1],
   AIO_BUILD_IMAGE_TYPESCRIPT: images[2],
 };
+const workerFile = '/opt/aio-delivery/worker.env';
+const previous = fs.existsSync(workerFile) ? parseEnv(fs.readFileSync(workerFile, 'utf8')) : {};
+for (const key of ['AIO_BUILD_DNS']) {
+  if (process.env[key] || previous[key]) values[key] = process.env[key] || previous[key];
+}
 fs.writeFileSync('/opt/aio-delivery/worker.env', Object.entries(values).map(([key,value])=>`${key}=${value}`).join('\n')+'\n', { mode: 0o600 });
 fs.chmodSync('/opt/aio-delivery/worker.env',0o600);
 console.log('已配置宿主与独立构建服务，凭据仅保存在服务端。');

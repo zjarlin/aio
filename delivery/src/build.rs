@@ -22,10 +22,22 @@ impl std::fmt::Display for Retryable {
 impl std::error::Error for Retryable {}
 
 fn checked(command: &mut Command) -> Result<()> {
-    let status = command
+    let mut child = command
         .stdin(Stdio::null())
-        .status()
+        .spawn()
         .context("执行构建工具失败")?;
+    let start = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if start.elapsed() > Duration::from_secs(180) {
+            let _ = child.kill();
+            let _ = child.wait();
+            anyhow::bail!("构建准备工具超过 3 分钟");
+        }
+        thread::sleep(Duration::from_millis(100));
+    };
     ensure!(status.success(), "构建工具返回 {status}");
     Ok(())
 }
@@ -85,9 +97,14 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         let _ = Command::new("docker").args(["rm", "-f", &name]).output();
         let log_path = root.join("build.log");
         let log = fs::File::create(&log_path)?;
-        let mut process = Command::new("docker")
+        let mut docker = Command::new("docker");
+        docker.args(["run"]);
+        if let Ok(dns) = env::var("AIO_BUILD_DNS") {
+            let dns: std::net::IpAddr = dns.parse().context("无效构建 DNS 地址")?;
+            docker.args(["--dns", &dns.to_string()]);
+        }
+        let mut process = docker
             .args([
-                "run",
                 "--rm",
                 "--name",
                 &name,
@@ -114,6 +131,22 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
                 "HOME=/cache",
                 "--env",
                 "CARGO_HOME=/cache/cargo",
+                "--env",
+                "CARGO_NET_GIT_FETCH_WITH_CLI=true",
+                "--env",
+                "CARGO_HTTP_TIMEOUT=30",
+                "--env",
+                "CARGO_NET_RETRY=3",
+                "--env",
+                "GIT_CONFIG_COUNT=2",
+                "--env",
+                "GIT_CONFIG_KEY_0=http.lowSpeedLimit",
+                "--env",
+                "GIT_CONFIG_VALUE_0=100",
+                "--env",
+                "GIT_CONFIG_KEY_1=http.lowSpeedTime",
+                "--env",
+                "GIT_CONFIG_VALUE_1=30",
                 "--env",
                 "KOTLIN_CLI_NO_WELCOME_BANNER=1",
             ])
@@ -145,6 +178,7 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
             }
             let heartbeat = worker
                 .request(&format!("/api/internal/delivery/jobs/{}/heartbeat", job.id))
+                .timeout(Duration::from_secs(10))
                 .json(&serde_json::json!({"lease": job.lease}))
                 .send();
             if heartbeat.as_ref().is_ok_and(|r| r.status().as_u16() == 409) {
@@ -163,7 +197,22 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
             .chars()
             .rev()
             .collect();
-        ensure!(status.success(), "构建失败 ({status}):\n{tail}");
+        if !status.success() {
+            let error = anyhow::anyhow!("构建失败 ({status}):\n{tail}");
+            if [
+                "Could not resolve host",
+                "Failed to connect to",
+                "Connection timed out",
+                "Timeout was reached",
+                "failed to download from",
+            ]
+            .iter()
+            .any(|message| tail.contains(message))
+            {
+                return Err(error.context(Retryable));
+            }
+            return Err(error);
+        }
         checked(Command::new("chown").args(["-R", "0:0"]).arg(&source))?;
         checked(
             Command::new(env::var("AIO_CLI").unwrap_or_else(|_| "aio".into()))

@@ -6,6 +6,8 @@
 
 ## 部署
 
+构建 DNS 可通过 `AIO_BUILD_DNS` 指定，例如 `1.1.1.1`；该设置只属于部署环境，不写入插件源码，重新配置服务时保留。下载设置低速超时，网络失败保留任务并退避重试。
+
 先部署共享协议与宿主，再安装 `aio-delivery`、`aio` 到 `/opt/aio-delivery/bin`。`install-git.sh` 为旧系统编译独立 Git，依赖 gcc、make、libcurl/openssl/zlib/expat 开发包，不覆盖系统 Git。镜像构建使用 `docker build --network host --build-arg BASE_IMAGE=<固定摘要>`；源码任务仍在独立网络的受限容器内执行。
 
 在服务器执行 `node configure.cjs <Rust image ID> <Kotlin image ID> <TypeScript image ID>`，为宿主和工作进程生成一次性共享凭据。GitHub 发现凭据通过标准输入交给 `configure-github.cjs`，仅保存到宿主环境，不传给源码容器。安装 `aio-delivery.service` 后重启宿主并启用构建服务。
