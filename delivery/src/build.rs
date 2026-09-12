@@ -48,38 +48,38 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
     let source = root.join("source");
     let documentation;
     if !archive.exists() {
-        if source.exists() {
-            fs::remove_dir_all(&source)?;
-        }
-        checked(
-            Command::new("git")
-                .args([
-                    "clone",
-                    "--no-checkout",
-                    "--filter=blob:none",
-                    "--",
-                    &job.git,
-                ])
-                .arg(&source),
-        )
-        .context(Retryable)?;
-        checked(Command::new("git").arg("-C").arg(&source).args([
-            "checkout",
-            "--detach",
-            &job.source_revision,
-        ]))
-        .context(Retryable)?;
-        documentation = documents::collect(&source)?;
-        fs::write(
-            root.join("documentation.json"),
-            serde_json::to_vec(&documentation)?,
-        )?;
         let image = env::var(job.recipe.environment.image_variable()).context("未配置构建镜像")?;
         ensure!(
             (image.contains("@sha256:") || image.starts_with("sha256:"))
                 && !image.chars().any(char::is_whitespace),
             "构建镜像必须固定 digest"
         );
+        if source.exists() {
+            fs::remove_dir_all(&source)?;
+        }
+        fs::create_dir_all(&source)?;
+        checked(Command::new("chown").arg("65534:65534").arg(&source))?;
+        let fetch_name = format!("aio-fetch-{}", job.id);
+        for args in [
+            vec!["git", "clone", "--no-checkout", "--", &job.git, "."],
+            vec!["git", "checkout", "--detach", &job.source_revision],
+        ] {
+            let _ = Command::new("docker")
+                .args(["rm", "-f", &fetch_name])
+                .output();
+            let result = checked(container(&fetch_name, &source)?.arg(&image).args(args));
+            if result.is_err() {
+                let _ = Command::new("docker")
+                    .args(["rm", "-f", &fetch_name])
+                    .output();
+            }
+            result.context(Retryable)?;
+        }
+        documentation = documents::collect(&source)?;
+        fs::write(
+            root.join("documentation.json"),
+            serde_json::to_vec(&documentation)?,
+        )?;
         let cache = worker.root.join("cache").join(format!(
             "{:x}",
             Sha256::digest(format!("{}:{image}", job.git))
@@ -97,36 +97,8 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         let _ = Command::new("docker").args(["rm", "-f", &name]).output();
         let log_path = root.join("build.log");
         let log = fs::File::create(&log_path)?;
-        let mut docker = Command::new("docker");
-        docker.args(["run"]);
-        if let Ok(dns) = env::var("AIO_BUILD_DNS") {
-            let dns: std::net::IpAddr = dns.parse().context("无效构建 DNS 地址")?;
-            docker.args(["--dns", &dns.to_string()]);
-        }
-        let mut process = docker
+        let mut process = container(&name, &source)?
             .args([
-                "--rm",
-                "--name",
-                &name,
-                "--cpus",
-                "4",
-                "--memory",
-                "8g",
-                "--memory-swap",
-                "8g",
-                "--pids-limit",
-                "512",
-                "--cap-drop",
-                "ALL",
-                "--security-opt",
-                "no-new-privileges",
-                "--user",
-                "65534:65534",
-                "--read-only",
-                "--tmpfs",
-                "/tmp:rw,exec,size=2g",
-                "--workdir",
-                "/source",
                 "--env",
                 "HOME=/cache",
                 "--env",
@@ -138,20 +110,8 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
                 "--env",
                 "CARGO_NET_RETRY=3",
                 "--env",
-                "GIT_CONFIG_COUNT=2",
-                "--env",
-                "GIT_CONFIG_KEY_0=http.lowSpeedLimit",
-                "--env",
-                "GIT_CONFIG_VALUE_0=100",
-                "--env",
-                "GIT_CONFIG_KEY_1=http.lowSpeedTime",
-                "--env",
-                "GIT_CONFIG_VALUE_1=30",
-                "--env",
                 "KOTLIN_CLI_NO_WELCOME_BANNER=1",
             ])
-            .arg("--mount")
-            .arg(format!("type=bind,src={},dst=/source", source.display()))
             .arg("--mount")
             .arg(format!("type=bind,src={},dst=/cache", cache.display()))
             .arg("--mount")
@@ -232,4 +192,51 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         .send()?
         .error_for_status()?;
     Ok(documentation)
+}
+
+fn container(name: &str, source: &Path) -> Result<Command> {
+    let mut command = Command::new("docker");
+    command.args([
+        "run",
+        "--rm",
+        "--name",
+        name,
+        "--cpus",
+        "4",
+        "--memory",
+        "8g",
+        "--memory-swap",
+        "8g",
+        "--pids-limit",
+        "512",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--user",
+        "65534:65534",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,exec,size=2g",
+        "--workdir",
+        "/source",
+        "--env",
+        "GIT_CONFIG_COUNT=2",
+        "--env",
+        "GIT_CONFIG_KEY_0=http.lowSpeedLimit",
+        "--env",
+        "GIT_CONFIG_VALUE_0=100",
+        "--env",
+        "GIT_CONFIG_KEY_1=http.lowSpeedTime",
+        "--env",
+        "GIT_CONFIG_VALUE_1=30",
+    ]);
+    if let Ok(dns) = env::var("AIO_BUILD_DNS") {
+        let dns: std::net::IpAddr = dns.parse().context("无效构建 DNS 地址")?;
+        command.args(["--dns", &dns.to_string()]);
+    }
+    command
+        .arg("--mount")
+        .arg(format!("type=bind,src={},dst=/source", source.display()));
+    Ok(command)
 }
