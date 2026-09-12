@@ -1,5 +1,6 @@
 mod build;
 mod documents;
+mod toolchains;
 
 use std::{
     collections::HashSet,
@@ -117,6 +118,7 @@ fn main() -> Result<()> {
             .unwrap_or_else(|| "/opt/aio-delivery".into()),
     };
     std::fs::create_dir_all(&worker.root)?;
+    build::recover_containers()?;
     let mut delay = 10;
     let mut cleaned = Instant::now();
     loop {

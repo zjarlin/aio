@@ -105,23 +105,12 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         let _ = Command::new("docker").args(["rm", "-f", &name]).output();
         let log_path = root.join("build.log");
         let log = fs::File::create(&log_path)?;
-        let mut process = container(&name, &source)?
-            .args([
-                "--env",
-                "HOME=/cache",
-                "--env",
-                "CARGO_HOME=/cache/cargo",
-                "--env",
-                "CARGO_NET_GIT_FETCH_WITH_CLI=false",
-                "--env",
-                "CARGO_UNSTABLE_GIT=shallow-deps",
-                "--env",
-                "CARGO_HTTP_TIMEOUT=30",
-                "--env",
-                "CARGO_NET_RETRY=3",
-                "--env",
-                "KOTLIN_CLI_NO_WELCOME_BANNER=1",
-            ])
+        let mut command = container(&name, &source)?;
+        command.args(["--env", "HOME=/cache"]);
+        for (key, value) in crate::toolchains::settings(job.recipe.environment) {
+            command.args(["--env", &format!("{key}={value}")]);
+        }
+        let mut process = command
             .arg("--mount")
             .arg(format!("type=bind,src={},dst=/cache", cache.display()))
             .arg("--mount")
@@ -213,6 +202,8 @@ fn container(name: &str, source: &Path) -> Result<Command> {
     let mut command = Command::new("docker");
     command.args([
         "run",
+        "--label",
+        "site.addzero.aio.delivery=build",
         "--rm",
         "--name",
         name,
@@ -254,4 +245,24 @@ fn container(name: &str, source: &Path) -> Result<Command> {
         .arg("--mount")
         .arg(format!("type=bind,src={},dst=/source", source.display()));
     Ok(command)
+}
+
+pub fn recover_containers() -> Result<()> {
+    let output = Command::new("docker")
+        .args([
+            "ps",
+            "-aq",
+            "--filter",
+            "label=site.addzero.aio.delivery=build",
+        ])
+        .output()?;
+    ensure!(output.status.success(), "读取上次构建容器失败");
+    for id in std::str::from_utf8(&output.stdout)?.split_whitespace() {
+        ensure!(
+            [12, 64].contains(&id.len()) && id.bytes().all(|b| b.is_ascii_hexdigit()),
+            "无效构建容器标识"
+        );
+        checked(Command::new("docker").args(["rm", "-f", id]))?;
+    }
+    Ok(())
 }
