@@ -1,0 +1,27 @@
+[plugin.runtime]
+kind = "process"
+artifact = "dist/plugin.jar"
+host_version = ">=2026.9.11"
+container_image = "eclipse-temurin:21-jre@sha256:5c67d24ee8e3dd810b2a0cb6c3827ced2ac5d22729538f90b36c2b9d77678bb8"
+entrypoint = ["java", "-Xms16m", "-Xmx96m", "-XX:MaxMetaspaceSize=80m", "-XX:+UseSerialGC", "-jar", "{artifact}"]
+health_check = "/health"
+shutdown_timeout_seconds = 10
+
+[plugin.frontend]
+path = "dist/frontend"
+
+[plugin.marketplace]
+title = "KMP 全栈示例"
+summary = "同仓 Compose Web、Ktor REST 与共享 Kotlin 模型，包含 mock 任务工作台与本地交互计数。"
+license = "MIT"
+tags = ["example", "kotlin", "compose", "ktor", "full-stack"]
+
+[plugin.capabilities]
+network = []
+filesystem = []
+database = false
+
+[[plugin.subplugins]]
+id = "workbench"
+pages = ["kmp-fullstack"]
+routes = ["tasks", "counter"]

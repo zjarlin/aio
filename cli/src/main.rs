@@ -133,6 +133,7 @@ fn parse_plugin_init_arguments(arguments: &[String]) -> Result<RepositoryPluginO
     let mut name = None;
     let mut title = None;
     let mut language = None;
+    let mut kind = None;
     let mut runtime = None;
     let mut index = 1;
     while index < arguments.len() {
@@ -143,13 +144,23 @@ fn parse_plugin_init_arguments(arguments: &[String]) -> Result<RepositoryPluginO
             "--name" => name = Some(value.clone()),
             "--title" => title = Some(value.clone()),
             "--language" => language = Some(PluginLanguage::parse(value)?),
+            "--kind" => kind = Some(value.as_str()),
             "--runtime" => runtime = Some(parse_runtime(value)?),
             option => bail!("未知插件初始化选项: {option}"),
         }
         index += 2;
     }
     let language = language.unwrap_or_default();
-    let template = PluginTemplate::resolve(language, runtime)?;
+    let template = match kind {
+        None | Some("fullstack") if runtime.is_none() => PluginTemplate::Fullstack(language),
+        Some("system") if language == PluginLanguage::Rust && runtime.is_none() => {
+            PluginTemplate::Rust
+        }
+        None | Some("runtime") => PluginTemplate::resolve(language, runtime)?,
+        _ => bail!(
+            "--kind 必须为 fullstack、system（仅 Rust）或 runtime；fullstack/system 不能指定 --runtime"
+        ),
+    };
     Ok(RepositoryPluginOptions {
         path: PathBuf::from(path),
         name,
@@ -270,9 +281,8 @@ fn usage() -> &'static str {
 }
 
 fn plugin_init_usage() -> &'static str {
-    "用法:\n  aio plugin init <目录> [--name <包名>] [--title <插件标题>] [--language <rust|kotlin|typescript>]\n\n自动选择:\n  未指定语言 / rust   Rust 源码插件，由 trait + Dill/TypeId 自动聚合\n  kotlin              Kotlin 服务\n  typescript          TypeScript Wasm Component\n\n高级模板覆盖（仅 Kotlin/TypeScript）:\n  --runtime page-definition   静态 PageDefinition\n  --runtime wasm-component    可在线替换的 Wasm Component\n  --runtime process           JVM/Node 隔离服务\n\n示例:\n  aio plugin init hello\n  aio plugin init orders --language kotlin\n  aio plugin init dashboard --language typescript\n  aio plugin init reports --language kotlin --runtime page-definition\n  aio plugin init worker --language typescript --runtime process"
+    "用法:\n  aio plugin init <目录> [--name <包名>] [--title <标题>] [--language <rust|kotlin|typescript>] [--kind <fullstack|system|runtime>]\n\n默认生成全栈插件，包含前端、后端、共享模型与自动发布配置。推送默认分支后自动构建上架。\n  --kind system   Rust 系统源码插件，使用 trait + Dill/TypeId\n\n高级模板覆盖（Kotlin/TypeScript）:\n  --runtime page-definition   静态页面\n  --runtime wasm-component    Component\n  --runtime process           JVM/Node 服务"
 }
-
 fn plugin_publish_usage() -> &'static str {
     "用法:\n  aio plugin publish [<目录或文件.aio-plugin>] [--git <HTTPS Git>] [--version <SemVer>]\n\n默认直接发布到官方插件中心，不依赖 CI。目录可从自己的 origin 推导来源，并从 Cargo.toml 或 package.json 推导版本。已有插件包保留包内来源和版本。\n\n环境变量:\n  AIO_PLUGIN_PUBLISH_TOKEN   插件市场创建的来源绑定发布凭证\n  AIO_PLUGIN_PUBLISH_URL     可选，覆盖官方插件中心发布接口\n\n发布前校验包的清单、版本和内容摘要。构建产物不需要提交到 Git。"
 }
@@ -308,7 +318,10 @@ mod tests {
             "typescript".to_owned(),
         ])?;
 
-        assert_eq!(options.template, PluginTemplate::TypeScriptComponent);
+        assert_eq!(
+            options.template,
+            PluginTemplate::Fullstack(PluginLanguage::TypeScript)
+        );
         Ok(())
     }
 
@@ -346,7 +359,7 @@ mod tests {
             .expect("主帮助应展示插件初始化命令");
         assert!(!primary_command.contains("--runtime"));
         assert!(plugin_init_usage().contains("高级模板覆盖"));
-        assert!(plugin_init_usage().contains("trait + Dill/TypeId"));
+        assert!(plugin_init_usage().contains("--kind system"));
     }
 
     #[test]

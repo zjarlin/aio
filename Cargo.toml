@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "cli",
+    "delivery",
     "lib/plugin/*",
 ]
 exclude = ["lib/dioxus-admin-workbench"]

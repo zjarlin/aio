@@ -1,0 +1,16 @@
+[package]
+name = "fullstack-backend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+fullstack-model.workspace = true
+dill = "0.15.0"
+wit-bindgen = "=0.57.1"
+az-plugin-manifest = { git = "https://github.com/zjarlin/aio-platform.git", rev = "751161e3217e90400b64ffaf25013dcff7ba1a59", default-features = false }

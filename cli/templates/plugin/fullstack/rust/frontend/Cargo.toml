@@ -1,0 +1,16 @@
+[package]
+name = "fullstack-frontend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+bundle-assets = []
+
+[dependencies]
+dioxus = { version = "=0.7.9", default-features = false, features = ["macro", "html", "signals", "hooks", "document", "web", "launch"] }
+az-ui-components = { git = "https://github.com/zjarlin/dioxus-admin-workbench.git", rev = "819ae159ab7dcba65d33d056d528ae8f7ec32ae2" }
+serde.workspace = true
+serde_json.workspace = true
+fullstack-model.workspace = true
+web-sys = { version = "0.3.77", features = ["Window", "Location"] }

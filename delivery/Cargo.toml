@@ -1,0 +1,23 @@
+[package]
+name = "az-delivery-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "aio-delivery"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+az-plugin-delivery = { path = "../lib/plugin/delivery" }
+base64.workspace = true
+pulldown-cmark = "0.13"
+reqwest = { workspace = true, features = ["json"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+url.workspace = true
+
+[lints]
+workspace = true

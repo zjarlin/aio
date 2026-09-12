@@ -1,0 +1,18 @@
+[Unit]
+Description=AIO isolated plugin build worker
+After=network-online.target docker.service aio-idea.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/opt/aio-delivery/worker.env
+ExecStart=/opt/aio-delivery/bin/aio-delivery
+Restart=always
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

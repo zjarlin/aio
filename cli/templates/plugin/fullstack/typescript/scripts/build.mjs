@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { mkdir, copyFile, writeFile } from 'node:fs/promises';
+await mkdir('dist/frontend',{recursive:true});
+await build({entryPoints:['frontend/main.ts'],bundle:true,format:'esm',outfile:'dist/frontend/main.js',minify:true});
+await build({entryPoints:['backend/server.ts'],bundle:true,platform:'node',format:'cjs',outfile:'dist/server.js'});
+await build({entryPoints:['shared/counter.ts'],bundle:true,platform:'node',format:'esm',outfile:'dist/counter.mjs'});
+await copyFile('frontend/index.html','dist/frontend/index.html');
+const stylesheet = await fetch('https://raw.githubusercontent.com/zjarlin/dioxus-admin-workbench/22ee3cb9324f90e1833080d01663b92c28929c75/crates/ui/components/src/plugin_surface/style.css');
+if(!stylesheet.ok)throw new Error(`Shared stylesheet: ${stylesheet.status}`);
+await writeFile('dist/frontend/style.css',await stylesheet.text());

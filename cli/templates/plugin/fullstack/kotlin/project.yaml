@@ -1,0 +1,4 @@
+modules:
+  - ./backend/service
+  - ./frontend
+  - ./shared

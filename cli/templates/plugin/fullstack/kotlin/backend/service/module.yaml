@@ -1,0 +1,24 @@
+product: jvm/app
+
+dependencies:
+  - //shared
+  - io.ktor:ktor-server-cio:3.5.2
+  - io.ktor:ktor-server-content-negotiation:3.5.2
+  - io.ktor:ktor-server-status-pages:3.5.2
+  - io.ktor:ktor-serialization-kotlinx-json:3.5.2
+  - org.slf4j:slf4j-simple:2.0.17
+
+test-dependencies:
+  - io.ktor:ktor-server-test-host:3.5.2
+
+settings:
+  kotlin:
+    version: 2.4.10
+    serialization:
+      enabled: true
+      version: 1.11.0
+  jvm:
+    jdk:
+      version: 21
+    release: 21
+    mainClass: site.addzero.aio.example.ApplicationKt

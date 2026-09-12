@@ -1,0 +1,13 @@
+.DS_Store
+.idea/
+.kotlin/
+build/
+out/
+*.log
+!dist/
+!dist/plugin.wasm
+dist/frontend/
+test-artifacts/
+node_modules/
+dist/plugin.jar
+dist/*.aio-plugin

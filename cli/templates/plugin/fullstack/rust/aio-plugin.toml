@@ -1,0 +1,18 @@
+[plugin.runtime]
+kind = "wasm-component"
+artifact = "dist/backend.wasm"
+
+[plugin.frontend]
+path = "dist/web"
+
+[plugin.marketplace]
+title = "Dioxus Fullstack Counter"
+summary = "A Dioxus frontend and Rust Component backend in one binary plugin."
+license = "MIT"
+tags = ["rust", "dioxus", "fullstack"]
+
+[[plugin.subplugins]]
+id = "counter"
+pages = ["dioxus-fullstack-counter"]
+routes = ["counter"]
+

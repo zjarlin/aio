@@ -1,0 +1,109 @@
+use std::{fs, path::Path};
+
+use anyhow::Result;
+use include_dir::{Dir, include_dir};
+
+use super::PluginLanguage;
+
+static RUST: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/templates/plugin/fullstack/rust");
+static KOTLIN: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/templates/plugin/fullstack/kotlin");
+static TYPESCRIPT: Dir<'_> =
+    include_dir!("$CARGO_MANIFEST_DIR/templates/plugin/fullstack/typescript");
+
+pub(super) fn materialize(
+    root: &Path,
+    language: PluginLanguage,
+    name: &str,
+    title: &str,
+) -> Result<()> {
+    let template = match language {
+        PluginLanguage::Rust => &RUST,
+        PluginLanguage::Kotlin => &KOTLIN,
+        PluginLanguage::TypeScript => &TYPESCRIPT,
+    };
+    let identifier = name.replace('-', "_");
+    let title_json = serde_json::to_string(title)?;
+    let escaped_title = &title_json[1..title_json.len() - 1];
+    fn visit(root: &Path, dir: &Dir<'_>, name: &str, identifier: &str, title: &str) -> Result<()> {
+        for file in dir.files() {
+            let relative = file
+                .path()
+                .to_string_lossy()
+                .replace("/example/", &format!("/{identifier}/"));
+            let destination = root.join(relative);
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let content = std::str::from_utf8(file.contents())?
+                .replace("__TITLE__", title)
+                .replace("__NAME__", name)
+                .replace("dioxus-fullstack-counter", name)
+                .replace("kmp-fullstack", name)
+                .replace("Dioxus Fullstack Counter", title)
+                .replace("Dioxus 全栈计数器", title)
+                .replace("KMP 全栈示例", title)
+                .replace("fullstack-frontend", &format!("{name}-frontend"))
+                .replace("fullstack-backend", &format!("{name}-backend"))
+                .replace("fullstack-model", &format!("{name}-model"))
+                .replace("fullstack_frontend", &format!("{identifier}_frontend"))
+                .replace("fullstack_backend", &format!("{identifier}_backend"))
+                .replace("fullstack_model", &format!("{identifier}_model"))
+                .replace(
+                    "site.addzero.aio.example",
+                    &format!("site.addzero.aio.{identifier}"),
+                );
+            super::write(&destination, &content)?;
+            #[cfg(unix)]
+            if file.path().file_name().is_some_and(|name| name == "kotlin") {
+                use std::os::unix::fs::PermissionsExt as _;
+                fs::set_permissions(&destination, fs::Permissions::from_mode(0o755))?;
+            }
+        }
+        for dir in dir.dirs() {
+            visit(root, dir, name, identifier, title)?;
+        }
+        Ok(())
+    }
+    visit(root, template, name, &identifier, escaped_title)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn creates_three_opted_in_fullstack_projects() -> Result<()> {
+        for language in [
+            PluginLanguage::Rust,
+            PluginLanguage::Kotlin,
+            PluginLanguage::TypeScript,
+        ] {
+            let root = std::env::temp_dir().join(format!(
+                "aio-fullstack-{}-{:?}",
+                std::process::id(),
+                language
+            ));
+            if root.exists() {
+                fs::remove_dir_all(&root)?;
+            }
+            materialize(&root, language, "delivery-example", "Delivery Example")?;
+            let marker = fs::read_to_string(root.join("aio-delivery.toml"))?
+                .parse::<toml_edit::DocumentMut>()?;
+            assert_eq!(marker["version"].as_integer(), Some(1));
+            assert!(
+                marker["build"]["command"]
+                    .as_array()
+                    .is_some_and(|a| !a.is_empty())
+            );
+            assert!(root.join("frontend").is_dir());
+            assert!(root.join("backend").is_dir());
+            assert!(root.join("shared").is_dir());
+            assert!(!root.join(".github/workflows").exists());
+            let manifest = az_plugin_manifest::read_manifest(&root)?;
+            assert!(manifest.plugin.runtime.is_some());
+            assert!(manifest.plugin.frontend.is_some());
+            fs::remove_dir_all(root)?;
+        }
+        Ok(())
+    }
+}

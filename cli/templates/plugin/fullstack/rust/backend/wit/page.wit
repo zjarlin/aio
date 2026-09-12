@@ -1,0 +1,7 @@
+package aio:plugin@1.0.0;
+
+world page {
+    export definition: func() -> string;
+    export handle: func(request: string) -> string;
+}
+

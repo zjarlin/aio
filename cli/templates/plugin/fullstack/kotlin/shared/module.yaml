@@ -1,0 +1,19 @@
+product:
+  type: kmp/lib
+  platforms: [jvm, wasmJs, wasmWasi]
+
+description: "AIO Kotlin Component 跨平台协议模型"
+
+dependencies:
+  - org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0
+
+settings:
+  kotlin:
+    version: 2.4.10
+    serialization:
+      enabled: true
+      version: 1.11.0
+  jvm:
+    jdk:
+      version: 17
+    release: 17

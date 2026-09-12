@@ -1,3 +1,4 @@
+mod fullstack;
 mod kotlin;
 mod language;
 mod scaffold;
@@ -87,6 +88,9 @@ pub fn repository_plugin(options: RepositoryPluginOptions) -> Result<()> {
     let server_name = format!("{name}-server");
     prepare_directory(&options.path)?;
     match template {
+        PluginTemplate::Fullstack(language) => {
+            fullstack::materialize(&options.path, language, &name, &title)?
+        }
         PluginTemplate::Rust => {
             rust_repository_plugin(&options.path, &name, &title, &client_name, &server_name)?;
         }

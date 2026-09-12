@@ -1,0 +1,11 @@
+[
+  {
+    "id": "kmp-fullstack",
+    "label": "KMP 全栈示例",
+    "icon": "layout",
+    "scene": { "id": "community", "label": "社区插件" },
+    "menu_path": [],
+    "required_permission": null,
+    "body": { "kind": "frontend", "entry": "index.html" }
+  }
+]

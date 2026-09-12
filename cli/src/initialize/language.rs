@@ -21,6 +21,7 @@ impl PluginLanguage {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PluginTemplate {
+    Fullstack(PluginLanguage),
     Rust,
     KotlinPages,
     KotlinComponent,
@@ -43,11 +44,11 @@ impl PluginTemplate {
         runtime: Option<PluginRuntimeOverride>,
     ) -> Result<Self> {
         match (language, runtime) {
-            (PluginLanguage::Rust, None) => Ok(Self::Rust),
+            (language, None) => Ok(Self::Fullstack(language)),
             (PluginLanguage::Rust, Some(_)) => {
                 bail!("Rust 源码插件无需 --runtime；实现插件 trait 后由 Dill 按 TypeId 自动聚合")
             }
-            (PluginLanguage::Kotlin, None | Some(PluginRuntimeOverride::Process)) => {
+            (PluginLanguage::Kotlin, Some(PluginRuntimeOverride::Process)) => {
                 Ok(Self::KotlinService)
             }
             (PluginLanguage::Kotlin, Some(PluginRuntimeOverride::PageDefinition)) => {
@@ -56,7 +57,7 @@ impl PluginTemplate {
             (PluginLanguage::Kotlin, Some(PluginRuntimeOverride::WasmComponent)) => {
                 Ok(Self::KotlinComponent)
             }
-            (PluginLanguage::TypeScript, None | Some(PluginRuntimeOverride::WasmComponent)) => {
+            (PluginLanguage::TypeScript, Some(PluginRuntimeOverride::WasmComponent)) => {
                 Ok(Self::TypeScriptComponent)
             }
             (PluginLanguage::TypeScript, Some(PluginRuntimeOverride::PageDefinition)) => {
@@ -70,6 +71,9 @@ impl PluginTemplate {
 
     pub fn label(self) -> &'static str {
         match self {
+            Self::Fullstack(PluginLanguage::Rust) => "Rust 全栈插件",
+            Self::Fullstack(PluginLanguage::Kotlin) => "Kotlin 全栈插件",
+            Self::Fullstack(PluginLanguage::TypeScript) => "TypeScript 全栈插件",
             Self::Rust => "Rust 源码插件（Dill/TypeId 自动聚合）",
             Self::KotlinPages => "Kotlin 静态页面",
             Self::KotlinComponent => "Kotlin Wasm Component（预览）",
@@ -101,15 +105,15 @@ mod tests {
     fn assigns_stable_default_template_to_each_language() -> Result<()> {
         assert_eq!(
             PluginTemplate::resolve(PluginLanguage::Rust, None)?,
-            PluginTemplate::Rust
+            PluginTemplate::Fullstack(PluginLanguage::Rust)
         );
         assert_eq!(
             PluginTemplate::resolve(PluginLanguage::Kotlin, None)?,
-            PluginTemplate::KotlinService
+            PluginTemplate::Fullstack(PluginLanguage::Kotlin)
         );
         assert_eq!(
             PluginTemplate::resolve(PluginLanguage::TypeScript, None)?,
-            PluginTemplate::TypeScriptComponent
+            PluginTemplate::Fullstack(PluginLanguage::TypeScript)
         );
         Ok(())
     }

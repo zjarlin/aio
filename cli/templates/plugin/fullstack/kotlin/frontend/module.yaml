@@ -1,0 +1,16 @@
+product: wasm-js/app
+
+dependencies:
+  - //shared
+  - $compose.foundation
+  - org.jetbrains.compose.material3:material3:1.12.0-alpha03
+  - org.jetbrains.compose.material:material-icons-core:1.7.3
+  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
+  - org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0
+
+settings:
+  kotlin:
+    version: 2.4.10
+  compose:
+    enabled: true
+    version: 1.12.0-beta03
