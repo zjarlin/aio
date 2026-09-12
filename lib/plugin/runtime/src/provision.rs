@@ -205,6 +205,7 @@ mod tests {
     #[test]
     fn allows_scoped_additions_and_constraint_revisions() {
         for sql in [
+            "CREATE TABLE intake (id UUID PRIMARY KEY, available_at TIMESTAMPTZ NOT NULL DEFAULT now())",
             "ALTER TABLE sources ADD COLUMN route TEXT",
             "ALTER TABLE sources ADD CONSTRAINT state_check CHECK (state IN ('pending','recorded'))",
             "ALTER TABLE sources DROP CONSTRAINT state_check",

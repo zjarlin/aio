@@ -67,6 +67,7 @@ pub(crate) fn validate_nodes(statement: &impl Visit) -> Result<()> {
             if !matches!(
                 name.as_str(),
                 "count"
+                    | "now"
                     | "sum"
                     | "min"
                     | "max"
@@ -207,6 +208,7 @@ mod tests {
             assert!(super::validate(sql).is_err(), "{sql}");
         }
         assert!(super::validate("SELECT 'a;b', $1::text").is_ok());
+        assert!(super::validate("SELECT now()").is_ok());
         assert!(super::validate("UPDATE counter SET count=count+1 RETURNING count").is_ok());
     }
 }
