@@ -29,6 +29,8 @@ pub use services::HostServices;
 pub use state::InvocationResources;
 pub use storage::ObjectStore;
 
+pub const FRONTEND_HOST: &str = include_str!("../../../../sdk/web/host.mjs");
+
 pub mod bindings {
     wasmtime::component::bindgen!({
         path: "../contract/wit",

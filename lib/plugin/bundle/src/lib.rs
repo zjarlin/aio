@@ -7,7 +7,8 @@ mod model;
 mod validation;
 
 pub use manifest::{
-    BundleManifest, ComponentManifest, DatabaseManifest, FrontendManifest, RuntimeManifest,
+    BundleManifest, ComponentManifest, DatabaseManifest, FrontendManifest, MarketplaceManifest,
+    RuntimeManifest,
 };
 pub use model::{Bundle, MAX_BUNDLE_BYTES, MAX_ENCODED_BYTES, VerifiedBundle};
 pub use validation::validate_relative_path;

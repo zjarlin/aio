@@ -49,6 +49,14 @@ impl Bundle {
         ensure!(self.files.len() <= MAX_FILES, "产物文件数量超过配额");
         let manifest = BundleManifest::parse(&self.manifest)?;
         let plugin = &manifest.plugin;
+        ensure!(
+            plugin
+                .marketplace
+                .as_ref()
+                .and_then(|m| m.parent.as_deref())
+                != Some(self.git.as_str()),
+            "插件不能以自身为父插件"
+        );
         let frontend_prefix = format!("{}/", plugin.frontend.path);
         let migration_prefix = plugin
             .database

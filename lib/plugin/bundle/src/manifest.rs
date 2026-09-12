@@ -14,11 +14,25 @@ pub struct BundleManifest {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComponentManifest {
+    #[serde(default)]
+    pub permissions: Vec<String>,
+    pub marketplace: Option<MarketplaceManifest>,
     pub runtime: RuntimeManifest,
     pub frontend: FrontendManifest,
     pub database: Option<DatabaseManifest>,
     #[serde(default)]
     pub capabilities: CapabilityGrants,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct MarketplaceManifest {
+    pub title: String,
+    pub summary: String,
+    pub license: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub parent: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -52,6 +66,46 @@ impl BundleManifest {
             "只接受 v2 清单"
         );
         let plugin = &manifest.plugin;
+        ensure!(
+            plugin.permissions.len() <= 64
+                && plugin.permissions.iter().all(|p| !p.is_empty()
+                    && p.len() <= 128
+                    && p != "*"
+                    && p.bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b"._:-".contains(&b))),
+            "插件权限声明无效"
+        );
+        if let Some(marketplace) = &plugin.marketplace {
+            ensure!(
+                !marketplace.title.trim().is_empty() && marketplace.title.len() <= 256,
+                "市场标题无效"
+            );
+            ensure!(
+                marketplace.summary.len() <= 2048
+                    && !marketplace.license.is_empty()
+                    && marketplace.license.len() <= 128,
+                "市场简介或许可证无效"
+            );
+            ensure!(
+                marketplace.tags.len() <= 16
+                    && marketplace
+                        .tags
+                        .iter()
+                        .all(|tag| !tag.is_empty() && tag.len() <= 64),
+                "市场标签超过限制"
+            );
+            if let Some(parent) = &marketplace.parent {
+                ensure!(
+                    parent.starts_with("https://github.com/")
+                        && parent.ends_with(".git")
+                        && parent.len() <= 256
+                        && parent
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b":/._-".contains(&b)),
+                    "父插件必须是规范 GitHub 仓库地址"
+                );
+            }
+        }
         validate_relative_path(&plugin.runtime.artifact)?;
         ensure!(
             plugin.runtime.artifact.ends_with(".wasm"),

@@ -18,6 +18,39 @@ database = true
 migrations = "backend/migrations"
 "#;
 
+#[test]
+fn validates_marketplace_parent_and_permissions() -> Result<()> {
+    let metadata = "\n[plugin.marketplace]\ntitle='Screen'\nsummary='Workspace'\nlicense='MIT'\nparent='https://github.com/example/parent.git'\n";
+    let mut package = bundle();
+    package.manifest.push_str(metadata);
+    package.digest = package.content_digest();
+    package.verify()?;
+    package.git = "https://github.com/example/parent.git".into();
+    package.digest = package.content_digest();
+    assert!(package.verify().is_err());
+    for parent in [
+        "../parent",
+        "https://github.com/user/parent.git?token=x",
+        "https://user:secret@github.com/user/parent.git",
+    ] {
+        assert!(
+            BundleManifest::parse(&format!(
+                "{MANIFEST}{}",
+                metadata.replace("https://github.com/example/parent.git", parent)
+            ))
+            .is_err()
+        );
+    }
+    assert!(
+        BundleManifest::parse(&MANIFEST.replace(
+            "[plugin.runtime]",
+            "[plugin]\npermissions=['*']\n[plugin.runtime]"
+        ))
+        .is_err()
+    );
+    Ok(())
+}
+
 fn bundle() -> Bundle {
     let files = BTreeMap::from([
         (
