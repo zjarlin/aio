@@ -20,11 +20,36 @@ migrations = "backend/migrations"
 
 #[test]
 fn validates_marketplace_parent_and_permissions() -> Result<()> {
-    let metadata = "\n[plugin.marketplace]\ntitle='Screen'\nsummary='Workspace'\nlicense='MIT'\nparent='https://github.com/example/parent.git'\n";
+    let metadata = "\n[plugin.marketplace]\ntitle='Screen'\nsummary='Workspace'\nlicense='MIT'\nparent='https://github.com/example/parent.git'\nparent_title='父插件'\n";
     let mut package = bundle();
     package.manifest.push_str(metadata);
     package.digest = package.content_digest();
     package.verify()?;
+    assert_eq!(
+        BundleManifest::parse(&package.manifest)?
+            .plugin
+            .marketplace
+            .unwrap()
+            .parent_title
+            .as_deref(),
+        Some("父插件")
+    );
+    assert!(
+        BundleManifest::parse(
+            &package
+                .manifest
+                .replace("parent_title='父插件'", "parent_title=' '")
+        )
+        .is_err()
+    );
+    assert!(
+        BundleManifest::parse(
+            &package
+                .manifest
+                .replace("parent='https://github.com/example/parent.git'", "")
+        )
+        .is_err()
+    );
     package.git = "https://github.com/example/parent.git".into();
     package.digest = package.content_digest();
     assert!(package.verify().is_err());

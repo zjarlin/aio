@@ -33,6 +33,7 @@ pub struct MarketplaceManifest {
     #[serde(default)]
     pub tags: Vec<String>,
     pub parent: Option<String>,
+    pub parent_title: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -103,6 +104,12 @@ impl BundleManifest {
                             .bytes()
                             .all(|b| b.is_ascii_alphanumeric() || b":/._-".contains(&b)),
                     "父插件必须是规范 GitHub 仓库地址"
+                );
+            }
+            if let Some(title) = &marketplace.parent_title {
+                ensure!(
+                    marketplace.parent.is_some() && !title.trim().is_empty() && title.len() <= 256,
+                    "父插件标题必须非空且声明父仓库"
                 );
             }
         }
