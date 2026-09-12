@@ -2,7 +2,13 @@ use std::{str::FromStr, time::Duration};
 
 use anyhow::{Context, Result, ensure};
 use sha2::{Digest, Sha256};
-use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
+use sqlparser::{
+    ast::{
+        AlterTableOperation, ColumnOption, DropBehavior, ObjectName, Statement, TableConstraint,
+    },
+    dialect::PostgreSqlDialect,
+    parser::Parser,
+};
 use sqlx::{
     ConnectOptions, PgPool,
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -126,7 +132,100 @@ pub(crate) fn validate_migration(statement: &Statement) -> Result<()> {
         Statement::CreateIndex(index) => {
             ensure!(index.table_name.0.len() == 1, "索引不能引用其他 schema")
         }
-        _ => anyhow::bail!("受控增量迁移只接受 CREATE TABLE 和 CREATE INDEX"),
+        Statement::AlterTable(table) => {
+            ensure!(
+                table.name.0.len() == 1
+                    && table.location.is_none()
+                    && table.on_cluster.is_none()
+                    && table.table_type.is_none(),
+                "表迁移不能引用其他 schema 或外部位置"
+            );
+            for operation in &table.operations {
+                ensure!(
+                    matches!(
+                        operation,
+                        AlterTableOperation::AddColumn { .. }
+                            | AlterTableOperation::AddConstraint { .. }
+                            | AlterTableOperation::DropConstraint {
+                                drop_behavior: None | Some(DropBehavior::Restrict),
+                                ..
+                            }
+                    ),
+                    "表迁移只允许新增列及非级联的约束修订"
+                );
+                match operation {
+                    AlterTableOperation::AddConstraint {
+                        constraint: TableConstraint::ForeignKey(key),
+                        ..
+                    } => validate_reference(&key.foreign_table)?,
+                    AlterTableOperation::AddColumn { column_def, .. } => {
+                        for option in &column_def.options {
+                            if let ColumnOption::ForeignKey(key) = &option.option {
+                                validate_reference(&key.foreign_table)?;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        _ => anyhow::bail!("受控迁移只接受建表、建索引、新增列及约束修订"),
     }
     crate::database_query::validate_nodes(statement)
+}
+
+fn validate_reference(name: &ObjectName) -> Result<()> {
+    let value = name.to_string().to_ascii_lowercase();
+    ensure!(
+        name.0.len() == 1
+            && !value.trim_matches('"').starts_with("pg_")
+            && value.trim_matches('"') != "information_schema",
+        "外键不能引用其他 schema 或系统表"
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn allowed(sql: &str) -> bool {
+        Parser::parse_sql(&PostgreSqlDialect {}, sql).is_ok_and(|statements| {
+            statements
+                .iter()
+                .all(|statement| validate_migration(statement).is_ok())
+        })
+    }
+
+    #[test]
+    fn allows_scoped_additions_and_constraint_revisions() {
+        for sql in [
+            "ALTER TABLE sources ADD COLUMN route TEXT",
+            "ALTER TABLE sources ADD CONSTRAINT state_check CHECK (state IN ('pending','recorded'))",
+            "ALTER TABLE sources DROP CONSTRAINT state_check",
+            "ALTER TABLE sources DROP CONSTRAINT state_check RESTRICT",
+        ] {
+            assert!(allowed(sql), "{sql}");
+        }
+    }
+
+    #[test]
+    fn rejects_external_destructive_and_privileged_alterations() {
+        for sql in [
+            "ALTER TABLE other.sources ADD COLUMN x TEXT",
+            "ALTER TABLE pg_authid ADD COLUMN x TEXT",
+            "ALTER TABLE sources DROP COLUMN ciphertext",
+            "ALTER TABLE sources DROP CONSTRAINT state_check CASCADE",
+            "ALTER TABLE sources OWNER TO admin",
+            "ALTER TABLE sources SET SCHEMA other",
+            "ALTER TABLE sources DISABLE ROW LEVEL SECURITY",
+            "ALTER TABLE sources ADD COLUMN x TEXT DEFAULT set_config('role','admin',false)",
+            "ALTER TABLE sources ADD CONSTRAINT foreign_id FOREIGN KEY(id) REFERENCES other.sources(id)",
+            "ALTER TABLE sources ADD COLUMN parent TEXT REFERENCES other.sources(id)",
+            "ALTER TABLE sources ADD COLUMN parent TEXT REFERENCES pg_authid(rolname)",
+            "ALTER TABLE sources ADD COLUMN safe TEXT, DROP COLUMN ciphertext",
+        ] {
+            assert!(!allowed(sql), "{sql}");
+        }
+    }
 }

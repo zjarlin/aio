@@ -44,6 +44,37 @@ async fn binding_survives_restart_and_rejects_rewritten_history() -> Result<()> 
     provisioner
         .install(&source, "test", &upgraded, &keyring)
         .await?;
+    upgraded.push(("0003.sql".into(),
+        "ALTER TABLE records ADD COLUMN state TEXT NOT NULL DEFAULT 'pending'; ALTER TABLE records ADD CONSTRAINT state_check CHECK (state IN ('pending'))".into()));
+    provisioner
+        .install(&source, "test", &upgraded, &keyring)
+        .await?;
+    upgraded.push(("0004.sql".into(),
+        "ALTER TABLE records DROP CONSTRAINT state_check; ALTER TABLE records ADD CONSTRAINT state_check CHECK (state IN ('pending','recorded'))".into()));
+    let upgraded_database = provisioner
+        .install(&source, "test", &upgraded, &keyring)
+        .await?;
+    let mut tx = upgraded_database.begin().await?;
+    assert_eq!(
+        sqlx::query_scalar::<_, String>(
+            "UPDATE records SET state='recorded' WHERE id=1 RETURNING value"
+        )
+        .fetch_one(&mut *tx)
+        .await?,
+        "retained"
+    );
+    tx.commit().await?;
+    let mut invalid = upgraded.clone();
+    invalid.push(("0005.sql".into(), "ALTER TABLE records DROP CONSTRAINT state_check; ALTER TABLE records ADD CONSTRAINT state_check CHECK (state='invalid')".into()));
+    assert!(
+        provisioner
+            .install(&source, "test", &invalid, &keyring)
+            .await
+            .is_err()
+    );
+    provisioner
+        .install(&source, "test", &upgraded, &keyring)
+        .await?;
     assert!(
         provisioner
             .install(&source, "test", &migrations, &keyring)
