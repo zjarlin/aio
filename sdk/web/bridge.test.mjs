@@ -35,7 +35,7 @@ test('guest transports binary bodies and ignores other windows', async () => {
   let sent;
   const parent = { postMessage: message => { sent = message; } };
   const window = { parent, addEventListener: (_kind, listener) => { receive = listener; } };
-  const context = vm.createContext({ window, crypto: webcrypto, Uint8Array, TextEncoder, TextDecoder, setTimeout, clearTimeout });
+  const context = vm.createContext({ window, crypto: webcrypto, Uint8Array, TextEncoder, TextDecoder, URL, setTimeout, clearTimeout });
   vm.runInContext(readFileSync(new URL('./guest.js', import.meta.url), 'utf8'), context);
   const result = window.aioPlugin.request({ path: '/file', method: 'POST', body: new Uint8Array([0, 255, 128]) });
   assert.deepEqual([...sent.request.body], [0, 255, 128]);
@@ -71,7 +71,7 @@ test('guest JSON handles empty success, structured content and HTTP failure', as
   const parent = { postMessage: message => { sent = message; } };
   const window = { parent, addEventListener: (_kind, listener) => { receive = listener; } };
   vm.runInContext(readFileSync(new URL('./guest.js', import.meta.url), 'utf8'), vm.createContext({
-    window, crypto: webcrypto, Uint8Array, TextEncoder, TextDecoder, setTimeout, clearTimeout,
+    window, crypto: webcrypto, Uint8Array, TextEncoder, TextDecoder, URL, setTimeout, clearTimeout,
   }));
   const reply = (status, body) => receive({ source: parent, data: {
     protocol: 'aio:plugin@2', kind: 'response', id: sent.id,
@@ -87,4 +87,27 @@ test('guest JSON handles empty success, structured content and HTTP failure', as
   const failed = window.aioPlugin.json('GET', '/tasks/2');
   reply(404, '{"error":"Missing task"}');
   await assert.rejects(failed, /Missing task/);
+});
+
+test('guest splits service URLs into the v2 path and query fields', async () => {
+  let receive, sent;
+  const parent = {postMessage: message => {sent = message;}};
+  const window = {parent, addEventListener: (_, listener) => {receive = listener;}};
+  vm.runInNewContext(readFileSync(new URL('./guest.js', import.meta.url), 'utf8'), {
+    window, crypto: webcrypto, Uint8Array, TextEncoder, TextDecoder, URL, setTimeout, clearTimeout,
+  });
+  for (const input of [
+    {path: '/graph?spaceId=personal&alias=a%2Bb'},
+    {path: '/graph', query: 'spaceId=personal&alias=a%2Bb'},
+  ]) {
+    const result = window.aioPlugin.request(input);
+    assert.equal(sent.request.path, '/graph');
+    assert.equal(sent.request.query, 'spaceId=personal&alias=a%2Bb');
+    receive({source:parent, data:{protocol:'aio:plugin@2',kind:'response',id:sent.id,response:{status:200,headers:[],body:[]}}});
+    await result;
+  }
+  for (const path of ['https://outside.test/graph', '//outside.test/graph', '/\\outside.test/graph', '/graph#fragment']) {
+    await assert.rejects(window.aioPlugin.request({path}), /Invalid service path/);
+  }
+  await assert.rejects(window.aioPlugin.request({path:'/graph?spaceId=one',query:'spaceId=two'}), /Specify query only once/);
 });

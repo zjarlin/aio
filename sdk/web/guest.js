@@ -16,13 +16,16 @@
   const request = (input) => new Promise((resolve, reject) => {
     if (pending.size >= 16) return reject(new Error("Too many pending requests"));
     if (!input || typeof input.path !== "string" || !input.path.startsWith("/") || input.path.startsWith("//")) return reject(new Error("Invalid service path"));
+    const url = new URL(input.path, "https://aio.invalid");
+    if (url.origin !== "https://aio.invalid" || url.hash) return reject(new Error("Invalid service path"));
+    if (url.search && input.query != null) return reject(new Error("Specify query only once"));
     const body = input.body ?? new Uint8Array();
     if (!(body instanceof Uint8Array) || body.length > 16 * 1024 * 1024) return reject(new Error("Invalid binary body"));
     const id = crypto.randomUUID();
     const timer = setTimeout(() => { pending.delete(id); reject(new Error("Service request timed out")); }, 35000);
     pending.set(id, { resolve, reject, timer });
     window.parent.postMessage({ protocol: "aio:plugin@2", kind: "request", id,
-      request: { method: input.method ?? "GET", path: input.path, query: input.query ?? null,
+      request: { method: input.method ?? "GET", path: url.pathname, query: input.query ?? (url.search.slice(1) || null),
         headers: input.headers ?? [], body } }, "*");
   });
   const json = async (method, path, value) => {
