@@ -1,7 +1,13 @@
 mod build;
 mod documents;
 
-use std::{env, path::PathBuf, thread, time::Duration};
+use std::{
+    collections::HashSet,
+    env,
+    path::PathBuf,
+    thread,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context as _, Result};
 use az_plugin_delivery::{BuildJob, BuildReport};
@@ -25,12 +31,23 @@ impl Worker {
         let root = self.root.join(format!("job-{}", job.id));
         let result = build::execute(self, job, &root);
         if let Err(error) = &result {
+            let heartbeat = self
+                .request(&format!("/api/internal/delivery/jobs/{}/heartbeat", job.id))
+                .timeout(Duration::from_secs(10))
+                .json(&serde_json::json!({"lease":job.lease}))
+                .send();
+            if heartbeat.is_ok_and(|response| response.status().as_u16() == 409) {
+                std::fs::remove_dir_all(&root)?;
+                return Ok(());
+            }
             if error.downcast_ref::<build::Retryable>().is_some()
                 || error.chain().any(|cause| {
                     cause.downcast_ref::<reqwest::Error>().is_some_and(|e| {
                         e.is_timeout()
                             || e.is_connect()
-                            || e.status().is_some_and(|status| status.is_server_error())
+                            || e.status().is_some_and(|status| {
+                                status.is_server_error() || status.as_u16() == 429
+                            })
                     })
                 })
             {
@@ -58,6 +75,30 @@ impl Worker {
         }
         Ok(())
     }
+
+    fn cleanup(&self) -> Result<()> {
+        let retained: HashSet<i64> = self
+            .request("/api/internal/delivery/retained-jobs")
+            .timeout(Duration::from_secs(10))
+            .send()?
+            .error_for_status()?
+            .json()?;
+        for entry in std::fs::read_dir(&self.root)? {
+            let entry = entry?;
+            let name = entry.file_name();
+            let Some(id) = name
+                .to_str()
+                .and_then(|name| name.strip_prefix("job-"))
+                .and_then(|id| id.parse::<i64>().ok())
+            else {
+                continue;
+            };
+            if !retained.contains(&id) && entry.file_type()?.is_dir() {
+                std::fs::remove_dir_all(entry.path())?;
+            }
+        }
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -77,7 +118,14 @@ fn main() -> Result<()> {
     };
     std::fs::create_dir_all(&worker.root)?;
     let mut delay = 10;
+    let mut cleaned = Instant::now();
     loop {
+        if cleaned.elapsed() >= Duration::from_secs(300) {
+            if let Err(error) = worker.cleanup() {
+                eprintln!("清理交付临时产物失败: {error:#}");
+            }
+            cleaned = Instant::now();
+        }
         let result = (|| -> Result<()> {
             let job: Option<BuildJob> = worker
                 .request("/api/internal/delivery/claim")

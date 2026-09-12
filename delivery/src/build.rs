@@ -61,8 +61,16 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
         checked(Command::new("chown").arg("65534:65534").arg(&source))?;
         let fetch_name = format!("aio-fetch-{}", job.id);
         for args in [
-            vec!["git", "clone", "--no-checkout", "--", &job.git, "."],
-            vec!["git", "checkout", "--detach", &job.source_revision],
+            vec!["git", "init", "."],
+            vec![
+                "git",
+                "fetch",
+                "--depth=1",
+                "--",
+                &job.git,
+                &job.source_revision,
+            ],
+            vec!["git", "checkout", "--detach", "FETCH_HEAD"],
         ] {
             let _ = Command::new("docker")
                 .args(["rm", "-f", &fetch_name])
@@ -104,7 +112,9 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
                 "--env",
                 "CARGO_HOME=/cache/cargo",
                 "--env",
-                "CARGO_NET_GIT_FETCH_WITH_CLI=true",
+                "CARGO_NET_GIT_FETCH_WITH_CLI=false",
+                "--env",
+                "CARGO_UNSTABLE_GIT=shallow-deps",
                 "--env",
                 "CARGO_HTTP_TIMEOUT=30",
                 "--env",
@@ -164,7 +174,12 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
                 "Failed to connect to",
                 "Connection timed out",
                 "Timeout was reached",
+                "Operation too slow",
                 "failed to download from",
+                "EAI_AGAIN",
+                "ETIMEDOUT",
+                "ConnectTimeoutError",
+                "SocketTimeoutException",
             ]
             .iter()
             .any(|message| tail.contains(message))
