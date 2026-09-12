@@ -12,6 +12,7 @@ pub struct RequestContext {
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CapabilityGrants {
+    pub cryptography: bool,
     pub database: bool,
     pub storage: bool,
     pub management: bool,

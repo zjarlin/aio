@@ -4,20 +4,22 @@ use anyhow::{Context, Result, ensure};
 use sha2::{Digest, Sha256};
 use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
 use sqlx::{
-    PgPool,
+    ConnectOptions, PgPool,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
 
 use crate::ScopedDatabase;
 
 pub struct DatabaseProvisioner {
-    pool: PgPool,
-    connection: PgConnectOptions,
+    pub(crate) pool: PgPool,
+    pub(crate) connection: PgConnectOptions,
 }
 
 impl DatabaseProvisioner {
     pub async fn connect(url: &str) -> Result<Self> {
-        let connection = PgConnectOptions::from_str(url).context("数据库地址无效")?;
+        let connection = PgConnectOptions::from_str(url)
+            .context("数据库地址无效")?
+            .disable_statement_logging();
         let pool = PgPoolOptions::new()
             .max_connections(2)
             .acquire_timeout(Duration::from_secs(3))
@@ -55,17 +57,7 @@ impl DatabaseProvisioner {
             "初始化迁移数量无效"
         );
         for statement in &statements {
-            let Statement::CreateTable(table) = statement else {
-                anyhow::bail!("初始化迁移只接受 CREATE TABLE");
-            };
-            ensure!(
-                table.name.0.len() == 1
-                    && table.query.is_none()
-                    && table.like.is_none()
-                    && table.clone.is_none(),
-                "初始化表不能引用其他 schema 或复制已有表"
-            );
-            crate::database_query::validate_nodes(statement)?;
+            validate_migration(statement)?;
         }
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET LOCAL statement_timeout = '5s'")
@@ -117,7 +109,24 @@ impl DatabaseProvisioner {
     }
 }
 
-fn namespace(source: &str, tenant: &str) -> String {
+pub(crate) fn namespace(source: &str, tenant: &str) -> String {
     let digest = Sha256::digest(format!("{}:{source}{tenant}", source.len()).as_bytes());
     format!("p_{digest:x}")[..42].to_owned()
+}
+
+pub(crate) fn validate_migration(statement: &Statement) -> Result<()> {
+    match statement {
+        Statement::CreateTable(table) => ensure!(
+            table.name.0.len() == 1
+                && table.query.is_none()
+                && table.like.is_none()
+                && table.clone.is_none(),
+            "初始化表不能引用其他 schema 或复制已有表"
+        ),
+        Statement::CreateIndex(index) => {
+            ensure!(index.table_name.0.len() == 1, "索引不能引用其他 schema")
+        }
+        _ => anyhow::bail!("受控增量迁移只接受 CREATE TABLE 和 CREATE INDEX"),
+    }
+    crate::database_query::validate_nodes(statement)
 }

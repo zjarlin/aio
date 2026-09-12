@@ -6,6 +6,7 @@ declare global {
     readonly aioPlugin: {
       request(input: Request): Promise<Response>;
       json<T>(method: string, path: string, value?: unknown): Promise<T>;
+      copy(text: string): Promise<Response>;
     };
   }
 }

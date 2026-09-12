@@ -5,6 +5,31 @@ import test from 'node:test';
 import { webcrypto } from 'node:crypto';
 import { mountBridge } from './host.mjs';
 
+test('clipboard requires a host grant and an active gesture', async () => {
+  let listener, reply, copied;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  globalThis.window = {addEventListener: (_,fn)=>{listener=fn;},removeEventListener:()=>{}};
+  globalThis.document = {hasFocus:()=>true};
+  const activation={isActive:false};
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{userActivation:activation,clipboard:{writeText:async text=>{copied=text;}}}});
+  const child={postMessage:message=>{reply=message;}};
+  const event={source:child,origin:'null',data:{protocol:'aio:plugin@2',kind:'clipboard',id:'copy',text:'test-only-secret'}};
+  try {
+    const denied=mountBridge({contentWindow:child},()=>assert.fail('clipboard reached service'));
+    activation.isActive=true;
+    await listener(event); assert(reply.error); assert.equal(copied,undefined); denied();
+    const allowed=mountBridge({contentWindow:child},()=>assert.fail('clipboard reached service'),{clipboard:true});
+    activation.isActive=false;
+    await listener(event); assert(reply.error); assert.equal(copied,undefined);
+    activation.isActive=true;
+    await listener(event); assert.equal(reply.response.status,204); assert.equal(copied,'test-only-secret');
+    allowed();
+  } finally {
+    delete globalThis.window;delete globalThis.document;
+    if(previous) Object.defineProperty(globalThis,'navigator',previous); else delete globalThis.navigator;
+  }
+});
+
 test('guest transports binary bodies and ignores other windows', async () => {
   let receive;
   let sent;

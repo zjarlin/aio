@@ -31,9 +31,9 @@ The latest browser run used a separate loopback preview instance to avoid concur
 
 ## Still Required Before Production Cutover
 
-- Finish production registry and durable atomic activation migration to v2; no v1 adapter in new runtime. The new Component bundle validator and in-process execution slot are tested, but do not yet replace the public install API or persist active revisions.
+- Wire the production publish API to the v2 persistent registry; no v1 adapter in the new runtime. `PersistentComponentSlot` now persists bundles, grants, activation history and active revisions, restores after restart and fences stale replicas. The public install API has not migrated to it.
 - Remove the 14 remaining static business Cargo dependencies from `aio-idea` after their replacement plugins pass acceptance. Do not remove the dependencies prematurely and replace functioning system pages with placeholders.
-- Persist database credential bindings and migration history; implement controlled upgrade migrations, data-compatible rollback and aggregate quotas. Current provisioner only creates isolated initial schemas for tests.
+- Persistent encrypted database bindings and checksummed migration history are implemented and tested. Complete production wiring, broader controlled upgrades, data-compatible rollback and aggregate quotas; the current migration policy only permits additive tables/indexes and refuses changed/deleted migration history.
 - Complete signed/revocable mount tickets, context/theme/navigation/fullscreen/account protocols and bootstrap identity provider.
 - Migrate and merge identity/RBAC/tenant/account/settings, then marketplace, dictionary, file and Studio onto actual v2 Components. Studio code extraction is not its runtime migration.
 - Move source assembly to `aio host extension`; rebuild thin-host and fullstack CLI templates and examples. Existing CLI packaging still targets the old production protocol; do not publish v2 artifacts with it yet.
@@ -56,6 +56,14 @@ On 2026-09-11, package `0.2.0` from `zjarlin/aio-plugin-kmp-example` was activat
 - Compose beta clears some accessibility nodes after closing dialogs. Browser tests calibrate their bounds and send real pointer events to the canvas; these results do not constitute screen-reader acceptance.
 
 The broader v2 system-plugin cutover and destructive lifecycle/data migration acceptance remain outstanding.
+
+## Dialog Memory Integration
+
+Agent and Agent Memory now exercise the real Component/process boundary through an authenticated loopback development broker: encrypted receipt and idempotency, sanitized history and recall, independent secret grants, durable compilation leases, foreground preemption, source deletion visibility, source clarification, wiki revisions/aliases/relations, conflict review and rollback. A canary secret is checked across model requests, ordinary messages, context/search/graph and logs. Desktop/mobile Compose chat and protected reveal/copy were verified with an inspectable SSE test endpoint, not a live model quality evaluation.
+
+The runtime also has versioned host cryptography, durable scoped database credentials and persistent Component activation. PostgreSQL tests verify additive migration/restart, invalid history/key rejection, candidate failure preservation, restart restoration and rejection of stale revisions across execution slots. These libraries do not by themselves migrate `aio-idea` identity/navigation/publication or grant process egress.
+
+The public Agent release remains blocked by the existing production cutover: controlled process model egress and cross-plugin broker, host key injection, native v2 publication/mount identity, system-plugin migration and database-copy acceptance on 252. No new business Cargo dependency or old-protocol adapter was added, and no public v2 package was installed.
 
 ## Local Compose Interaction And Asset Delivery
 

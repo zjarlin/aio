@@ -13,7 +13,7 @@ export AIO_TEST_MIGRATION=/absolute/path/aio-plugin-kmp-example/backend/migratio
 cargo test -p az-plugin-runtime -- --include-ignored
 ```
 
-这些测试创建随机来源的独立角色和 schema，仅对一次性测试库运行。初始 schema provisioner 不等于生产迁移管理器；持久绑定、迁移版本、注册表与内存切换的一致性、公网切换仍由 `docs/refactor/README.md` 跟踪。
+这些测试创建随机来源的独立角色和 schema，仅对一次性测试库运行。`DatabaseProvisioner::install` 持久保存加密数据库凭据及有序迁移校验和，支持追加受限建表和索引迁移，拒绝改写、删除或重排历史。公网接入状态由 `docs/refactor/README.md` 跟踪。
 
 ## 整包执行槽
 
@@ -22,3 +22,9 @@ cargo test -p az-plugin-runtime -- --include-ignored
 新旧迁移文件集合必须完全一致，否则拒绝在线替换，交由维护迁移流程。该单元不提供持久化注册表、登录授权或迁移执行器，不应直接暴露成公网安装接口。首次实例化前数据库必须由可信宿主完成受控初始化；停用不删除业务数据。`ReleaseSnapshot` 是只读资源快照，不是认证票据。
 
 Rust 和 Kotlin SDK 的 WASI 仅开放受限 I/O、时间、安全随机及空环境。标准输出和错误输出各有 4 KiB 缓冲，不继承宿主环境、文件预打开目录、终端或网络。
+
+## 持久激活与加密
+
+`DatabaseProvisioner::component_slot` 提供 `PersistentComponentSlot`，在宿主数据库保存整包、授权、活动摘要和激活历史。恢复时重新校验整包和当前宿主授权；发布前校验候选，再以本地锁和 PostgreSQL 行锁排空在途请求，提交活动版本后切换实例。其他宿主上的旧版本调用被数据库记录拒绝。详情见 `src/registry/README.md`。
+
+`Keyring` 以版本化 AES-256-GCM 信封绑定插件、租户和用途，支持保留旧密钥后轮换活动密钥。只有运行阶段且授予 cryptography 的实例可以调用；数据库凭据不进入插件。宿主不得启用包含动态角色密码的 SQL 语句日志。

@@ -32,5 +32,12 @@
     if (response.status < 200 || response.status >= 300) throw new Error(decoder.decode(response.body));
     return response.body.length ? JSON.parse(decoder.decode(response.body)) : null;
   };
-  Object.defineProperty(window, "aioPlugin", { value: Object.freeze({ request, json }), writable: false, configurable: false });
+  const copy = (text) => new Promise((resolve, reject) => {
+    if (pending.size >= 16 || typeof text !== "string" || text.length > 100000) return reject(new Error("Invalid clipboard request"));
+    const id = crypto.randomUUID();
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error("Clipboard request timed out")); }, 5000);
+    pending.set(id, { resolve, reject, timer });
+    window.parent.postMessage({ protocol: "aio:plugin@2", kind: "clipboard", id, text }, "*");
+  });
+  Object.defineProperty(window, "aioPlugin", { value: Object.freeze({ request, json, copy }), writable: false, configurable: false });
 })();

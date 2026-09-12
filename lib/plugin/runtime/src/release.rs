@@ -83,7 +83,8 @@ impl ComponentSlot {
         }
         let requested = &bundle.manifest().plugin.capabilities;
         ensure!(
-            (!requested.database || grants.database)
+            (!requested.cryptography || grants.cryptography)
+                && (!requested.database || grants.database)
                 && (!requested.storage || grants.storage)
                 && (!requested.management || grants.management)
                 && (!requested.identity_provider || grants.identity_provider),
@@ -96,6 +97,10 @@ impl ComponentSlot {
         ensure!(
             !requested.database || resources.database.is_some(),
             "数据库能力未绑定已迁移的专属数据库"
+        );
+        ensure!(
+            !requested.cryptography || resources.keyring.is_some(),
+            "加密能力未绑定宿主密钥"
         );
         ensure!(
             !requested.storage || resources.storage.is_some(),

@@ -1,0 +1,80 @@
+use crate::{DatabaseProvisioner, Keyring};
+use anyhow::Result;
+use std::collections::BTreeMap;
+
+#[tokio::test]
+#[ignore = "requires a disposable PostgreSQL database"]
+async fn binding_survives_restart_and_rejects_rewritten_history() -> Result<()> {
+    let url = std::env::var("AIO_TEST_DATABASE_URL")?;
+    let source = uuid::Uuid::new_v4().to_string();
+    let keyring = Keyring::new("test".into(), BTreeMap::from([("test".into(), [42; 32])]))?;
+    let migrations = vec![(
+        "0001.sql".into(),
+        "CREATE TABLE records (id BIGINT PRIMARY KEY, value TEXT NOT NULL)".into(),
+    )];
+    let provisioner = DatabaseProvisioner::connect(&url).await?;
+    let database = provisioner
+        .install(&source, "test", &migrations, &keyring)
+        .await?;
+    let mut tx = database.begin().await?;
+    sqlx::query("INSERT INTO records VALUES(1,'retained')")
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    drop(database);
+    drop(provisioner);
+
+    let provisioner = DatabaseProvisioner::connect(&url).await?;
+    let database = provisioner
+        .install(&source, "test", &migrations, &keyring)
+        .await?;
+    let mut tx = database.begin().await?;
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT value FROM records WHERE id=1")
+            .fetch_one(&mut *tx)
+            .await?,
+        "retained"
+    );
+    tx.commit().await?;
+    let mut upgraded = migrations.clone();
+    upgraded.push((
+        "0002.sql".into(),
+        "CREATE INDEX records_value ON records(value)".into(),
+    ));
+    provisioner
+        .install(&source, "test", &upgraded, &keyring)
+        .await?;
+    assert!(
+        provisioner
+            .install(&source, "test", &migrations, &keyring)
+            .await
+            .is_err()
+    );
+    upgraded[0].1.push(';');
+    assert!(
+        provisioner
+            .install(&source, "test", &upgraded, &keyring)
+            .await
+            .is_err()
+    );
+    upgraded[0] = migrations[0].clone();
+    let wrong_key = Keyring::new("test".into(), BTreeMap::from([("test".into(), [43; 32])]))?;
+    assert!(
+        provisioner
+            .install(&source, "test", &upgraded, &wrong_key)
+            .await
+            .is_err()
+    );
+    let other = provisioner
+        .install(&source, "other", &migrations, &keyring)
+        .await?;
+    let mut tx = other.begin().await?;
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM records")
+            .fetch_one(&mut *tx)
+            .await?,
+        0
+    );
+    tx.commit().await?;
+    Ok(())
+}

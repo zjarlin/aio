@@ -51,6 +51,11 @@ interface storage {
     remove: func(path: string) -> result<_, string>;
 }
 
+interface cryptography {
+    seal: func(purpose: string, plaintext: list<u8>) -> result<list<u8>, string>;
+    open: func(purpose: string, ciphertext: list<u8>) -> result<list<u8>, string>;
+}
+
 interface management {
     use transport.{request, response};
     invoke: func(request: request) -> result<response, string>;
@@ -60,6 +65,7 @@ world plugin {
     import host;
     import database;
     import storage;
+    import cryptography;
     import management;
     use transport.{request, response, phase};
     use metadata.{description};

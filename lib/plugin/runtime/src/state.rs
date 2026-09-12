@@ -11,12 +11,15 @@ use wasmtime::{StoreLimits, StoreLimitsBuilder};
 
 use crate::{
     HostServices, ObjectStore, ScopedDatabase,
-    bindings::aio::plugin::{database, host, management, metadata, storage, transport},
+    bindings::aio::plugin::{
+        cryptography, database, host, management, metadata, storage, transport,
+    },
     database_query,
 };
 
 #[derive(Clone, Default)]
 pub struct InvocationResources {
+    pub keyring: Option<Arc<crate::Keyring>>,
     pub database: Option<ScopedDatabase>,
     pub storage: Option<ObjectStore>,
     pub services: Option<Arc<dyn HostServices>>,
@@ -82,7 +85,7 @@ impl InvocationState {
         Ok(())
     }
 
-    fn permit(&self, granted: bool) -> Result<()> {
+    pub(crate) fn permit(&self, granted: bool) -> Result<()> {
         ensure!(self.executing && granted, "当前调用未授予该宿主能力");
         Ok(())
     }
@@ -91,6 +94,38 @@ impl InvocationState {
         if let Some(transaction) = self.transactions.remove(&id) {
             let _ = transaction.rollback().await;
         }
+    }
+}
+
+impl cryptography::Host for InvocationState {
+    async fn seal(
+        &mut self,
+        purpose: String,
+        plaintext: Vec<u8>,
+    ) -> wasmtime::Result<Result<Vec<u8>, String>> {
+        Ok(wire((|| {
+            self.permit(self.scope.grants.cryptography)?;
+            self.resources
+                .keyring
+                .as_ref()
+                .context("宿主加密密钥未绑定")?
+                .seal(&self.scope, &purpose, &plaintext)
+        })()))
+    }
+
+    async fn open(
+        &mut self,
+        purpose: String,
+        ciphertext: Vec<u8>,
+    ) -> wasmtime::Result<Result<Vec<u8>, String>> {
+        Ok(wire((|| {
+            self.permit(self.scope.grants.cryptography)?;
+            self.resources
+                .keyring
+                .as_ref()
+                .context("宿主加密密钥未绑定")?
+                .open(&self.scope, &purpose, &ciphertext)
+        })()))
     }
 }
 
