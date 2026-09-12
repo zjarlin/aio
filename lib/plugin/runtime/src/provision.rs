@@ -4,7 +4,8 @@ use anyhow::{Context, Result, ensure};
 use sha2::{Digest, Sha256};
 use sqlparser::{
     ast::{
-        AlterTableOperation, ColumnOption, DropBehavior, ObjectName, Statement, TableConstraint,
+        AlterColumnOperation, AlterTableOperation, ColumnOption, DropBehavior, ObjectName,
+        Statement, TableConstraint,
     },
     dialect::PostgreSqlDialect,
     parser::Parser,
@@ -146,6 +147,10 @@ pub(crate) fn validate_migration(statement: &Statement) -> Result<()> {
                         operation,
                         AlterTableOperation::AddColumn { .. }
                             | AlterTableOperation::AddConstraint { .. }
+                            | AlterTableOperation::AlterColumn {
+                                op: AlterColumnOperation::DropNotNull,
+                                ..
+                            }
                             | AlterTableOperation::DropConstraint {
                                 drop_behavior: None | Some(DropBehavior::Restrict),
                                 ..
@@ -204,6 +209,7 @@ mod tests {
             "ALTER TABLE sources ADD CONSTRAINT state_check CHECK (state IN ('pending','recorded'))",
             "ALTER TABLE sources DROP CONSTRAINT state_check",
             "ALTER TABLE sources DROP CONSTRAINT state_check RESTRICT",
+            "ALTER TABLE sources ALTER COLUMN provider_id DROP NOT NULL",
         ] {
             assert!(allowed(sql), "{sql}");
         }

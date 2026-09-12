@@ -83,10 +83,19 @@ impl Bundle {
             ensure!(bytes.len() <= remaining, "产物超过整包配额");
             remaining -= bytes.len();
             if path == &plugin.runtime.artifact {
-                ensure!(
-                    bytes.starts_with(b"\0asm\x0d\0\x01\0"),
-                    "后端不是 Wasm Component，不能装入浏览器 Wasm 或 JAR"
-                );
+                if plugin.runtime.process.is_some() {
+                    ensure!(
+                        bytes.len() >= 64
+                            && bytes.starts_with(b"\x7fELF\x02\x01")
+                            && bytes[18..20] == [62, 0],
+                        "process 后端必须是 Linux x86_64 ELF"
+                    );
+                } else {
+                    ensure!(
+                        bytes.starts_with(b"\0asm\x0d\0\x01\0"),
+                        "后端不是 Wasm Component，不能装入浏览器 Wasm 或 JAR"
+                    );
+                }
             } else if path.starts_with(&frontend_prefix) {
                 frontend_count += 1;
             } else if let Some(relative) = migration_prefix

@@ -41,6 +41,17 @@ pub struct MarketplaceManifest {
 pub struct RuntimeManifest {
     pub artifact: String,
     pub host_version: String,
+    pub process: Option<ProcessManifest>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProcessManifest {
+    pub image: String,
+    #[serde(default)]
+    pub endpoints: Vec<String>,
+    #[serde(default)]
+    pub services: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -114,10 +125,63 @@ impl BundleManifest {
             }
         }
         validate_relative_path(&plugin.runtime.artifact)?;
-        ensure!(
-            plugin.runtime.artifact.ends_with(".wasm"),
-            "v2 Component 包需要 .wasm 后端产物"
-        );
+        if let Some(process) = &plugin.runtime.process {
+            let (image, digest) = process
+                .image
+                .split_once("@sha256:")
+                .or_else(|| {
+                    process
+                        .image
+                        .strip_prefix("sha256:")
+                        .map(|digest| ("sha256", digest))
+                })
+                .ok_or_else(|| anyhow::anyhow!("process 镜像必须锁定 SHA-256"))?;
+            ensure!(
+                !image.is_empty()
+                    && image.len() <= 256
+                    && image
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b"/._:-".contains(&b))
+                    && digest.len() == 64
+                    && digest
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+                "process 镜像无效"
+            );
+            ensure!(
+                process.endpoints.len() <= 16 && process.services.len() <= 16,
+                "process 授权超过配额"
+            );
+            for endpoint in &process.endpoints {
+                let url = url::Url::parse(endpoint)?;
+                ensure!(
+                    url.scheme() == "https"
+                        && url.host_str().is_some()
+                        && url.username().is_empty()
+                        && url.password().is_none()
+                        && url.query().is_none()
+                        && url.fragment().is_none()
+                        && !endpoint.ends_with('/'),
+                    "模型出站必须是无凭据的完整 HTTPS 基址"
+                );
+            }
+            for service in &process.services {
+                ensure!(
+                    service.starts_with("https://github.com/")
+                        && service.ends_with(".git")
+                        && service.len() <= 256
+                        && service
+                            .bytes()
+                            .all(|b| b.is_ascii_alphanumeric() || b":/._-".contains(&b)),
+                    "服务授权必须是规范 GitHub 来源"
+                );
+            }
+        } else {
+            ensure!(
+                plugin.runtime.artifact.ends_with(".wasm"),
+                "Component 包需要 .wasm 后端产物"
+            );
+        }
         semver::VersionReq::parse(&plugin.runtime.host_version)?;
         validate_relative_path(&plugin.frontend.path)?;
         ensure!(

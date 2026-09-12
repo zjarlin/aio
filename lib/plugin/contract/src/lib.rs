@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod model;
+pub mod process;
 
 pub use model::*;
 
