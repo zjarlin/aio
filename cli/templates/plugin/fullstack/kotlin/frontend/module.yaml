@@ -1,5 +1,7 @@
 product: wasm-js/app
 
+apply: [//build.module-template.yaml]
+
 dependencies:
   - //shared
   - $compose.foundation

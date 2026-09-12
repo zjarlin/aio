@@ -1,3 +1,5 @@
+apply: [//build.module-template.yaml]
+
 product:
   type: kmp/lib
   platforms: [jvm, wasmJs, wasmWasi]

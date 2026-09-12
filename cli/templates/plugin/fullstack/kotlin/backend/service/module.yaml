@@ -1,5 +1,7 @@
 product: jvm/app
 
+apply: [//build.module-template.yaml]
+
 dependencies:
   - //shared
   - io.ktor:ktor-server-cio:3.5.2

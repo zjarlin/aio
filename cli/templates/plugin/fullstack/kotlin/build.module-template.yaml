@@ -1,0 +1,5 @@
+repositories:
+  - id: mavenCentral
+    url: https://repo.maven.apache.org/maven2
+  - id: mavenGoogle
+    url: https://cache-redirector.jetbrains.com/dl.google.com/dl/android/maven2

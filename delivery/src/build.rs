@@ -163,6 +163,8 @@ pub fn execute(worker: &Worker, job: &BuildJob, root: &Path) -> Result<Documenta
                 "ETIMEDOUT",
                 "ConnectTimeoutError",
                 "SocketTimeoutException",
+                "HttpConnectTimeoutException",
+                "HttpTimeoutException",
             ]
             .iter()
             .any(|message| tail.contains(message))
