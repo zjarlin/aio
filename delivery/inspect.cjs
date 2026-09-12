@@ -10,6 +10,8 @@ const { Client } = require('/opt/aio-delivery/ops/node_modules/pg');
     const sources=await client.query('SELECT git,branch,desired_sha,enabled,updated_at FROM delivery_sources ORDER BY updated_at DESC LIMIT 20');
     const jobs=await client.query('SELECT id,git,source_revision,state,package_revision,left(error,1600) AS error,created_at,updated_at FROM delivery_jobs ORDER BY id DESC LIMIT 30');
     const rollouts=await client.query('SELECT tenant_id,source_id,revision,state,left(error,600) AS error,updated_at FROM delivery_rollouts ORDER BY updated_at DESC LIMIT 30');
-    console.log(JSON.stringify({sources:sources.rows,jobs:jobs.rows,rollouts:rollouts.rows},null,2));
+    const versions=await client.query("SELECT p.git,p.revision,p.version,p.source_revision,p.created_at,pj.updated_at AS published_at,length(d.readme) AS readme_length FROM plugin_packages p JOIN delivery_sources s ON s.git=p.git LEFT JOIN plugin_documents d ON d.revision=p.revision LEFT JOIN plugin_publish_jobs pj ON pj.revision=p.revision AND pj.state='active' ORDER BY p.created_at DESC LIMIT 30");
+    const activations=await client.query("SELECT e.tenant_id,s.git,r.revision,e.lifecycle,e.created_at FROM plugin_lifecycle_events e JOIN plugin_sources s ON s.id=e.source_id JOIN delivery_sources d ON d.git=s.git LEFT JOIN plugin_revisions r ON r.id=e.revision_id WHERE e.lifecycle IN ('activate','rollback','deactivate','uninstall') ORDER BY e.created_at DESC LIMIT 40");
+    console.log(JSON.stringify({sources:sources.rows,jobs:jobs.rows,rollouts:rollouts.rows,versions:versions.rows,activations:activations.rows},null,2));
   }finally{await client.end();}
 })().catch(error=>{console.error(error.message);process.exitCode=1;});
