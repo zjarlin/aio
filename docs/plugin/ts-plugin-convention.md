@@ -10,7 +10,7 @@ aio plugin init ../aio-plugin-ts-pages --title "TS 静态页面" --language type
 aio plugin init ../aio-plugin-node --title "Node 服务" --language typescript --runtime process
 ```
 
-可安装的参考仓库是 [aio-plugin-ts-pages](https://github.com/zjarlin/aio-plugin-ts-pages)、[aio-plugin-ts-component](https://github.com/zjarlin/aio-plugin-ts-component) 和 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
+三种运行目标的参考实现由 [CLI 插件模板](../../cli/templates/plugin/README.md) 维护，旧的独立示例仓库不再收录到市场。当前参考工具链固定为 pnpm 10.33.2、TypeScript 7.0.2、JCO 1.32.1 和 ComponentizeJS 0.22.0；更新任何版本都应作为一次明确的插件发布。
 
 ## 客户端
 
@@ -45,6 +45,6 @@ aio plugin validate
 
 ComponentizeJS 的预初始化快照不保证字节级可重复。依赖锁文件应提交 Git，但 Component artifact 不要求提交：在作者工具链构建后，使用 `.aio-plugin` 包和 SHA-256 锁定实际运行字节，生产安装器不现场重建。
 
-Node `process` 插件同样把编译后的 JavaScript artifact 放入二进制包，并提交源码依赖锁文件。生产安装器只读取包，不执行 `pnpm`、`npm` 或仓库脚本。可执行示例见 [aio-plugin-ts-service](https://github.com/zjarlin/aio-plugin-ts-service)。
+Node `process` 插件同样把编译后的 JavaScript artifact 放入二进制包，并提交源码依赖锁文件。生产安装器只读取包，不执行 `pnpm`、`npm` 或仓库脚本。参考实现见 [进程插件模板](../../cli/templates/plugin/typescript-process/README.md)。
 
 三种目标都在清单声明 `[plugin.marketplace]`。构建完成后执行 `aio plugin package . --version 1.0.0`，再使用来源绑定凭证执行 `aio plugin publish dist/plugin.aio-plugin`。不依赖 CI，也不要求提交编译产物；CLI 会等待静态页面、Wasmtime 实例或 Node 容器完成激活。完整规则见 [二进制发布](publish.md)。

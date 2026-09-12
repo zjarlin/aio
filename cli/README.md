@@ -2,7 +2,7 @@
 
 `aio` 初始化 Web、Desktop、Server 共用的应用壳，并从一个 Git 仓库发现、安装、更新和卸载前后端插件能力。
 
-插件开发规约见仓库 `docs/plugin/`，可运行示例见 <https://github.com/zjarlin/aio-plugin-hello>。
+插件开发规约见仓库 `docs/plugin/`，可运行示例见 [Dioxus 全栈示例](https://github.com/zjarlin/aio-plugin-dioxus-fullstack) 和 [KMP 全栈示例](https://github.com/zjarlin/aio-plugin-kmp-example)。
 
 ```bash
 cargo install --path cli
