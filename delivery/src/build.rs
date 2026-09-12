@@ -235,6 +235,22 @@ fn container(name: &str, source: &Path) -> Result<Command> {
         let dns: std::net::IpAddr = dns.parse().context("无效构建 DNS 地址")?;
         command.args(["--dns", &dns.to_string()]);
     }
+    if let Ok(hosts) = env::var("AIO_BUILD_HOSTS") {
+        for entry in hosts.split(',').filter(|entry| !entry.is_empty()) {
+            let (host, address) = entry
+                .split_once('=')
+                .context("构建地址格式必须为 hostname=IP")?;
+            ensure!(
+                !host.is_empty()
+                    && host
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b".-".contains(&b)),
+                "无效构建域名"
+            );
+            let address: std::net::IpAddr = address.parse().context("无效构建 IP 地址")?;
+            command.args(["--add-host", &format!("{host}:{address}")]);
+        }
+    }
     command
         .arg("--mount")
         .arg(format!("type=bind,src={},dst=/source", source.display()));
