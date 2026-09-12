@@ -31,6 +31,7 @@ pub use storage::ObjectStore;
 
 pub const FRONTEND_HOST: &str = include_str!("../../../../sdk/web/host.mjs");
 pub const FRONTEND_GUEST: &str = include_str!("../../../../sdk/web/guest.js");
+pub const FRONTEND_WASM: &str = include_str!("../../../../sdk/web/wasm.js");
 
 pub mod bindings {
     wasmtime::component::bindgen!({
