@@ -8,6 +8,8 @@
 
 构建 DNS 可通过 `AIO_BUILD_DNS` 指定；部署网络中需要域名地址覆盖时，可配置 `AIO_BUILD_HOSTS=github.com=IP`，多个地址以逗号分隔。此设置仅属于构建服务环境，保留正常 HTTPS 证书校验，不写入插件源码；重新配置服务时保留。地址应由运维按实际连通性维护。下载设置低速超时，网络失败按任务持久化退避并保留产物，其他源码仍可领取构建。
 
+网络需要代理时，`AIO_BUILD_HTTP_PROXY` 可指向构建容器能访问的无凭据 HTTP 代理，统一应用于源码获取和支持 HTTP 代理的构建工具。代理地址不得包含用户名或密码；发布与数据库凭据仍只留在宿主。生产代理应持续可用，使用开发机转发通道时，其在线状态会影响下载，已有活动版本不受影响。
+
 Rust 适配器使用固定 nightly 的 Cargo `shallow-deps` 功能，只拉取锁定依赖提交，避免下载共享仓库的全部历史；构建结果仍绑定完整源码 SHA。
 
 先部署共享协议与宿主，再安装 `aio-delivery`、`aio` 到 `/opt/aio-delivery/bin`。`install-git.sh` 为旧系统编译独立 Git，依赖 gcc、make、libcurl/openssl/zlib/expat 开发包，不覆盖系统 Git。镜像构建使用 `docker build --network host --build-arg BASE_IMAGE=<固定摘要>`；源码任务仍在独立网络的受限容器内执行。

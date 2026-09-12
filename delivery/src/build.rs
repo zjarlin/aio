@@ -233,6 +233,20 @@ fn container(name: &str, source: &Path) -> Result<Command> {
         "--env",
         "GIT_CONFIG_VALUE_1=30",
     ]);
+    if let Ok(proxy) = env::var("AIO_BUILD_HTTP_PROXY") {
+        let proxy = reqwest::Url::parse(&proxy).context("无效构建代理地址")?;
+        ensure!(
+            matches!(proxy.scheme(), "http" | "https")
+                && proxy.host_str().is_some()
+                && proxy.username().is_empty()
+                && proxy.password().is_none(),
+            "构建代理必须是无凭据的 HTTP 地址"
+        );
+        for key in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] {
+            command.args(["--env", &format!("{key}={proxy}")]);
+        }
+        command.args(["--env", "NO_PROXY=localhost,127.0.0.1"]);
+    }
     if let Ok(dns) = env::var("AIO_BUILD_DNS") {
         let dns: std::net::IpAddr = dns.parse().context("无效构建 DNS 地址")?;
         command.args(["--dns", &dns.to_string()]);
