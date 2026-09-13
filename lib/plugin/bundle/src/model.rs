@@ -50,9 +50,9 @@ impl VerifiedBundle {
 
     pub fn frontend_files(&self) -> impl Iterator<Item = (&str, &[u8])> {
         let prefix = format!("{}/", self.manifest.plugin.frontend.path);
-        self.files.iter().filter_map(move |(path, bytes)| {
-            Some((path.strip_prefix(&prefix)?, bytes.as_slice()))
-        })
+        self.files
+            .iter()
+            .filter_map(move |(path, bytes)| Some((path.strip_prefix(&prefix)?, bytes.as_slice())))
     }
 
     pub fn migrations(&self) -> impl Iterator<Item = (&str, &str)> {
