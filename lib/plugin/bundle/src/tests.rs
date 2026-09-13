@@ -129,6 +129,13 @@ fn entire_release_roundtrips_deterministically() -> Result<()> {
             .is_none()
     );
     assert_eq!(
+        verified.frontend_files().collect::<Vec<_>>(),
+        vec![
+            ("@font/assets/font.woff2", b"font".as_slice()),
+            ("index.html", b"<html>example</html>".as_slice()),
+        ]
+    );
+    assert_eq!(
         verified.migrations().collect::<Vec<_>>(),
         vec![("0001.sql", "CREATE TABLE counter (value BIGINT);")]
     );
